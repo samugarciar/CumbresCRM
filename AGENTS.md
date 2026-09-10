@@ -42,3 +42,41 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Flujo de base de datos
+
+La base local de Docker es una réplica de la **forma** de producción (21
+tablas, 46 políticas, el rol `bi_reader` con sus límites), no de sus datos.
+
+| Comando | Qué hace | ¿Toca producción? |
+|---|---|---|
+| `npm run db:reset` | Rehace la base LOCAL: línea base + `seed.sql` | No |
+| `npm run db:test` | Corre las pruebas pgTAP de `supabase/tests/` | No |
+| `npm run db:diff` | Genera una migración con lo que cambiaste, **acotado a `crm`** | No |
+| `npm run db:list` | Compara historial local y remoto | Solo lee |
+| `npm run db:pull` | Regenera la línea base desde producción | Solo lee* |
+
+`db:diff` está fijado a `--schema crm` a propósito: es lo que impide
+generar una migración que toque `public`. Para nombrarla: `npm run db:diff
+-- -f nombre_de_la_migracion`.
+
+**`supabase db push` no tiene atajo, deliberadamente.** Es el comando que
+aplica migraciones a producción y no debe salir por memoria muscular.
+Escríbelo completo, mirando lo que vas a aplicar. Y jamás
+`supabase db reset --linked`: eso borra producción.
+
+\* `db pull` marca además la migración como aplicada en el historial
+remoto. No cambia datos ni esquema.
+
+### Cosas que hay que saber de la línea base
+
+- `supabase/migrations/20260910205611_remote_schema.sql` está **generado**.
+  No se edita a mano salvo la excepción documentada dentro del propio
+  archivo (un `GRANT ... WITH ADMIN OPTION` que no puede aplicarse en local).
+- `supabase/seed.sql` **solo corre en local**. Siembra dos inmobiliarias
+  ajenas —Alfa y Beta— porque el aislamiento entre inquilinos no se puede
+  probar con un solo inquilino. Usuarios: `alfa@prueba.local` y
+  `beta@prueba.local`, contraseña `prueba1234`.
+- Las políticas están declaradas `TO public`, así que **también se evalúan
+  para el rol `anon`**. Lo único que deja fuera a un anónimo es que
+  `auth.uid()` sea nulo. Tenlo presente al escribir políticas nuevas.

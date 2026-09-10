@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:diff": "supabase db diff --schema crm",
+    "db:pull": "supabase db pull",
+    "db:list": "supabase migration list"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
