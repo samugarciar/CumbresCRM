@@ -19,7 +19,8 @@ distinto esquema.
 | 0-B | CLI de Supabase, línea base y pruebas de RLS con pgTAP | ✅ hecho |
 | 1-A | Esquema `crm`, contactos y normalizador de teléfonos | ✅ hecho |
 | 1-B | Eventos, actividades, identidades, triggers de proyección y backfill | ✅ hecho |
-| 1-C | Lista de contactos y ficha con timeline | ⏳ siguiente |
+| 1-C | Lista de contactos y ficha con timeline | ✅ hecho |
+| 2 | Pipeline comercial y kanban | ⏳ siguiente |
 | 2 | Pipeline comercial y kanban | pendiente |
 | 3 | Requerimientos y matching contra el catálogo | pendiente |
 | 4 | Tareas y "Mi día" | pendiente |
@@ -35,7 +36,7 @@ Requisitos: Node 20+ y acceso al proyecto de Supabase de Cumbres.
 npm install
 supabase start               # levanta Postgres, Auth y Studio en Docker
 npm run db:reset             # aplica la línea base y siembra datos de prueba
-npm run db:test              # 81 pruebas pgTAP: RLS, identidad, proyección y backfill
+npm run db:test              # 91 pruebas pgTAP: RLS, identidad, proyección y bandeja
 npm run dev
 ```
 
@@ -43,6 +44,15 @@ El Studio local queda en http://localhost:54323 y los correos de prueba
 en http://localhost:54324.
 
 Entra con un usuario del seed: `alfa@prueba.local` / `prueba1234`.
+
+Para trabajar con volumen real en vez de tres filas de juguete:
+
+```bash
+npm run db:fixture   # ~4.900 filas con la forma del histórico de producción
+```
+
+…y luego `SELECT crm.backfill('11111111-1111-1111-1111-111111111111');` en el
+Studio. Deja 1.241 contactos y 3.980 actividades.
 
 ### Los dos entornos
 
@@ -65,7 +75,11 @@ llaves salen de `supabase status -o env`.
 
 > ⚠️ El esquema `crm` hay que **exponerlo en PostgREST** también en producción:
 > Settings → API → Exposed schemas. En local lo hace `supabase/config.toml`.
-> Sin eso, `supabase-js` no puede consultar `crm` y las vistas salen vacías.
+> Sin eso, `supabase-js` responde `Invalid schema: crm` y la app no ve nada.
+>
+> **Ojo en local:** cambiar `[api] schemas` en `config.toml` no basta con
+> `npm run db:reset` — PostgREST solo relee su configuración al arrancar.
+> Hay que hacer `supabase stop && supabase start`.
 
 ## Reglas de arquitectura
 

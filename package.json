@@ -12,7 +12,8 @@
     "db:diff": "supabase db diff --schema crm",
     "db:pull": "supabase db pull",
     "db:list": "supabase migration list",
-    "db:fixture": "docker exec -i supabase_db_CumbresCRM psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -f - < supabase/fixtures/historico_sintetico.sql"
+    "db:fixture": "docker exec -i supabase_db_CumbresCRM psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -f - < supabase/fixtures/historico_sintetico.sql",
+    "db:types": "supabase gen types typescript --local --schema public --schema crm > lib/database.types.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -25,7 +26,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "shadcn": "^4.21.0",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -37,7 +37,7 @@ export async function proxy(request: NextRequest) {
   const ruta = request.nextUrl.pathname;
 
   if (ruta === '/') {
-    return NextResponse.redirect(new URL(user ? '/inicio' : '/login', request.url));
+    return NextResponse.redirect(new URL(user ? '/contactos' : '/login', request.url));
   }
 
   // Lista de rutas PÚBLICAS, no de privadas: así una ruta nueva nace
@@ -51,7 +51,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (esPublica && user) {
-    return NextResponse.redirect(new URL('/inicio', request.url));
+    return NextResponse.redirect(new URL('/contactos', request.url));
   }
 
   return respuesta;

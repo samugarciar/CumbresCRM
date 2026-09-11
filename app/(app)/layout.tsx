@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { cerrarSesion } from '@/app/actions/auth';
@@ -32,7 +33,16 @@ export default async function LayoutApp({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="flex items-center justify-between gap-4 border-b bg-card px-6 py-3">
-        <span className="font-semibold tracking-tight">Cumbres CRM</span>
+        <div className="flex items-center gap-6">
+          <Link href="/contactos" className="font-semibold tracking-tight">
+            Cumbres CRM
+          </Link>
+          <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+            <Link href="/contactos" className="hover:text-foreground">
+              Contactos
+            </Link>
+          </nav>
+        </div>
 
         <div className="flex items-center gap-4">
           <div className="text-right leading-tight">
