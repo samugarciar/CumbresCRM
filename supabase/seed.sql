@@ -48,6 +48,15 @@ INSERT INTO auth.users (
   ),
   (
     '00000000-0000-0000-0000-000000000000',
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    'authenticated', 'authenticated', 'asesor.alfa@prueba.local',
+    extensions.crypt('prueba1234', extensions.gen_salt('bf')),
+    now(), now(), now(),
+    '{"provider":"email","providers":["email"]}', '{}',
+    '', '', '', '', '', '', '', ''
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
     'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'authenticated', 'authenticated', 'beta@prueba.local',
     extensions.crypt('prueba1234', extensions.gen_salt('bf')),
@@ -69,6 +78,12 @@ INSERT INTO auth.identities (
     'email', now(), now(), now()
   ),
   (
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","email":"asesor.alfa@prueba.local","email_verified":true}',
+    'email', now(), now(), now()
+  ),
+  (
     'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     '{"sub":"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb","email":"beta@prueba.local","email_verified":true}',
@@ -79,6 +94,8 @@ ON CONFLICT (provider, provider_id) DO NOTHING;
 INSERT INTO public.usuarios (id, inmobiliaria_id, nombre_completo, email, rol) VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111',
    'Admin Alfa', 'alfa@prueba.local', 'admin'),
+  ('cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111',
+   'Asesor Alfa', 'asesor.alfa@prueba.local', 'asesor'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222',
    'Admin Beta', 'beta@prueba.local', 'admin')
 ON CONFLICT (id) DO NOTHING;

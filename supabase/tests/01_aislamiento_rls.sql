@@ -43,10 +43,12 @@ SELECT is(
   'Alfa no ve las citas de Beta'
 );
 
+-- Alfa tiene dos: Admin Alfa y Asesor Alfa. Lo que importa es que no
+-- aparezca ninguno de Beta.
 SELECT is(
   (SELECT count(*) FROM usuarios),
-  1::bigint,
-  'Alfa ve solo los usuarios de su propia inmobiliaria'
+  2::bigint,
+  'Alfa ve los 2 usuarios de su inmobiliaria, y solo esos'
 );
 
 SELECT is(

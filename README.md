@@ -17,7 +17,9 @@ distinto esquema.
 |---|---|---|
 | 0-A | Andamiaje: app, diseño, sesión compartida | ✅ hecho |
 | 0-B | CLI de Supabase, línea base y pruebas de RLS con pgTAP | ✅ hecho |
-| 1 | Esquema `crm`, contactos unificados y timeline | ⏳ siguiente |
+| 1-A | Esquema `crm`, contactos y normalizador de teléfonos | ✅ hecho |
+| 1-B | `crm.eventos`, `crm.actividades`, triggers de proyección y backfill | ⏳ siguiente |
+| 1-C | Lista de contactos y ficha con timeline | pendiente |
 | 2 | Pipeline comercial y kanban | pendiente |
 | 3 | Requerimientos y matching contra el catálogo | pendiente |
 | 4 | Tareas y "Mi día" | pendiente |
@@ -33,7 +35,7 @@ Requisitos: Node 20+ y acceso al proyecto de Supabase de Cumbres.
 npm install
 supabase start               # levanta Postgres, Auth y Studio en Docker
 npm run db:reset             # aplica la línea base y siembra datos de prueba
-npm run db:test              # 16 pruebas pgTAP: aislamiento RLS y proyección
+npm run db:test              # 48 pruebas pgTAP: RLS, normalización y proyección
 npm run dev
 ```
 
@@ -58,6 +60,12 @@ cp .env.produccion .env.local   # y reinicia el servidor
 Que exija un paso manual es deliberado: el desarrollo diario no debería
 poder tocar datos de clientes por accidente. Para volver a local, las
 llaves salen de `supabase status -o env`.
+
+## Al desplegar a producción
+
+> ⚠️ El esquema `crm` hay que **exponerlo en PostgREST** también en producción:
+> Settings → API → Exposed schemas. En local lo hace `supabase/config.toml`.
+> Sin eso, `supabase-js` no puede consultar `crm` y las vistas salen vacías.
 
 ## Reglas de arquitectura
 
