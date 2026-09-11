@@ -9,7 +9,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(18);
+SELECT plan(20);
 
 -- --- Nada que normalizar ---------------------------------------------
 SELECT is(crm.normalizar_telefono(NULL), NULL, 'NULL entra, NULL sale');
@@ -53,6 +53,17 @@ SELECT is(crm.normalizar_telefono('32001234567'), NULL,
   'Once dígitos que empiezan en 3: casi seguro un dedazo, no Bélgica → NULL');
 SELECT is(crm.normalizar_telefono('8012345678'), NULL,
   'Diez dígitos que no son ni móvil ni fijo colombiano, sin marca → NULL');
+
+-- --- La convención de n8n nunca se confunde con un teléfono ------------
+-- n8n escribe 'kommo-<contact_id>' cuando el contacto llega sin número.
+-- Al quitar los no-dígitos quedan 8, que sin marca internacional no se
+-- aceptan. Que esto siga siendo NULL es lo que impide que un id de Kommo
+-- se convierta en la llave de identidad de una persona.
+SELECT is(crm.normalizar_telefono('kommo-49999153'), NULL,
+  'El valor kommo-<id> que escribe n8n nunca se toma por un teléfono');
+
+SELECT is(crm.normalizar_telefono('49999153'), NULL,
+  'Ni el id pelado: 8 dígitos sin marca internacional no son un número');
 
 -- --- Idempotencia -----------------------------------------------------
 -- Importante para el backfill: normalizar algo ya normalizado no lo

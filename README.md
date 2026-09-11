@@ -35,7 +35,7 @@ Requisitos: Node 20+ y acceso al proyecto de Supabase de Cumbres.
 npm install
 supabase start               # levanta Postgres, Auth y Studio en Docker
 npm run db:reset             # aplica la línea base y siembra datos de prueba
-npm run db:test              # 71 pruebas pgTAP: RLS, identidad, proyección y backfill
+npm run db:test              # 81 pruebas pgTAP: RLS, identidad, proyección y backfill
 npm run dev
 ```
 
