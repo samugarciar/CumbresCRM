@@ -24,10 +24,18 @@ ON CONFLICT (id) DO NOTHING;
 -- Usuarios de autenticación. La contraseña de ambos es `prueba1234`.
 -- Se hashea con bcrypt vía pgcrypto para que el login local funcione de
 -- verdad, no solo la lectura de datos.
+-- OJO con las columnas de token en '' y no en NULL: GoTrue las lee como
+-- string de Go y revienta con "converting NULL to string is unsupported",
+-- que se manifiesta como un 500 "Database error querying schema" al hacer
+-- login. Cuesta encontrarlo porque el error no menciona la columna hasta
+-- que se miran los logs del contenedor de auth.
 INSERT INTO auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, created_at, updated_at,
-  raw_app_meta_data, raw_user_meta_data
+  raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token,
+  email_change_token_new, email_change_token_current, email_change,
+  phone_change, phone_change_token, reauthentication_token
 ) VALUES
   (
     '00000000-0000-0000-0000-000000000000',
@@ -35,7 +43,8 @@ INSERT INTO auth.users (
     'authenticated', 'authenticated', 'alfa@prueba.local',
     extensions.crypt('prueba1234', extensions.gen_salt('bf')),
     now(), now(), now(),
-    '{"provider":"email","providers":["email"]}', '{}'
+    '{"provider":"email","providers":["email"]}', '{}',
+    '', '', '', '', '', '', '', ''
   ),
   (
     '00000000-0000-0000-0000-000000000000',
@@ -43,7 +52,8 @@ INSERT INTO auth.users (
     'authenticated', 'authenticated', 'beta@prueba.local',
     extensions.crypt('prueba1234', extensions.gen_salt('bf')),
     now(), now(), now(),
-    '{"provider":"email","providers":["email"]}', '{}'
+    '{"provider":"email","providers":["email"]}', '{}',
+    '', '', '', '', '', '', '', ''
   )
 ON CONFLICT (id) DO NOTHING;
 

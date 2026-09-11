@@ -31,7 +31,6 @@ Requisitos: Node 20+ y acceso al proyecto de Supabase de Cumbres.
 
 ```bash
 npm install
-cp .env.example .env.local   # y completa los tres valores
 supabase start               # levanta Postgres, Auth y Studio en Docker
 npm run db:reset             # aplica la línea base y siembra datos de prueba
 npm run db:test              # 16 pruebas pgTAP: aislamiento RLS y proyección
@@ -41,11 +40,24 @@ npm run dev
 El Studio local queda en http://localhost:54323 y los correos de prueba
 en http://localhost:54324.
 
-> ⚠️ Hoy `.env.local` apunta a **producción**. Cambiarlo a la base local es
-> el siguiente ajuste pendiente.
+Entra con un usuario del seed: `alfa@prueba.local` / `prueba1234`.
 
-Abre http://localhost:3000 — redirige a `/login`. Entra con la **misma
-cuenta** que usas en la plataforma actual.
+### Los dos entornos
+
+| Archivo | Apunta a | Quién lo carga |
+|---|---|---|
+| `.env.local` | Supabase local (Docker) | `npm run dev`, automáticamente |
+| `.env.produccion` | El proyecto real de Supabase | **Nadie.** Hay que copiarlo a mano |
+
+Para trabajar contra producción —cosa que casi nunca deberías necesitar—:
+
+```bash
+cp .env.produccion .env.local   # y reinicia el servidor
+```
+
+Que exija un paso manual es deliberado: el desarrollo diario no debería
+poder tocar datos de clientes por accidente. Para volver a local, las
+llaves salen de `supabase status -o env`.
 
 ## Reglas de arquitectura
 
