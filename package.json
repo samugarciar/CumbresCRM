@@ -11,7 +11,8 @@
     "db:test": "supabase test db",
     "db:diff": "supabase db diff --schema crm",
     "db:pull": "supabase db pull",
-    "db:list": "supabase migration list"
+    "db:list": "supabase migration list",
+    "db:fixture": "docker exec -i supabase_db_CumbresCRM psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -f - < supabase/fixtures/historico_sintetico.sql"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

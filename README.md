@@ -18,8 +18,8 @@ distinto esquema.
 | 0-A | Andamiaje: app, diseño, sesión compartida | ✅ hecho |
 | 0-B | CLI de Supabase, línea base y pruebas de RLS con pgTAP | ✅ hecho |
 | 1-A | Esquema `crm`, contactos y normalizador de teléfonos | ✅ hecho |
-| 1-B | `crm.eventos`, `crm.actividades`, triggers de proyección y backfill | ⏳ siguiente |
-| 1-C | Lista de contactos y ficha con timeline | pendiente |
+| 1-B | Eventos, actividades, identidades, triggers de proyección y backfill | ✅ hecho |
+| 1-C | Lista de contactos y ficha con timeline | ⏳ siguiente |
 | 2 | Pipeline comercial y kanban | pendiente |
 | 3 | Requerimientos y matching contra el catálogo | pendiente |
 | 4 | Tareas y "Mi día" | pendiente |
@@ -35,7 +35,7 @@ Requisitos: Node 20+ y acceso al proyecto de Supabase de Cumbres.
 npm install
 supabase start               # levanta Postgres, Auth y Studio en Docker
 npm run db:reset             # aplica la línea base y siembra datos de prueba
-npm run db:test              # 48 pruebas pgTAP: RLS, normalización y proyección
+npm run db:test              # 71 pruebas pgTAP: RLS, identidad, proyección y backfill
 npm run dev
 ```
 
