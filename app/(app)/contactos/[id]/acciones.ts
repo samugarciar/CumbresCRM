@@ -101,38 +101,8 @@ export async function actualizarContacto(
   return { ok: true };
 }
 
-/**
- * Registra la autorización de tratamiento de datos (Ley 1581 de 2012).
- *
- * La fecha y el canal se guardan porque es lo que hay que poder demostrar
- * si alguien lo reclama; un booleano suelto no prueba nada.
- */
-export async function registrarConsentimiento(
-  contactoId: string,
-  canal: string
-): Promise<Resultado> {
-  const validado = z
-    .object({
-      contactoId: z.string().uuid(),
-      canal: z.enum(['whatsapp', 'formulario_web', 'presencial', 'telefono']),
-    })
-    .safeParse({ contactoId, canal });
-
-  if (!validado.success) return { ok: false, error: 'Canal no válido.' };
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .schema('crm')
-    .from('contactos')
-    .update({
-      consentimiento: true,
-      consentimiento_at: new Date().toISOString(),
-      consentimiento_canal: validado.data.canal,
-    })
-    .eq('id', validado.data.contactoId);
-
-  if (error) return { ok: false, error: 'No se pudo registrar la autorización.' };
-
-  revalidatePath(`/contactos/${validado.data.contactoId}`);
-  return { ok: true };
-}
+// Nota: las columnas `consentimiento`, `consentimiento_at` y
+// `consentimiento_canal` siguen existiendo en crm.contactos. La
+// autorización de tratamiento de datos la cubre el contrato con el
+// cliente, así que no se pide desde la interfaz — pero el dato tiene
+// dónde guardarse el día que haga falta registrarlo por contacto.

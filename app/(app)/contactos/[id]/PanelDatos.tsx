@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Check, Loader2, Pencil, ShieldCheck, X } from 'lucide-react';
-import { actualizarContacto, registrarConsentimiento } from './acciones';
+import { Check, Loader2, Pencil, X } from 'lucide-react';
+import { actualizarContacto } from './acciones';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { fechaLarga } from '@/lib/formato';
 
 interface Props {
@@ -15,9 +14,6 @@ interface Props {
   origen: string | null;
   telefonoCrudo: string | null;
   creadoAt: string;
-  consentimiento: boolean;
-  consentimientoAt: string | null;
-  consentimientoCanal: string | null;
   identidades: { tipo: string; valor: string }[];
 }
 
@@ -44,14 +40,6 @@ export function PanelDatos(props: Props) {
       const r = await actualizarContacto(props.contactoId, nombre, tipo);
       if (r.ok) setEditando(false);
       else setError(r.error ?? 'No se pudo guardar.');
-    });
-  };
-
-  const autorizar = () => {
-    setError(null);
-    iniciar(async () => {
-      const r = await registrarConsentimiento(props.contactoId, 'whatsapp');
-      if (!r.ok) setError(r.error ?? 'No se pudo registrar.');
     });
   };
 
@@ -159,32 +147,6 @@ export function PanelDatos(props: Props) {
         )}
       </section>
 
-      <section className="flex flex-col gap-3 rounded-lg border bg-card p-4">
-        <h2 className="font-medium">Habeas Data</h2>
-        {props.consentimiento ? (
-          <div className="flex flex-col gap-1">
-            <Badge variant="secondary" className="w-fit gap-1.5">
-              <ShieldCheck className="size-3.5" />
-              Autorizó
-            </Badge>
-            <span className="text-xs text-muted-foreground">
-              {fechaLarga(props.consentimientoAt)}
-              {props.consentimientoCanal ? ` · por ${props.consentimientoCanal}` : ''}
-            </span>
-          </div>
-        ) : (
-          <>
-            <p className="text-xs text-muted-foreground">
-              Sin autorización registrada. La Ley 1581 exige poder demostrar
-              cuándo y por qué canal la dio.
-            </p>
-            <Button size="sm" variant="outline" onClick={autorizar} disabled={guardando}>
-              {guardando && <Loader2 className="animate-spin" />}
-              Registrar que autorizó por WhatsApp
-            </Button>
-          </>
-        )}
-      </section>
     </aside>
   );
 }

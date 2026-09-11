@@ -6,3 +6,8 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Consultas guardadas en el Studio de Supabase. El CLI las sincroniza aquí
+# con nombres como "Untitled query 422.sql". Son borradores personales, no
+# fuente del proyecto: lo que importe se convierte en migración o en script.
+snippets/
