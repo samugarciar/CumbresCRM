@@ -136,13 +136,18 @@ SELECT
   '11111111-1111-1111-1111-111111111111',
   'a1111111-1111-1111-1111-111111111111',
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-  current_date + n, '08:00', '18:00',
+  -- De 59 días atrás a 30 adelante. Antes eran solo futuras, y eso hacía
+  -- que el fixture no se pareciera a producción en lo que más importa:
+  -- sin citas pasadas no hay visitas realizadas de verdad, y la
+  -- presunción —que es de donde sale el 90% de esa columna en
+  -- producción— nunca se ejercitaba al mirar la aplicación en local.
+  current_date - 60 + n, '08:00', '18:00',
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-FROM generate_series(1, 30) n;
+FROM generate_series(1, 90) n;
 
 INSERT INTO public.citas
   (inmobiliaria_id, franja_id, inmueble_id, fecha, hora_inicio, hora_fin,
-   cliente_nombre, cliente_telefono, estado, created_at)
+   cliente_nombre, cliente_telefono, estado, created_at, confirmada_at)
 SELECT
   '11111111-1111-1111-1111-111111111111',
   f.id,
@@ -158,16 +163,31 @@ SELECT
     WHEN i % 3 = 1 THEN '573' || lpad((600 + (i % 420))::text, 9, '0')
     ELSE '3' || lpad((600 + (i % 420))::text, 9, '0')            -- el mismo, escrito distinto
   END,
-  CASE WHEN i % 7 = 0 THEN 'completada'
+  -- UNA CITA FUTURA NO PUEDE ESTAR COMPLETADA. Parece obvio, pero el
+  -- fixture las generaba así y el tablero mostraba "visita realizada
+  -- dentro de 29 días", que se lee como un fallo de la aplicación
+  -- cuando el roto era el dato de prueba.
+  CASE WHEN f.fecha >= current_date THEN
+         CASE WHEN i % 11 = 0 THEN 'cancelada' ELSE 'agendada' END
+       WHEN i % 7 = 0 THEN 'completada'
        WHEN i % 11 = 0 THEN 'cancelada'
        ELSE 'agendada' END,
-  now() - ((513 - i) || ' hours')::interval
+  -- Agendada un par de días antes de la visita, pero NUNCA en el futuro:
+  -- una cita se crea cuando se reserva. Sin el LEAST, las citas de la
+  -- semana que viene se proyectaban como actividades con fecha futura y
+  -- el timeline decía "hace -3 días".
+  LEAST((f.fecha - 2)::timestamptz, now() - interval '1 hour'),
+  -- La mitad de las pasadas se confirmaron: son las que la presunción
+  -- debe recoger como visita realizada. En producción esa es la fuente
+  -- de casi toda esa columna.
+  CASE WHEN f.fecha < current_date AND i % 2 = 0
+       THEN (f.fecha - 1)::timestamptz END
 FROM generate_series(1, 513) i_ext
 CROSS JOIN LATERAL (SELECT i_ext AS i) alias
 JOIN LATERAL (
   SELECT id, fecha FROM public.franjas_horarias
    WHERE inmobiliaria_id = '11111111-1111-1111-1111-111111111111'
-   ORDER BY fecha OFFSET (i % 30) LIMIT 1
+   ORDER BY fecha OFFSET (i % 90) LIMIT 1
 ) f ON true;
 
 -- ---------------------------------------------------------------------
