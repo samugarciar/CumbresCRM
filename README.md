@@ -54,22 +54,36 @@ npm run db:fixture   # ~4.900 filas con la forma del histórico de producción
 …y luego `SELECT crm.backfill('11111111-1111-1111-1111-111111111111');` en el
 Studio. Deja 1.241 contactos y 3.980 actividades.
 
-### Los dos entornos
+### Los tres entornos
 
-| Archivo | Apunta a | Quién lo carga |
+| Archivo | Apunta a | Qué tiene |
 |---|---|---|
-| `.env.local` | Supabase local (Docker) | `npm run dev`, automáticamente |
-| `.env.produccion` | El proyecto real de Supabase | **Nadie.** Hay que copiarlo a mano |
+| `.env.desarrollo` | Supabase local (Docker) | Datos de juguete del seed, o el fixture sintético |
+| `.env.staging.app` | `cumbres-crm-staging` | **Copia real** de producción (11 sep 2026), con las contraseñas sustituidas |
+| `.env.produccion` | El proyecto real | Producción. Solo cuando de verdad haga falta |
 
-Para trabajar contra producción —cosa que casi nunca deberías necesitar—:
+`.env.local` es el que Next carga. Para cambiar de entorno, se copia encima:
 
 ```bash
-cp .env.produccion .env.local   # y reinicia el servidor
+cp .env.desarrollo .env.local    # local, con Docker
+cp .env.staging.app .env.local   # datos reales, sin riesgo
+cp .env.produccion .env.local    # producción
 ```
 
-Que exija un paso manual es deliberado: el desarrollo diario no debería
-poder tocar datos de clientes por accidente. Para volver a local, las
-llaves salen de `supabase status -o env`.
+…y se reinicia `npm run dev`. Que exija un paso manual es deliberado: el
+desarrollo diario no debería poder tocar datos de clientes por accidente.
+
+#### Entrar en staging
+
+Todas las contraseñas se sustituyeron por `staging1234`, así que ninguna
+credencial real sirve ahí:
+
+- `arrendamientos.cumbres@gmail.com` — admin, ve los 1.233 contactos
+- `juansmg@inmobiliaria-cumbres.com` — asesor
+
+> ⚠️ `samugarciaro@outlook.com` existe en Auth pero **no tiene perfil en
+> `public.usuarios`**, así que la RLS no le deja ver nada. Pasa igual en
+> producción: hace falta crearle el perfil antes de desplegar.
 
 ## Al desplegar a producción
 
