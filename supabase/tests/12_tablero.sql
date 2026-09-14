@@ -9,7 +9,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(14);
+SELECT plan(19);
 
 DELETE FROM crm.contactos;
 
@@ -34,6 +34,13 @@ JOIN crm.contactos c
 UPDATE crm.oportunidades
    SET escalado_at = now() - interval '30 minutes'
  WHERE contacto_id = 'ff000003-0000-0000-0000-000000000003';
+
+-- La persona 4 escaló hace CINCO DÍAS y tampoco la ha mirado nadie. En
+-- producción el 82% de los escalamientos son así: viejos y desatendidos.
+-- Si eso se pinta de rojo, el rojo deja de significar nada.
+UPDATE crm.oportunidades
+   SET escalado_at = now() - interval '5 days'
+ WHERE contacto_id = 'ff000004-0000-0000-0000-000000000004';
 
 -- La persona 5 tiene zona; sirve para el filtro.
 UPDATE crm.oportunidades SET zona = 'Bello'
@@ -79,7 +86,34 @@ SELECT ok(
 SELECT ok(
   NOT (SELECT bool_or(COALESCE(escalado_sin_atender, false)) FROM crm.tablero(40)
         WHERE contacto_id <> 'ff000003-0000-0000-0000-000000000003'),
-  'Las demás no: no escalaron'
+  'Ninguna otra la enciende: o no escalaron, o su escalada es vieja'
+);
+
+-- --- LA REGLA QUE EVITA QUE LA ALERTA SE VUELVA RUIDO ----------------
+-- Una escalada de hace cinco días que nadie atendió NO es una tarea
+-- pendiente: es historia. Sigue visible, pero no grita.
+SELECT ok(
+  NOT (SELECT escalado_sin_atender FROM crm.tablero(40)
+        WHERE contacto_id = 'ff000004-0000-0000-0000-000000000004'),
+  'Una escalada vieja y desatendida NO enciende la alerta'
+);
+
+SELECT ok(
+  NOT (SELECT escalado_atendido FROM crm.tablero(40)
+        WHERE contacto_id = 'ff000004-0000-0000-0000-000000000004'),
+  'Pero tampoco se dice que fue atendida, porque no lo fue'
+);
+
+SELECT ok(
+  (SELECT escalado_at IS NOT NULL FROM crm.tablero(40)
+    WHERE contacto_id = 'ff000004-0000-0000-0000-000000000004'),
+  'La fecha se conserva: la tarjeta puede contarlo en gris'
+);
+
+SELECT is(
+  (SELECT contacto_id FROM crm.tablero(40) LIMIT 1),
+  'ff000003-0000-0000-0000-000000000003'::uuid,
+  'Y arriba sigue la reciente, no la vieja'
 );
 
 -- --- Abrir la ficha la atiende ---------------------------------------
@@ -95,6 +129,12 @@ SELECT ok(
   NOT (SELECT escalado_sin_atender FROM crm.tablero(40)
         WHERE contacto_id = 'ff000003-0000-0000-0000-000000000003'),
   'Y deja de estar esperando: alguien llegó'
+);
+
+SELECT ok(
+  (SELECT escalado_atendido FROM crm.tablero(40)
+    WHERE contacto_id = 'ff000003-0000-0000-0000-000000000003'),
+  'Ahora sí se puede decir que fue atendida'
 );
 
 SELECT is(
@@ -122,7 +162,7 @@ SELECT is(
 SELECT is(
   (SELECT count(*)::int FROM crm.tablero(40, NULL, NULL, true)),
   0,
-  'Con todo atendido, "lo que urge" no devuelve nada'
+  'Con lo reciente atendido, "lo que urge" queda vacío: la vieja no urge'
 );
 
 -- --- Aislamiento ------------------------------------------------------

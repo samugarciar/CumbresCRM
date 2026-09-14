@@ -837,6 +837,7 @@ export type Database = {
         Returns: {
           contacto_id: string
           escalado_at: string
+          escalado_atendido: boolean
           escalado_sin_atender: boolean
           estancada: boolean
           etapa: string

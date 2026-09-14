@@ -28,6 +28,7 @@ export interface Tarjeta {
   etapa_at: string | null;
   escalado_at: string | null;
   escalado_sin_atender: boolean | null;
+  escalado_atendido: boolean | null;
   estancada: boolean | null;
   visita_realizada_origen: string | null;
   total_en_etapa: number;
@@ -289,10 +290,22 @@ function TarjetaOportunidad({
         </p>
       )}
 
+      {/* Escalada vieja: ya no es tarea, pero decir "atendida" cuando
+          nadie la abrió sería mentir. Va en gris, que es lo que es:
+          contexto. */}
       {alerta === null && t.escalado_at && (
         <p className="flex items-center gap-1.5 rounded-b-lg px-3 pb-2 text-xs text-muted-foreground">
-          <Check className="size-3.5 shrink-0" />
-          Escalada y atendida
+          {t.escalado_atendido ? (
+            <>
+              <Check className="size-3.5 shrink-0" />
+              Escalada y atendida
+            </>
+          ) : (
+            <>
+              <UserRoundCheck className="size-3.5 shrink-0" />
+              Pidió una persona {tiempoRelativo(t.escalado_at)} · nadie abrió la ficha
+            </>
+          )}
         </p>
       )}
     </article>
