@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { iniciarSesion } from '@/app/actions/auth';
@@ -31,7 +32,7 @@ export function FormularioLogin() {
       if (resultado.ok) {
         // `siguiente` lo pone proxy.ts al desviar a alguien sin sesión.
         const siguiente = params.get('siguiente');
-        router.push(siguiente && siguiente.startsWith('/') ? siguiente : '/inicio');
+        router.push(siguiente && siguiente.startsWith('/') ? siguiente : '/contactos');
         router.refresh();
       } else {
         setError(resultado.error ?? 'No se pudo iniciar sesión.');
@@ -84,6 +85,10 @@ export function FormularioLogin() {
             <Button type="submit" disabled={enviando} className="mt-1">
               {enviando && <Loader2 className="animate-spin" />}
               {enviando ? 'Entrando…' : 'Entrar'}
+            </Button>
+
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/recuperar">Olvidé mi contraseña</Link>
             </Button>
           </form>
         </CardContent>

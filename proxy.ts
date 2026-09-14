@@ -42,7 +42,17 @@ export async function proxy(request: NextRequest) {
 
   // Lista de rutas PÚBLICAS, no de privadas: así una ruta nueva nace
   // protegida por olvido, que es el olvido correcto.
-  const esPublica = ruta.startsWith('/login');
+  //
+  // Coincidencia EXACTA, no `startsWith`: con `startsWith('/recuperar')`,
+  // la pantalla que fija la contraseña nueva (/recuperar/nueva) sería
+  // pública, y esa es justo la que NO puede serlo.
+  const FORMULARIOS_PUBLICOS = ['/login', '/recuperar'];
+
+  // El aterrizaje del enlace del correo va aparte: tiene que ejecutarse
+  // aunque ya haya sesión —alguien puede pedir el enlace estando dentro—
+  // y él mismo decide a dónde mandar después.
+  const esPublica =
+    FORMULARIOS_PUBLICOS.includes(ruta) || ruta === '/recuperar/confirmar';
 
   if (!esPublica && !user) {
     const url = new URL('/login', request.url);
@@ -50,7 +60,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (esPublica && user) {
+  if (FORMULARIOS_PUBLICOS.includes(ruta) && user) {
     return NextResponse.redirect(new URL('/contactos', request.url));
   }
 
