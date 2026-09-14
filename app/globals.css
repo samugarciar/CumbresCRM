@@ -34,7 +34,9 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-primary: var(--primary);
+  --color-brand: var(--brand);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -51,8 +53,22 @@
 /* =====================================================================
    Paleta Cumbres — portada de CumbresStateInventory/app/globals.css
    para que el CRM se lea como el mismo producto aunque sea otro repo.
-   El azul #00abd8 es el color de marca; los grises son la escala Slate
-   de Tailwind, que es la que ya usa la plataforma.
+   Los grises son la escala Slate de Tailwind, la que ya usa la plataforma.
+
+   EL AZUL DE MARCA NO ES EL AZUL DE ACCIÓN. Son dos tokens distintos, y
+   la razón es medible: #00abd8 da 2,69:1 contra blanco. El mínimo AA para
+   texto es 4,5:1 y el mínimo para elementos no textuales es 3:1, así que
+   como texto o como relleno bajo texto blanco falla las dos cosas. Eso
+   afectaba justo lo que más se lee: las burbujas de la conversación, la
+   pestaña activa, el contador de no leídos y el separador de lo nuevo.
+
+     --brand    #00abd8  identidad. Nunca lleva texto encima ni ES texto:
+                         series de gráficas, tintes decorativos, bordes.
+     --primary  #00728f  5,52:1 ✅ — el mismo tono un paso más oscuro. Todo
+                         lo que es texto o lleva texto encima.
+
+   Visualmente sigue siendo el mismo azul; en contraste es la diferencia
+   entre fallar y pasar. Ver "6. Investigación de diseño" en el vault.
    ===================================================================== */
 :root {
   --font-sans: var(--font-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -66,8 +82,14 @@
   --popover: #ffffff;
   --popover-foreground: #0f172a;
 
-  --primary: #00abd8;             /* Cumbres Blue */
+  --brand: #00abd8;               /* Cumbres Blue — identidad, no acción */
+
+  --primary: #00728f;             /* 5,52:1 sobre blanco y 5,28:1 sobre --background */
   --primary-foreground: #ffffff;
+  /* shadcn trae `hover:bg-primary/80`, que en un tema claro ACLARA el
+     relleno: pasar el ratón sobre el botón lo dejaba en 3,78:1. En claro
+     el hover tiene que oscurecer. 7,22:1. */
+  --primary-hover: #005f78;
 
   --secondary: #f1f5f9;           /* bg-surface-elevated */
   --secondary-foreground: #1e293b;
@@ -80,15 +102,23 @@
   --accent: #e0f4fa;
   --accent-foreground: #00728f;
 
-  --destructive: #ef4444;
+  /* Red 700, no el #ef4444 de shadcn (3,76:1, falla como texto). Tiene que
+     pasar dos veces: sobre blanco (6,47:1) y sobre su propio tinte, porque
+     `bg-destructive/10 text-destructive` es el botón y el badge de peligro
+     (5,45:1). Red 600 pasaba la primera y fallaba la segunda con 4,13:1. */
+  --destructive: #b91c1c;
 
   --border: #e2e8f0;              /* Slate 200 */
   --input: #e2e8f0;
-  --ring: #00abd8;
+  /* El halo de foco (`ring-ring/50`) es decorativo: al 50% da 2,17:1 se
+     ponga el color que se ponga. Lo que satisface WCAG 1.4.11 es el borde
+     sólido que shadcn dibuja al lado (`focus-visible:border-ring`), y ese
+     sí queda en 5,52:1. */
+  --ring: #00728f;
 
   /* Escala de gráficas: provisional. La fase 7 (reportes) la revisa con
      criterio de visualización de datos, no de marca. */
-  --chart-1: #00abd8;
+  --chart-1: var(--brand);        /* las gráficas no llevan texto encima */
   --chart-2: #0ea5e9;
   --chart-3: #6366f1;
   --chart-4: #eab308;
@@ -98,12 +128,12 @@
 
   --sidebar: #ffffff;
   --sidebar-foreground: #0f172a;
-  --sidebar-primary: #00abd8;
+  --sidebar-primary: #00728f;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #e0f4fa;
   --sidebar-accent-foreground: #00728f;
   --sidebar-border: #e2e8f0;
-  --sidebar-ring: #00abd8;
+  --sidebar-ring: #00728f;
 }
 
 /* La plataforma actual no tiene modo oscuro y el CRM tampoco expone un
@@ -119,8 +149,11 @@
   --popover: #111a2b;
   --popover-foreground: #e2e8f0;
 
+  --brand: #22c3ea;
+
   --primary: #22c3ea;
   --primary-foreground: #06222c;
+  --primary-hover: #4fd3f2;       /* aquí el hover ACLARA: fondo oscuro */
 
   --secondary: #1e293b;
   --secondary-foreground: #e2e8f0;
@@ -137,7 +170,7 @@
   --input: #ffffff26;
   --ring: #22c3ea;
 
-  --chart-1: #22c3ea;
+  --chart-1: var(--brand);
   --chart-2: #38bdf8;
   --chart-3: #818cf8;
   --chart-4: #facc15;
