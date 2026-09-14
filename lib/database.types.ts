@@ -826,6 +826,38 @@ export type Database = {
         }[]
       }
       sincronizar_escalamientos: { Args: never; Returns: number }
+      tablero: {
+        Args: {
+          p_asesor?: string
+          p_limite?: number
+          p_solo_pendiente?: boolean
+          p_texto?: string
+          p_zona?: string
+        }
+        Returns: {
+          contacto_id: string
+          escalado_at: string
+          escalado_sin_atender: boolean
+          estancada: boolean
+          etapa: string
+          etapa_at: string
+          etapa_orden: number
+          id: string
+          nombre: string
+          telefono_e164: string
+          total_en_etapa: number
+          ultima_actividad_at: string
+          visita_realizada_origen: string
+          zona: string
+        }[]
+      }
+      zonas: {
+        Args: never
+        Returns: {
+          oportunidades: number
+          zona: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

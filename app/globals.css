@@ -27,6 +27,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -108,6 +109,12 @@
      (5,45:1). Red 600 pasaba la primera y fallaba la segunda con 4,13:1. */
   --destructive: #b91c1c;
 
+  /* Amber 800. El ámbar heredado de la plataforma (#eab308) da 1,92:1:
+     invisible como texto. Este pasa las dos pruebas que importan: sobre
+     blanco (7,09:1) y sobre su propio tinte /10 (6,08:1), porque se usa
+     como `bg-warning/10 text-warning` en las tarjetas estancadas. */
+  --warning: #92400e;
+
   --border: #e2e8f0;              /* Slate 200 */
   --input: #e2e8f0;
   /* El halo de foco (`ring-ring/50`) es decorativo: al 50% da 2,17:1 se
@@ -165,6 +172,7 @@
   --accent-foreground: #7fdcf5;
 
   --destructive: #f87171;
+  --warning: #fbbf24;
 
   --border: #ffffff1a;
   --input: #ffffff26;

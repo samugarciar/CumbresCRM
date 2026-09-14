@@ -41,6 +41,9 @@ export default async function LayoutApp({
             <Link href="/contactos" className="hover:text-foreground">
               Contactos
             </Link>
+            <Link href="/tablero" className="hover:text-foreground">
+              Tablero
+            </Link>
           </nav>
         </div>
 
@@ -68,7 +71,7 @@ export default async function LayoutApp({
         </div>
       </header>
 
-      <main className="flex-1 p-6">{children}</main>
+      <main className="flex min-h-0 flex-1 flex-col p-6">{children}</main>
     </div>
   );
 }
