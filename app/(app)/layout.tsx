@@ -50,6 +50,9 @@ export default async function LayoutApp({
             <Link href="/tablero" className="hover:text-foreground">
               Tablero
             </Link>
+            <Link href="/coincidencias" className="hover:text-foreground">
+              Coincidencias
+            </Link>
           </nav>
         </div>
 

@@ -841,6 +841,36 @@ export type Database = {
           ultima_actividad_at: string
         }[]
       }
+      coincidencias: {
+        Args: {
+          p_inmueble_id?: string
+          p_limite?: number
+          p_minimo?: number
+          p_por_inmueble?: number
+        }
+        Returns: {
+          barrio: string
+          ciudad: string
+          contacto_id: string
+          especificidad: number
+          etapa: string
+          habitaciones: number
+          inmueble_desde: string
+          inmueble_id: string
+          nombre: string
+          oportunidad_id: string
+          pidio: string
+          precio: number
+          puntaje: number
+          requerimiento_id: string
+          telefono_e164: string
+          tipo_inmueble: string
+          tipo_transaccion: string
+          titulo: string
+          total_clientes: number
+          ultima_actividad_at: string
+        }[]
+      }
       especificidad: { Args: { p_requerimiento_id: string }; Returns: number }
       identidades_de_conversacion: {
         Args: {
@@ -873,8 +903,27 @@ export type Database = {
         Args: { p_etapa: string; p_motivo?: string; p_oportunidad_id: string }
         Returns: undefined
       }
+      normaliza_zonas: { Args: { p: string[] }; Returns: string[] }
       normalizar_telefono: { Args: { p_tel: string }; Returns: string }
       orden_por_evidencia: { Args: { p_contacto_id: string }; Returns: number }
+      puntaje: {
+        Args: {
+          i_barrio: string
+          i_ciudad: string
+          i_estado: string
+          i_hab: number
+          i_precio: number
+          i_tipo: string
+          i_transaccion: string
+          r_barrios: string[]
+          r_ciudad: string
+          r_hab_min: number
+          r_precio_max: number
+          r_tipos: string[]
+          r_transaccion: string
+        }
+        Returns: number
+      }
       puntaje_match: {
         Args: { p_inmueble_id: string; p_requerimiento_id: string }
         Returns: number

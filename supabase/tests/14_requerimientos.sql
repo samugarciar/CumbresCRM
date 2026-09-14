@@ -9,7 +9,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(16);
+SELECT plan(22);
 
 DELETE FROM crm.contactos;
 
@@ -185,6 +185,64 @@ SELECT is(
     WHERE contacto_id = 'bb000003-0000-0000-0000-000000000003'),
   NULL,
   'Sin oportunidad abierta, y la pantalla puede decirlo'
+);
+
+-- =====================================================================
+-- La pantalla: crm.coincidencias()
+--
+-- Misma fórmula que puntaje_match, pero sobre valores para que Postgres
+-- la evalúe dentro de la consulta. Medido en producción: 1.557 ms con la
+-- versión por ids, 75 ms con ésta. Que las 17 pruebas de arriba sigan
+-- pasando es la prueba de que la fórmula no cambió al reescribirla.
+-- =====================================================================
+-- Cuatro: los tres de arriendo que inserta esta prueba MÁS el del seed,
+-- que también está en Niquía y también encaja. El de venta no.
+SELECT is(
+  (SELECT count(DISTINCT inmueble_id)::int FROM crm.coincidencias()),
+  4,
+  'Salen los cuatro inmuebles que tienen a alguien esperándolos'
+);
+
+SELECT is(
+  (SELECT total_clientes FROM crm.coincidencias()
+    WHERE inmueble_id = '11110001-0000-0000-0000-000000000001' LIMIT 1),
+  3::bigint,
+  'Con el total real de interesados de cada uno'
+);
+
+-- Un inmueble sin nadie no es una coincidencia: es inventario. Si saliera
+-- igual, la pantalla dejaría de ser una lista de trabajo.
+SELECT is(
+  (SELECT count(*)::int FROM crm.coincidencias()
+    WHERE inmueble_id = '11110004-0000-0000-0000-000000000004'),
+  0,
+  'Y el de venta, que no encaja con nadie, no aparece'
+);
+
+SELECT is(
+  (SELECT count(*)::int FROM crm.coincidencias(50::smallint, 1)),
+  4,
+  'El recorte por inmueble se respeta: una sola fila de cada uno'
+);
+
+SELECT is(
+  (SELECT count(DISTINCT inmueble_id)::int
+     FROM crm.coincidencias(50::smallint, 100, 20,
+                            '11110001-0000-0000-0000-000000000001')),
+  1,
+  'Y se puede pedir uno solo, para verlo entero'
+);
+
+-- El mismo par tiene que dar el mismo número por los dos caminos. Dos
+-- fórmulas que se separan con el tiempo es como la pantalla y la ficha
+-- acaban diciendo cosas distintas de la misma persona.
+SELECT is(
+  (SELECT puntaje FROM crm.coincidencias(50::smallint, 100, 20,
+                                         '11110001-0000-0000-0000-000000000001')
+    WHERE contacto_id = 'bb000001-0000-0000-0000-000000000001'),
+  crm.puntaje_match('44440001-0000-0000-0000-000000000001',
+                    '11110001-0000-0000-0000-000000000001'),
+  'La pantalla y la tarjeta dan el MISMO puntaje: una sola fórmula'
 );
 
 -- =====================================================================
