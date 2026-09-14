@@ -32,12 +32,18 @@ export default async function LayoutApp({
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between gap-4 border-b bg-card px-6 py-3">
-        <div className="flex items-center gap-6">
-          <Link href="/contactos" className="font-semibold tracking-tight">
+      {/* A 400px esta cabecera se partía en tres líneas y se comía el alto
+          justo en el aparato donde menos sobra: el teléfono del asesor,
+          en la calle. Nada se esconde que haga falta para trabajar. */}
+      <header className="flex items-center justify-between gap-3 border-b bg-card px-4 py-2.5 md:gap-4 md:px-6 md:py-3">
+        <div className="flex items-center gap-4 md:gap-6">
+          <Link
+            href="/contactos"
+            className="whitespace-nowrap font-semibold tracking-tight"
+          >
             Cumbres CRM
           </Link>
-          <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+          <nav className="flex items-center gap-4 whitespace-nowrap text-sm text-muted-foreground">
             <Link href="/contactos" className="hover:text-foreground">
               Contactos
             </Link>
@@ -47,9 +53,11 @@ export default async function LayoutApp({
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="text-right leading-tight">
-            <p className="text-sm font-medium">
+        <div className="flex items-center gap-3 md:gap-4">
+          {/* El nombre y el rol se esconden en móvil: son identificación,
+              no herramienta. Quién eres ya lo sabes. */}
+          <div className="hidden text-right leading-tight sm:block">
+            <p className="truncate text-sm font-medium">
               {perfil?.nombre_completo ?? user.email}
             </p>
             <p className="text-xs text-muted-foreground capitalize">
@@ -71,7 +79,7 @@ export default async function LayoutApp({
         </div>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col p-6">{children}</main>
+      <main className="flex min-h-0 flex-1 flex-col p-4 md:p-6">{children}</main>
     </div>
   );
 }

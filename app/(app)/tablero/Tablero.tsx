@@ -203,15 +203,18 @@ function TarjetaOportunidad({
   atenuada: boolean;
   onMover: (t: Tarjeta, destino: string, etiqueta: string) => void;
 }) {
-  // ACENTO ÚNICO: en una superficie que se repite decenas de veces solo
-  // puede haber UN elemento con color saturado. Si una tarjeta está
-  // esperando a una persona Y estancada, manda lo primero: lo segundo
-  // seguirá ahí mañana, lo primero no.
-  const alerta = t.escalado_sin_atender
-    ? ('esperando' as const)
-    : t.estancada
-      ? ('estancada' as const)
-      : null;
+  // ACENTO ÚNICO, Y NO SOLO DENTRO DE LA TARJETA.
+  //
+  // La primera versión pintaba una banda de color para "esperando" y
+  // otra para "estancada". Por tarjeta la regla se cumplía, pero en una
+  // columna de 824 en la que el 95% lleva más de tres días quieto, el
+  // resultado era una pared ámbar donde las DOS que de verdad urgen no
+  // se distinguían de nada.
+  //
+  // Así que la banda es solo para lo que exige acción hoy. Lo estancado
+  // colorea la fecha que ya estaba ahí: se sigue viendo, no ocupa una
+  // fila más, y deja que el rojo signifique algo.
+  const urgente = Boolean(t.escalado_sin_atender);
 
   return (
     <article
@@ -268,7 +271,17 @@ function TarjetaOportunidad({
         {t.zona && (
           <span className="rounded-4xl bg-muted px-1.5 py-0.5">{t.zona}</span>
         )}
-        <span>{tiempoRelativo(t.ultima_actividad_at)}</span>
+        {t.estancada ? (
+          <span
+            className="inline-flex items-center gap-1 font-medium text-warning"
+            title="Lleva más días quieta de los que esta etapa tolera"
+          >
+            <AlarmClock className="size-3 shrink-0" />
+            {tiempoRelativo(t.ultima_actividad_at)}
+          </span>
+        ) : (
+          <span>{tiempoRelativo(t.ultima_actividad_at)}</span>
+        )}
         {t.visita_realizada_origen === 'retroactiva' && (
           <span title="Se cerró en bloque el 14 sep 2026: nadie vio ocurrir la visita">
             visita sin confirmar
@@ -276,24 +289,18 @@ function TarjetaOportunidad({
         )}
       </div>
 
-      {alerta === 'esperando' && (
+      {/* La ÚNICA banda de color de la tarjeta, y por eso se ve. */}
+      {urgente && (
         <p className="flex items-center gap-1.5 rounded-b-lg bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive">
           <UserRoundCheck className="size-3.5 shrink-0" />
           Pidió una persona {tiempoRelativo(t.escalado_at)}
         </p>
       )}
 
-      {alerta === 'estancada' && (
-        <p className="flex items-center gap-1.5 rounded-b-lg bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning">
-          <AlarmClock className="size-3.5 shrink-0" />
-          Sin moverse desde {tiempoRelativo(t.ultima_actividad_at)}
-        </p>
-      )}
-
       {/* Escalada vieja: ya no es tarea, pero decir "atendida" cuando
           nadie la abrió sería mentir. Va en gris, que es lo que es:
           contexto. */}
-      {alerta === null && t.escalado_at && (
+      {!urgente && t.escalado_at && (
         <p className="flex items-center gap-1.5 rounded-b-lg px-3 pb-2 text-xs text-muted-foreground">
           {t.escalado_atendido ? (
             <>
