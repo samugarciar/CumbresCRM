@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { NotaNueva } from './NotaNueva';
 import { PanelDatos } from './PanelDatos';
 import { Historial } from './Historial';
+import { PonerseAlDia } from './PonerseAlDia';
+import { MarcarLeido } from './MarcarLeido';
 
 export default async function FichaContacto({
   params,
@@ -29,7 +31,7 @@ export default async function FichaContacto({
   // otra inmobiliaria.
   if (!contacto) notFound();
 
-  const [{ data: identidades }, { data: timeline }] = await Promise.all([
+  const [{ data: identidades }, { data: timeline }, { data: resumenFilas }] = await Promise.all([
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
       .from('v_timeline')
@@ -37,7 +39,12 @@ export default async function FichaContacto({
       .eq('contacto_id', id)
       .order('ocurrido_at', { ascending: false })
       .limit(500),
+    crm.rpc('resumen_contacto', { p_contacto_id: id }),
   ]);
+
+  // El resumen se lee ANTES de marcar como leído, para que el separador
+  // "nuevo desde tu última visita" sepa dónde va.
+  const resumen = resumenFilas?.[0] ?? null;
 
   const telefono = telefonoLegible(contacto.telefono_e164);
   const wa = enlaceWhatsApp(contacto.telefono_e164);
@@ -97,12 +104,19 @@ export default async function FichaContacto({
         />
 
         <div className="flex min-w-0 flex-col gap-4">
+          {resumen && <PonerseAlDia resumen={resumen} />}
+
           <div className="rounded-lg border bg-card p-4">
             <NotaNueva contactoId={contacto.id} />
           </div>
 
-          <Historial actividades={timeline ?? []} />
+          <Historial
+            actividades={timeline ?? []}
+            vistoHasta={resumen?.visto_hasta ?? null}
+          />
         </div>
+
+        <MarcarLeido contactoId={contacto.id} />
       </div>
     </div>
   );

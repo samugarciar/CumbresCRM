@@ -247,6 +247,42 @@ export type Database = {
           },
         ]
       }
+      lecturas: {
+        Row: {
+          contacto_id: string
+          inmobiliaria_id: string
+          usuario_id: string
+          visto_hasta: string
+        }
+        Insert: {
+          contacto_id: string
+          inmobiliaria_id: string
+          usuario_id: string
+          visto_hasta?: string
+        }
+        Update: {
+          contacto_id?: string
+          inmobiliaria_id?: string
+          usuario_id?: string
+          visto_hasta?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecturas_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "contactos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lecturas_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       v_asesores: {
@@ -451,12 +487,14 @@ export type Database = {
           nombre: string
           orden_at: string
           origen: string
+          sin_leer: number
           telefono_crudo: string
           telefono_e164: string
           tipo: string
           ultima_actividad_at: string
         }[]
       }
+      calidad_nombre: { Args: { p_nombre: string }; Returns: number }
       identidades_de_conversacion: {
         Args: {
           p_kommo_contact: string
@@ -464,6 +502,11 @@ export type Database = {
           p_telefono: string
         }
         Returns: Json
+      }
+      marcar_leido: { Args: { p_contacto_id: string }; Returns: undefined }
+      mejor_nombre: {
+        Args: { p_actual: string; p_candidato: string }
+        Returns: string
       }
       normalizar_telefono: { Args: { p_tel: string }; Returns: string }
       recuperar_telefonos_desde_herramientas: {
@@ -492,6 +535,23 @@ export type Database = {
           p_tipo_contacto?: string
         }
         Returns: string
+      }
+      resumen_contacto: {
+        Args: { p_contacto_id: string }
+        Returns: {
+          actividades_total: number
+          esperando_segundos: number
+          inmuebles: string[]
+          mensajes_bot: number
+          mensajes_cliente: number
+          sin_leer: number
+          solicitudes_horario: number
+          ultimo_del_cliente_at: string
+          visitas_agendadas: number
+          visitas_canceladas: number
+          visitas_realizadas: number
+          visto_hasta: string
+        }[]
       }
     }
     Enums: {

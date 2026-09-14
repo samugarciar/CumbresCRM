@@ -106,3 +106,16 @@ export async function actualizarContacto(
 // autorización de tratamiento de datos la cubre el contrato con el
 // cliente, así que no se pide desde la interfaz — pero el dato tiene
 // dónde guardarse el día que haga falta registrarlo por contacto.
+
+/**
+ * Marca el historial como leído hasta ahora.
+ *
+ * Se llama desde un componente cliente al abrir la ficha, NO durante el
+ * render del servidor: si se hiciera al renderizar, una precarga del
+ * navegador o un rastreador marcarían como leído algo que nadie miró.
+ */
+export async function marcarLeido(contactoId: string): Promise<void> {
+  if (!z.string().uuid().safeParse(contactoId).success) return;
+  const supabase = await createClient();
+  await supabase.schema('crm').rpc('marcar_leido', { p_contacto_id: contactoId });
+}

@@ -150,11 +150,23 @@ export default async function PaginaContactos({
                     </Badge>
                   </TableCell>
 
-                  <TableCell className="text-right tabular text-muted-foreground">
-                    <span className="inline-flex items-center gap-1.5">
-                      <MessageSquare className="size-3.5" />
-                      {c.n_actividades}
-                    </span>
+                  <TableCell className="text-right tabular">
+                    {c.sin_leer && c.sin_leer > 0 ? (
+                      // Lo no leído desplaza al total: si hay algo nuevo,
+                      // el total deja de ser la pregunta interesante.
+                      <span
+                        className="inline-flex items-center gap-1.5 font-medium text-primary"
+                        title={`${c.n_actividades} en total`}
+                      >
+                        <MessageSquare className="size-3.5" />
+                        {c.sin_leer} nuevos
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        <MessageSquare className="size-3.5" />
+                        {c.n_actividades}
+                      </span>
+                    )}
                   </TableCell>
 
                   <TableCell className="text-right text-muted-foreground">

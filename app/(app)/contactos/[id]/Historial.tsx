@@ -48,7 +48,14 @@ const NOTAS = ['nota', 'llamada'];
 
 type Vista = 'todo' | 'conversacion' | 'visitas' | 'notas';
 
-export function Historial({ actividades }: { actividades: Actividad[] }) {
+export function Historial({
+  actividades,
+  vistoHasta,
+}: {
+  actividades: Actividad[];
+  /** Hasta dónde había leído esta persona ANTES de abrir la ficha. */
+  vistoHasta?: string | null;
+}) {
   const [vista, setVista] = useState<Vista>('todo');
 
   const grupos = useMemo(
@@ -103,7 +110,7 @@ export function Historial({ actividades }: { actividades: Actividad[] }) {
       ) : vista === 'conversacion' ? (
         <Conversacion mensajes={visibles} />
       ) : (
-        <Linea actividades={visibles} />
+        <Linea actividades={visibles} vistoHasta={vistoHasta} />
       )}
     </section>
   );
@@ -170,7 +177,25 @@ function Conversacion({ mensajes }: { mensajes: Actividad[] }) {
   );
 }
 
-function Linea({ actividades }: { actividades: Actividad[] }) {
+function Linea({
+  actividades,
+  vistoHasta,
+}: {
+  actividades: Actividad[];
+  vistoHasta?: string | null;
+}) {
+  // El corte entre lo que ya viste y lo que llegó después. Se calcula una
+  // vez: es el primer índice cuya actividad es ANTERIOR a tu última
+  // visita — como la lista va de lo más nuevo a lo más viejo, todo lo que
+  // está encima de ese índice es nuevo.
+  const corte =
+    vistoHasta == null
+      ? -1
+      : actividades.findIndex(
+          (a) => a.ocurrido_at != null && new Date(a.ocurrido_at) <= new Date(vistoHasta)
+        );
+  const nuevas = corte === -1 ? 0 : corte;
+
   return (
     <ol className="flex flex-col">
       {actividades.map((a, i) => {
@@ -178,8 +203,21 @@ function Linea({ actividades }: { actividades: Actividad[] }) {
         const Icono = aspecto.icono;
         const ultimo = i === actividades.length - 1;
 
+        const marcarCorte = nuevas > 0 && i === nuevas;
+
         return (
-          <li key={a.id ?? i} className="flex gap-3">
+          <li key={a.id ?? i} className="flex flex-col">
+            {marcarCorte && (
+              <div className="flex items-center gap-3 pb-4">
+                <span className="h-px flex-1 bg-primary/40" />
+                <span className="text-xs font-medium text-primary">
+                  {nuevas === 1 ? '1 hecho nuevo' : `${nuevas} hechos nuevos`} desde tu última visita
+                </span>
+                <span className="h-px flex-1 bg-primary/40" />
+              </div>
+            )}
+
+            <div className="flex gap-3">
             <div className="flex flex-col items-center">
               <span className={`grid size-8 shrink-0 place-items-center rounded-full ${aspecto.clase}`}>
                 <Icono className="size-4" />
@@ -215,6 +253,7 @@ function Linea({ actividades }: { actividades: Actividad[] }) {
                   {a.inmueble_barrio ? ` · ${a.inmueble_barrio}` : ''}
                 </p>
               )}
+              </div>
             </div>
           </li>
         );
