@@ -60,6 +60,16 @@ export function Tablero({
   const [moviendo, setMoviendo] = useState<string | null>(null);
   const [deshacer, setDeshacer] = useState<Deshacer | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // ARRASTRAR ES EL ATAJO, NO EL MECANISMO. El menú de cada tarjeta sigue
+  // siendo el camino completo: es el que funciona con teclado, con lector
+  // de pantalla y en un teléfono, donde el tablero es una sola columna y
+  // no hay a dónde arrastrar. Esto de aquí es comodidad de escritorio.
+  //
+  // Se usa el arrastre NATIVO del navegador a propósito: no añade ni una
+  // dependencia, y su limitación —que no responde al dedo— coincide
+  // exactamente con el único sitio donde no hace falta.
+  const [arrastrando, setArrastrando] = useState<Tarjeta | null>(null);
+  const [encima, setEncima] = useState<string | null>(null);
   // En móvil no hay siete columnas: hay una, y unas pastillas para
   // cambiarla. El desplazamiento horizontal pelea con el de la página y
   // en un teléfono siempre gana el equivocado.
@@ -82,6 +92,16 @@ export function Tablero({
         etiquetaNueva: etiquetaDestino,
       });
     });
+  }
+
+  function soltar(destino: Columna) {
+    const t = arrastrando;
+    setArrastrando(null);
+    setEncima(null);
+    // Soltar una tarjeta en su propia columna no es un movimiento, y
+    // registrarlo ensuciaría el historial de etapas con ruido.
+    if (!t || t.etapa === destino.codigo) return;
+    mover(t, destino.codigo, destino.etiqueta);
   }
 
   function revertir(d: Deshacer) {
@@ -148,8 +168,32 @@ export function Tablero({
         {columnas.map((c) => (
           <section
             key={c.codigo}
-            className={`min-h-0 w-full shrink-0 flex-col md:flex md:w-72 ${
+            onDragOver={(e) => {
+              if (!arrastrando) return;
+              // Sin este preventDefault el navegador NO permite soltar:
+              // por defecto ningún elemento es destino válido.
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (encima !== c.codigo) setEncima(c.codigo);
+            }}
+            onDragLeave={(e) => {
+              // currentTarget vs target: sin esta comprobación, pasar por
+              // encima de una tarjeta hija cuenta como salir de la columna
+              // y el resaltado parpadea.
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setEncima((z) => (z === c.codigo ? null : z));
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              soltar(c);
+            }}
+            className={`min-h-0 w-full shrink-0 flex-col rounded-lg transition-colors md:flex md:w-72 ${
               visible === c.codigo ? 'flex' : 'hidden'
+            } ${
+              encima === c.codigo && arrastrando && arrastrando.etapa !== c.codigo
+                ? 'bg-accent/60 outline-2 outline-dashed outline-primary/40'
+                : ''
             }`}
             aria-label={c.etiqueta}
           >
@@ -174,7 +218,13 @@ export function Tablero({
                   tarjeta={t}
                   columnas={columnas}
                   atenuada={moviendo === t.id || pendiente}
+                  arrastrandose={arrastrando?.id === t.id}
                   onMover={mover}
+                  onArrastrar={setArrastrando}
+                  onSoltarFuera={() => {
+                    setArrastrando(null);
+                    setEncima(null);
+                  }}
                 />
               ))}
 
@@ -196,12 +246,18 @@ function TarjetaOportunidad({
   tarjeta: t,
   columnas,
   atenuada,
+  arrastrandose,
   onMover,
+  onArrastrar,
+  onSoltarFuera,
 }: {
   tarjeta: Tarjeta;
   columnas: Columna[];
   atenuada: boolean;
+  arrastrandose: boolean;
   onMover: (t: Tarjeta, destino: string, etiqueta: string) => void;
+  onArrastrar: (t: Tarjeta) => void;
+  onSoltarFuera: () => void;
 }) {
   // ACENTO ÚNICO, Y NO SOLO DENTRO DE LA TARJETA.
   //
@@ -218,13 +274,22 @@ function TarjetaOportunidad({
 
   return (
     <article
-      className={`group rounded-lg border bg-card transition-opacity ${
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        // Hace falta escribir ALGO o Firefox cancela el arrastre.
+        e.dataTransfer.setData('text/plain', t.id);
+        onArrastrar(t);
+      }}
+      onDragEnd={onSoltarFuera}
+      className={`group rounded-lg border bg-card transition-opacity md:cursor-grab md:active:cursor-grabbing ${
         atenuada ? 'opacity-50' : ''
-      }`}
+      } ${arrastrandose ? 'opacity-40 ring-2 ring-primary' : ''}`}
     >
       <div className="flex items-start gap-1 p-3">
         <Link
           href={`/contactos/${t.contacto_id}`}
+          draggable={false}
           className="min-w-0 flex-1 outline-none focus-visible:underline"
         >
           <p className="truncate text-sm font-medium">
