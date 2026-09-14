@@ -397,6 +397,65 @@ export type Database = {
           },
         ]
       }
+      requerimientos: {
+        Row: {
+          activo: boolean
+          barrios: string[] | null
+          ciudad: string | null
+          contacto_id: string
+          created_at: string
+          habitaciones_min: number | null
+          id: string
+          inmobiliaria_id: string
+          notas: string | null
+          origen: string
+          precio_max: number | null
+          tipo_inmueble: string[] | null
+          tipo_transaccion: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          barrios?: string[] | null
+          ciudad?: string | null
+          contacto_id: string
+          created_at?: string
+          habitaciones_min?: number | null
+          id?: string
+          inmobiliaria_id: string
+          notas?: string | null
+          origen?: string
+          precio_max?: number | null
+          tipo_inmueble?: string[] | null
+          tipo_transaccion?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          barrios?: string[] | null
+          ciudad?: string | null
+          contacto_id?: string
+          created_at?: string
+          habitaciones_min?: number | null
+          id?: string
+          inmobiliaria_id?: string
+          notas?: string | null
+          origen?: string
+          precio_max?: number | null
+          tipo_inmueble?: string[] | null
+          tipo_transaccion?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requerimientos_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "contactos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transiciones: {
         Row: {
           estado_hasta: string | null
@@ -723,6 +782,14 @@ export type Database = {
           oportunidades_creadas: number
         }[]
       }
+      backfill_requerimientos: {
+        Args: never
+        Returns: {
+          actualizados: number
+          creados: number
+          personas: number
+        }[]
+      }
       bandeja_contactos: {
         Args: {
           p_cursor_at?: string
@@ -747,6 +814,7 @@ export type Database = {
         }[]
       }
       calidad_nombre: { Args: { p_nombre: string }; Returns: number }
+      cerrar_fantasmas: { Args: { p_dias?: number }; Returns: number }
       cerrar_oportunidad: {
         Args: {
           p_estado: string
@@ -757,6 +825,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      clientes_para: {
+        Args: { p_inmueble_id: string; p_minimo?: number }
+        Returns: {
+          contacto_id: string
+          especificidad: number
+          estado: string
+          etapa: string
+          nombre: string
+          oportunidad_id: string
+          pidio: string
+          puntaje: number
+          requerimiento_id: string
+          telefono_e164: string
+          ultima_actividad_at: string
+        }[]
+      }
+      especificidad: { Args: { p_requerimiento_id: string }; Returns: number }
       identidades_de_conversacion: {
         Args: {
           p_kommo_contact: string
@@ -764,6 +849,20 @@ export type Database = {
           p_telefono: string
         }
         Returns: Json
+      }
+      igual_zona: { Args: { a: string; b: string }; Returns: boolean }
+      inmuebles_para: {
+        Args: { p_contacto_id: string; p_limite?: number; p_minimo?: number }
+        Returns: {
+          barrio: string
+          ciudad: string
+          habitaciones: number
+          inmueble_id: string
+          precio: number
+          puntaje: number
+          tipo_inmueble: string
+          titulo: string
+        }[]
       }
       marcar_leido: { Args: { p_contacto_id: string }; Returns: undefined }
       mejor_nombre: {
@@ -776,6 +875,14 @@ export type Database = {
       }
       normalizar_telefono: { Args: { p_tel: string }; Returns: string }
       orden_por_evidencia: { Args: { p_contacto_id: string }; Returns: number }
+      puntaje_match: {
+        Args: { p_inmueble_id: string; p_requerimiento_id: string }
+        Returns: number
+      }
+      reabrir_oportunidad: {
+        Args: { p_oportunidad_id: string }
+        Returns: undefined
+      }
       recalcular_oportunidad: {
         Args: { p_contacto_id: string }
         Returns: boolean
