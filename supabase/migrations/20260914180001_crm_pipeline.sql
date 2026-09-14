@@ -555,15 +555,31 @@ CREATE VIEW crm.v_oportunidades WITH (security_invoker = true) AS
      AND COALESCE(c.ultima_actividad_at, o.etapa_at)
            < now() - make_interval(days => e.dias_pudricion)) AS estancada,
 
-    -- De dónde sale que la visita se realizó. En producción NINGUNA
-    -- cita se ha marcado como completada, así que casi todo lo que
-    -- llegue a este peldaño será 'presunta'. Distinguirlo es lo que
-    -- impide que un informe de conversión mienta.
+    -- De dónde sale que la visita se realizó. TRES valores, no dos, y la
+    -- diferencia importa para no mentir en un informe de conversión:
+    --
+    --   confirmada  una persona la marcó. completada_por dice quién.
+    --   retroactiva se marcó en bloque el 14 sep 2026 para llenar el
+    --               embudo: 488 citas que llevaban meses abiertas sin
+    --               que nadie las cerrara. completada_por quedó en NULL
+    --               a propósito, y ese NULL es la única huella de que
+    --               nadie vio ocurrir esa visita.
+    --   presunta    no hay cita marcada: se deduce de que estaba
+    --               confirmada, la fecha pasó y no se canceló.
+    --
+    -- Solo la primera es un hecho observado. Las otras dos son
+    -- reconstrucciones, y quien saque porcentajes de conversión tiene
+    -- que poder separarlas.
     CASE
       WHEN o.etapa <> 'visita_realizada' THEN NULL
       WHEN EXISTS (SELECT 1 FROM crm.actividades a
+                     JOIN public.citas ci ON ci.id = a.cita_id
                     WHERE a.contacto_id = o.contacto_id
-                      AND a.tipo = 'visita_realizada') THEN 'confirmada'
+                      AND a.tipo = 'visita_realizada'
+                      AND ci.completada_por IS NOT NULL) THEN 'confirmada'
+      WHEN EXISTS (SELECT 1 FROM crm.actividades a
+                    WHERE a.contacto_id = o.contacto_id
+                      AND a.tipo = 'visita_realizada') THEN 'retroactiva'
       ELSE 'presunta'
     END AS visita_realizada_origen
   FROM crm.oportunidades o

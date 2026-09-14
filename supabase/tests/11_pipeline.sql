@@ -9,7 +9,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(28);
+SELECT plan(29);
 
 DELETE FROM crm.contactos;   -- arrastra oportunidades y transiciones
 
@@ -154,23 +154,47 @@ SELECT isnt(
   'Una cita cancelada no se presume realizada por mucho que la fecha pasara'
 );
 
--- Cita COMPLETADA de verdad → confirmada, no presunta.
+-- Cita que UNA PERSONA marcó: completada_por dice quién.
 INSERT INTO public.citas
   (id, inmobiliaria_id, franja_id, inmueble_id, fecha, hora_inicio, hora_fin,
-   cliente_nombre, cliente_telefono, estado, completada_at)
+   cliente_nombre, cliente_telefono, estado, completada_at, completada_por)
 VALUES ('cc000004-0000-0000-0000-000000000004',
         '11111111-1111-1111-1111-111111111111',
         'a3333333-3333-3333-3333-333333333333',
         'a1111111-1111-1111-1111-111111111111',
         current_date - 3, '12:00', '12:30',
-        'Persona Real', '+573001110005', 'completada', now() - interval '3 days');
+        'Persona Real', '+573001110005', 'completada', now() - interval '3 days',
+        'cccccccc-cccc-cccc-cccc-cccccccccccc');
 
 SELECT is(
   (SELECT v.visita_realizada_origen FROM crm.v_oportunidades v
      JOIN crm.contactos c ON c.id = v.contacto_id
     WHERE c.telefono_e164 = '+573001110005'),
   'confirmada',
-  'Cuando alguien SÍ marcó la cita, el origen es confirmada, no presunta'
+  'Cuando una PERSONA marcó la cita, el origen es confirmada'
+);
+
+-- Cita marcada en bloque el 14 sep 2026: completada, pero sin nadie
+-- detrás. Son las 488 que llevaban meses abiertas. El NULL en
+-- completada_por es la única huella de que nadie vio ocurrir la visita,
+-- y por eso la vista NO puede llamarlas confirmadas.
+INSERT INTO public.citas
+  (id, inmobiliaria_id, franja_id, inmueble_id, fecha, hora_inicio, hora_fin,
+   cliente_nombre, cliente_telefono, estado, completada_at, completada_por)
+VALUES ('cc000005-0000-0000-0000-000000000005',
+        '11111111-1111-1111-1111-111111111111',
+        'a3333333-3333-3333-3333-333333333333',
+        'a1111111-1111-1111-1111-111111111111',
+        current_date - 3, '13:00', '13:30',
+        'Persona Retroactiva', '+573001110006', 'completada',
+        now() - interval '3 days', NULL);
+
+SELECT is(
+  (SELECT v.visita_realizada_origen FROM crm.v_oportunidades v
+     JOIN crm.contactos c ON c.id = v.contacto_id
+    WHERE c.telefono_e164 = '+573001110006'),
+  'retroactiva',
+  'Una cita cerrada en bloque NO se puede llamar confirmada: nadie la vio'
 );
 
 -- =====================================================================
