@@ -167,6 +167,30 @@ export type Database = {
           },
         ]
       }
+      etapas: {
+        Row: {
+          automatica: boolean
+          codigo: string
+          dias_pudricion: number | null
+          etiqueta: string
+          orden: number
+        }
+        Insert: {
+          automatica?: boolean
+          codigo: string
+          dias_pudricion?: number | null
+          etiqueta: string
+          orden: number
+        }
+        Update: {
+          automatica?: boolean
+          codigo?: string
+          dias_pudricion?: number | null
+          etiqueta?: string
+          orden?: number
+        }
+        Relationships: []
+      }
       eventos: {
         Row: {
           created_at: string
@@ -276,6 +300,171 @@ export type Database = {
           },
           {
             foreignKeyName: "lecturas_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oportunidades: {
+        Row: {
+          asesor_id: string | null
+          cerrada_at: string | null
+          cerrada_por: string | null
+          contacto_id: string
+          created_at: string
+          escalado_at: string | null
+          estado: string
+          etapa: string
+          etapa_at: string
+          id: string
+          inmobiliaria_id: string
+          inmueble_id: string | null
+          motivo_perdida: string | null
+          updated_at: string
+          zona: string | null
+        }
+        Insert: {
+          asesor_id?: string | null
+          cerrada_at?: string | null
+          cerrada_por?: string | null
+          contacto_id: string
+          created_at?: string
+          escalado_at?: string | null
+          estado?: string
+          etapa?: string
+          etapa_at?: string
+          id?: string
+          inmobiliaria_id: string
+          inmueble_id?: string | null
+          motivo_perdida?: string | null
+          updated_at?: string
+          zona?: string | null
+        }
+        Update: {
+          asesor_id?: string | null
+          cerrada_at?: string | null
+          cerrada_por?: string | null
+          contacto_id?: string
+          created_at?: string
+          escalado_at?: string | null
+          estado?: string
+          etapa?: string
+          etapa_at?: string
+          id?: string
+          inmobiliaria_id?: string
+          inmueble_id?: string | null
+          motivo_perdida?: string | null
+          updated_at?: string
+          zona?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oportunidades_asesor_id_fkey"
+            columns: ["asesor_id"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_cerrada_por_fkey"
+            columns: ["cerrada_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "contactos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_etapa_fkey"
+            columns: ["etapa"]
+            isOneToOne: false
+            referencedRelation: "etapas"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "oportunidades_inmueble_id_fkey"
+            columns: ["inmueble_id"]
+            isOneToOne: false
+            referencedRelation: "v_inmuebles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transiciones: {
+        Row: {
+          estado_hasta: string | null
+          etapa_desde: string | null
+          etapa_hasta: string | null
+          id: number
+          inmobiliaria_id: string
+          motivo: string | null
+          ocurrido_at: string
+          oportunidad_id: string
+          origen: string
+          usuario_id: string | null
+        }
+        Insert: {
+          estado_hasta?: string | null
+          etapa_desde?: string | null
+          etapa_hasta?: string | null
+          id?: never
+          inmobiliaria_id: string
+          motivo?: string | null
+          ocurrido_at?: string
+          oportunidad_id: string
+          origen?: string
+          usuario_id?: string | null
+        }
+        Update: {
+          estado_hasta?: string | null
+          etapa_desde?: string | null
+          etapa_hasta?: string | null
+          id?: never
+          inmobiliaria_id?: string
+          motivo?: string | null
+          ocurrido_at?: string
+          oportunidad_id?: string
+          origen?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transiciones_etapa_desde_fkey"
+            columns: ["etapa_desde"]
+            isOneToOne: false
+            referencedRelation: "etapas"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "transiciones_etapa_hasta_fkey"
+            columns: ["etapa_hasta"]
+            isOneToOne: false
+            referencedRelation: "etapas"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "transiciones_oportunidad_id_fkey"
+            columns: ["oportunidad_id"]
+            isOneToOne: false
+            referencedRelation: "oportunidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transiciones_oportunidad_id_fkey"
+            columns: ["oportunidad_id"]
+            isOneToOne: false
+            referencedRelation: "v_oportunidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transiciones_usuario_id_fkey"
             columns: ["usuario_id"]
             isOneToOne: false
             referencedRelation: "v_asesores"
@@ -437,6 +626,60 @@ export type Database = {
         }
         Relationships: []
       }
+      v_oportunidades: {
+        Row: {
+          asesor_id: string | null
+          cerrada_at: string | null
+          contacto_id: string | null
+          created_at: string | null
+          escalado_at: string | null
+          estado: string | null
+          estancada: boolean | null
+          etapa: string | null
+          etapa_at: string | null
+          etapa_etiqueta: string | null
+          etapa_orden: number | null
+          id: string | null
+          inmobiliaria_id: string | null
+          inmueble_id: string | null
+          motivo_perdida: string | null
+          nombre: string | null
+          telefono_e164: string | null
+          ultima_actividad_at: string | null
+          visita_realizada_origen: string | null
+          zona: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oportunidades_asesor_id_fkey"
+            columns: ["asesor_id"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "contactos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_etapa_fkey"
+            columns: ["etapa"]
+            isOneToOne: false
+            referencedRelation: "etapas"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "oportunidades_inmueble_id_fkey"
+            columns: ["inmueble_id"]
+            isOneToOne: false
+            referencedRelation: "v_inmuebles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_timeline: {
         Row: {
           contacto_id: string | null
@@ -470,7 +713,16 @@ export type Database = {
       }
     }
     Functions: {
+      abrir_oportunidad: { Args: { p_contacto_id: string }; Returns: string }
       backfill: { Args: { p_inmobiliaria_id: string }; Returns: Json }
+      backfill_pipeline: {
+        Args: never
+        Returns: {
+          con_zona: number
+          escaladas: number
+          oportunidades_creadas: number
+        }[]
+      }
       bandeja_contactos: {
         Args: {
           p_cursor_at?: string
@@ -495,6 +747,16 @@ export type Database = {
         }[]
       }
       calidad_nombre: { Args: { p_nombre: string }; Returns: number }
+      cerrar_oportunidad: {
+        Args: {
+          p_estado: string
+          p_inmueble_id?: string
+          p_motivo_perdida?: string
+          p_nota?: string
+          p_oportunidad_id: string
+        }
+        Returns: undefined
+      }
       identidades_de_conversacion: {
         Args: {
           p_kommo_contact: string
@@ -508,7 +770,17 @@ export type Database = {
         Args: { p_actual: string; p_candidato: string }
         Returns: string
       }
+      mover_etapa: {
+        Args: { p_etapa: string; p_motivo?: string; p_oportunidad_id: string }
+        Returns: undefined
+      }
       normalizar_telefono: { Args: { p_tel: string }; Returns: string }
+      orden_por_evidencia: { Args: { p_contacto_id: string }; Returns: number }
+      recalcular_oportunidad: {
+        Args: { p_contacto_id: string }
+        Returns: boolean
+      }
+      recalcular_pipeline: { Args: never; Returns: number }
       recuperar_telefonos_desde_herramientas: {
         Args: { p_inmobiliaria_id: string }
         Returns: Json
@@ -553,6 +825,7 @@ export type Database = {
           visto_hasta: string
         }[]
       }
+      sincronizar_escalamientos: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
