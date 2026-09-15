@@ -8,7 +8,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(12);
+SELECT plan(13);
 
 DELETE FROM crm.contactos;
 
@@ -161,6 +161,25 @@ SELECT is(
   crm.cerrar_fantasmas(30),
   0,
   'La reabierta NO se vuelve a cerrar: reabrir le da 30 días nuevos'
+);
+
+-- LA REGLA QUE IMPIDE RESUCITAR FANTASMAS: guardar un requerimiento no
+-- abre una oportunidad. `actividades` registra lo que PASÓ;
+-- `requerimientos` describe lo que alguien QUIERE. Sin esto, rehacer el
+-- backfill de requerimientos reabriría todo lo que el cron cerró.
+INSERT INTO crm.requerimientos
+  (inmobiliaria_id, contacto_id, ciudad, tipo_inmueble, tipo_transaccion)
+VALUES ('11111111-1111-1111-1111-111111111111',
+        'aa000001-0000-0000-0000-000000000001',
+        'Bello', ARRAY['apartamento'], 'arriendo')
+ON CONFLICT DO NOTHING;
+
+SELECT is(
+  (SELECT count(*)::int FROM crm.oportunidades
+    WHERE contacto_id = 'aa000001-0000-0000-0000-000000000001'
+      AND estado = 'abierta'),
+  1,
+  'Guardar un requerimiento NO abre una oportunidad nueva ni resucita la cerrada'
 );
 
 SELECT * FROM finish();

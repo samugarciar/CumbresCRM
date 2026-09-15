@@ -9,7 +9,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(29);
+SELECT plan(32);
 
 DELETE FROM crm.contactos;   -- arrastra oportunidades y transiciones
 
@@ -195,6 +195,59 @@ SELECT is(
     WHERE c.telefono_e164 = '+573001110006'),
   'retroactiva',
   'Una cita cerrada en bloque NO se puede llamar confirmada: nadie la vio'
+);
+
+-- =====================================================================
+-- 3-bis. CALIFICADO: decir qué buscas es el peldaño que faltaba
+--
+-- El tablero tenía Contactado 852 y Calificado 0: los leads saltaban de
+-- "escribió" a "agendó", o a perdidos. La etapa no sobraba — nunca
+-- definimos cómo se entra. Ahora se entra diciendo qué buscas, que es la
+-- diferencia entre "alguien escribió" y "sabemos qué necesita".
+-- =====================================================================
+INSERT INTO crm.contactos (id, inmobiliaria_id, nombre, telefono_e164)
+VALUES ('ee000007-0000-0000-0000-000000000007',
+        '11111111-1111-1111-1111-111111111111', 'Dice qué busca', '+573001110007');
+
+INSERT INTO crm.actividades
+  (inmobiliaria_id, tipo, origen, contacto_id, cuerpo, ocurrido_at, metadata)
+VALUES ('11111111-1111-1111-1111-111111111111', 'mensaje_entrante', 'humano',
+        'ee000007-0000-0000-0000-000000000007', 'Hola',
+        now() - interval '1 hour', '{"origen_tabla":"t","origen_id":"q1"}');
+
+SELECT is(
+  (SELECT etapa FROM crm.oportunidades
+    WHERE contacto_id = 'ee000007-0000-0000-0000-000000000007'),
+  'contactado',
+  'Escribir solo llega a Contactado'
+);
+
+INSERT INTO crm.requerimientos
+  (inmobiliaria_id, contacto_id, ciudad, tipo_inmueble, tipo_transaccion)
+VALUES ('11111111-1111-1111-1111-111111111111',
+        'ee000007-0000-0000-0000-000000000007',
+        'Bello', ARRAY['apartamento'], 'arriendo');
+
+SELECT is(
+  (SELECT etapa FROM crm.oportunidades
+    WHERE contacto_id = 'ee000007-0000-0000-0000-000000000007'),
+  'calificado',
+  'Y decir qué busca la sube a Calificado EN EL MOMENTO, sin esperar al cron'
+);
+
+-- El "solo hacia adelante" sigue mandando: quien ya agendó no baja a
+-- Calificado por decir qué busca.
+INSERT INTO crm.actividades
+  (inmobiliaria_id, tipo, origen, contacto_id, ocurrido_at, metadata)
+VALUES ('11111111-1111-1111-1111-111111111111', 'visita_agendada', 'sistema',
+        'ee000007-0000-0000-0000-000000000007', now(),
+        '{"origen_tabla":"t","origen_id":"q2"}');
+
+SELECT is(
+  (SELECT etapa FROM crm.oportunidades
+    WHERE contacto_id = 'ee000007-0000-0000-0000-000000000007'),
+  'visita_agendada',
+  'Quien ya agendó NO retrocede a Calificado: solo hacia adelante'
 );
 
 -- =====================================================================
