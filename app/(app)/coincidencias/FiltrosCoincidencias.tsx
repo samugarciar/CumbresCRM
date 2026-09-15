@@ -14,7 +14,13 @@ const NIVELES = [
   { valor: 30, etiqueta: 'Amplio', ayuda: 'Puntaje 30 o más — más nombres, menos precisión' },
 ];
 
-export function FiltrosCoincidencias({ minimo }: { minimo: number }) {
+export function FiltrosCoincidencias({
+  minimo,
+  historico,
+}: {
+  minimo: number;
+  historico: boolean;
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const [navegando, iniciarNavegacion] = useTransition();
@@ -42,6 +48,25 @@ export function FiltrosCoincidencias({ minimo }: { minimo: number }) {
           {n.etiqueta}
         </Button>
       ))}
+      {/* El histórico se pide a propósito. Por defecto la pantalla solo
+          enseña gente que habló en el último mes, porque de los 500 que
+          encajan con un apartamento genérico, la mayoría lleva meses
+          callada y no vale una llamada hoy. */}
+      <Button
+        size="sm"
+        variant={historico ? 'default' : 'outline'}
+        onClick={() => {
+          const siguientes = new URLSearchParams(params.toString());
+          if (historico) siguientes.delete('historico');
+          else siguientes.set('historico', '1');
+          siguientes.delete('inmueble');
+          iniciarNavegacion(() => router.push(`/coincidencias?${siguientes.toString()}`));
+        }}
+        title="Incluir a quien lleva más de un mes sin hablar"
+      >
+        Rebuscar en el histórico
+      </Button>
+
       {navegando && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
     </div>
   );

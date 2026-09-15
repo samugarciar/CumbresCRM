@@ -22,7 +22,8 @@ interface Fila {
   habitaciones: number | null;
   tipo_inmueble: string | null;
   tipo_transaccion: string | null;
-  inmueble_desde: string | null;
+  disponible_desde: string | null;
+  frescura: number;
   total_clientes: number;
   contacto_id: string;
   nombre: string | null;
@@ -43,11 +44,15 @@ function pesos(n: number | null): string {
 export default async function PaginaCoincidencias({
   searchParams,
 }: {
-  searchParams: Promise<{ min?: string; inmueble?: string }>;
+  searchParams: Promise<{ min?: string; inmueble?: string; historico?: string }>;
 }) {
   const sp = await searchParams;
   const minimo = Number(sp.min) || 50;
   const unoSolo = sp.inmueble;
+  // Por defecto solo sale gente que habló en el último mes: es lo que
+  // convierte 500 nombres en una lista a la que llamar hoy. El histórico
+  // se pide a propósito, para rebuscar.
+  const historico = sp.historico === '1';
 
   const supabase = await createClient();
   const crm = supabase.schema('crm');
@@ -59,6 +64,7 @@ export default async function PaginaCoincidencias({
         p_por_inmueble: unoSolo ? AL_ABRIR : POR_INMUEBLE,
         p_limite: unoSolo ? 1 : 20,
         p_inmueble_id: unoSolo || undefined,
+        p_frescura_max: historico ? undefined : 1,
       }),
       crm.from('v_inmuebles').select('*', { count: 'exact', head: true }).eq('estado', 'disponible'),
       crm.from('requerimientos').select('*', { count: 'exact', head: true }).eq('activo', true),
@@ -105,7 +111,7 @@ export default async function PaginaCoincidencias({
       </header>
 
       <Suspense fallback={<Skeleton className="h-9 w-full" />}>
-        <FiltrosCoincidencias minimo={minimo} />
+        <FiltrosCoincidencias minimo={minimo} historico={historico} />
       </Suspense>
 
       {grupos.length === 0 ? (
@@ -113,9 +119,9 @@ export default async function PaginaCoincidencias({
           <Sparkles className="size-8 text-muted-foreground" />
           <p className="font-medium">Ningún inmueble encaja con nadie ahora mismo</p>
           <p className="max-w-md text-sm text-muted-foreground">
-            {minimo > 50
-              ? 'Con un mínimo tan alto es normal. Baja la exigencia y vuelve a mirar.'
-              : 'Aparecerán solas en cuanto entre un inmueble que alguien haya pedido.'}
+            {historico
+              ? 'Ni rebuscando en el histórico. Baja la exigencia del cruce.'
+              : 'Nadie que haya hablado en el último mes encaja con lo que hay. Prueba a rebuscar en el histórico.'}
           </p>
         </div>
       ) : (
@@ -147,7 +153,7 @@ export default async function PaginaCoincidencias({
                     {Number(info.total_clientes) === 1 ? 'persona' : 'personas'}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    entró {tiempoRelativo(info.inmueble_desde)}
+                    disponible {tiempoRelativo(info.disponible_desde)}
                   </p>
                 </div>
               </header>
@@ -191,6 +197,7 @@ export default async function PaginaCoincidencias({
                         ) : (
                           'reactivación'
                         )}
+                        {c.frescura >= 2 && ' · frío'}
                       </span>
 
                       {wa ? (

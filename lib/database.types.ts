@@ -83,6 +83,38 @@ export type Database = {
           },
         ]
       }
+      catalogo: {
+        Row: {
+          disponible_desde: string | null
+          estado: string
+          inmobiliaria_id: string
+          inmueble_id: string
+          visto_at: string
+        }
+        Insert: {
+          disponible_desde?: string | null
+          estado: string
+          inmobiliaria_id: string
+          inmueble_id: string
+          visto_at?: string
+        }
+        Update: {
+          disponible_desde?: string | null
+          estado?: string
+          inmobiliaria_id?: string
+          inmueble_id?: string
+          visto_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogo_inmueble_id_fkey"
+            columns: ["inmueble_id"]
+            isOneToOne: true
+            referencedRelation: "v_inmuebles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contactos: {
         Row: {
           asesor_id: string | null
@@ -843,6 +875,7 @@ export type Database = {
       }
       coincidencias: {
         Args: {
+          p_frescura_max?: number
           p_inmueble_id?: string
           p_limite?: number
           p_minimo?: number
@@ -852,10 +885,11 @@ export type Database = {
           barrio: string
           ciudad: string
           contacto_id: string
+          disponible_desde: string
           especificidad: number
           etapa: string
+          frescura: number
           habitaciones: number
-          inmueble_desde: string
           inmueble_id: string
           nombre: string
           oportunidad_id: string
@@ -872,6 +906,7 @@ export type Database = {
         }[]
       }
       especificidad: { Args: { p_requerimiento_id: string }; Returns: number }
+      frescura: { Args: { p_ultima: string }; Returns: number }
       identidades_de_conversacion: {
         Args: {
           p_kommo_contact: string
@@ -882,10 +917,16 @@ export type Database = {
       }
       igual_zona: { Args: { a: string; b: string }; Returns: boolean }
       inmuebles_para: {
-        Args: { p_contacto_id: string; p_limite?: number; p_minimo?: number }
+        Args: {
+          p_contacto_id: string
+          p_limite?: number
+          p_minimo?: number
+          p_rotar?: boolean
+        }
         Returns: {
           barrio: string
           ciudad: string
+          disponible_desde: string
           habitaciones: number
           inmueble_id: string
           precio: number
@@ -940,6 +981,14 @@ export type Database = {
       recuperar_telefonos_desde_herramientas: {
         Args: { p_inmobiliaria_id: string }
         Returns: Json
+      }
+      refrescar_catalogo: {
+        Args: never
+        Returns: {
+          nuevos: number
+          se_fueron: number
+          volvieron: number
+        }[]
       }
       registrar_fallo: {
         Args: {

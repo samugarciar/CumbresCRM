@@ -9,7 +9,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(22);
+SELECT plan(27);
 
 DELETE FROM crm.contactos;
 
@@ -32,14 +32,25 @@ VALUES
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Apto en VENTA', 'Cra 4',
    'Bello', 'Niquia', 3, 2, 300000000, 'venta', 'apartamento', 'disponible');
 
-INSERT INTO crm.contactos (id, inmobiliaria_id, nombre, telefono_e164)
+INSERT INTO crm.contactos
+  (id, inmobiliaria_id, nombre, telefono_e164, ultima_actividad_at)
 VALUES
   ('bb000001-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
-   'Pide Niquía', '+573001110001'),
+   'Pide Niquía', '+573001110001', now() - interval '2 days'),
   ('bb000002-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111',
-   'Dijo poco', '+573001110002'),
+   'Dijo poco', '+573001110002', now() - interval '3 days'),
   ('bb000003-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111',
-   'Ya cerrada', '+573001110003');
+   'Ya cerrada', '+573001110003', now() - interval '5 days'),
+  -- Encaja igual de bien, pero lleva medio año callada. El puntaje dice
+  -- que le sirve; la frescura dice que no vale una llamada hoy.
+  ('bb000004-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111',
+   'Lleva medio año callada', '+573001110004', now() - interval '180 days');
+
+INSERT INTO crm.requerimientos
+  (inmobiliaria_id, contacto_id, ciudad, barrios, tipo_inmueble, tipo_transaccion)
+VALUES ('11111111-1111-1111-1111-111111111111',
+        'bb000004-0000-0000-0000-000000000004',
+        'Bello', ARRAY['Niquia'], ARRAY['apartamento'], 'arriendo');
 
 -- Requerimiento completo: apartamento en Niquía, 3 hab, hasta 1,5M.
 INSERT INTO crm.requerimientos
@@ -120,10 +131,14 @@ SELECT is(
 -- =====================================================================
 -- EL CRITERIO DE LA FASE: del inmueble a las personas
 -- =====================================================================
+-- TRES, no dos: clientes_para() no filtra por frescura a propósito.
+-- Responde "a quién le sirve esto", que es una pregunta distinta de la
+-- que responde coincidencias(): "a quién llamar hoy". Mezclarlas sería
+-- meterle a una función de consulta la opinión de una pantalla.
 SELECT is(
   (SELECT count(*)::int FROM crm.clientes_para('11110001-0000-0000-0000-000000000001')),
-  2,
-  'Entra el apto de Niquía y salen las dos personas que encajan'
+  3,
+  'Entra el apto de Niquía y salen las tres personas a las que les sirve'
 );
 
 -- Las dos sacan 100: una cumple los 2 campos que pidió y la otra los 4.
@@ -243,6 +258,55 @@ SELECT is(
   crm.puntaje_match('44440001-0000-0000-0000-000000000001',
                     '11110001-0000-0000-0000-000000000001'),
   'La pantalla y la tarjeta dan el MISMO puntaje: una sola fórmula'
+);
+
+-- =====================================================================
+-- LA FRESCURA: lo que convierte 500 nombres en una lista de trabajo
+--
+-- En producción, 40 de los 81 inmuebles tienen 200 o más interesados y
+-- uno llega a 500, con puntaje medio 90. El puntaje no está mal: es que
+-- 40 inmuebles son apartamentos genéricos en Bello y ~400 personas
+-- pidieron eso. Lo que falta no es precisión, es ESTAR VIVO.
+-- =====================================================================
+SELECT is(
+  (SELECT count(*)::int FROM crm.coincidencias(50::smallint, 100, 20,
+                          '11110001-0000-0000-0000-000000000001')
+    WHERE contacto_id = 'bb000004-0000-0000-0000-000000000004'),
+  0,
+  'Quien lleva medio año callada NO sale, aunque encaje perfecto'
+);
+
+SELECT is(
+  (SELECT count(*)::int FROM crm.coincidencias(50::smallint, 100, 20,
+                          '11110001-0000-0000-0000-000000000001', NULL)
+    WHERE contacto_id = 'bb000004-0000-0000-0000-000000000004'),
+  1,
+  'Pero se puede rebuscar en el histórico apagando el filtro'
+);
+
+SELECT is(
+  crm.frescura(now() - interval '2 days'), 0::smallint,
+  'Habló esta semana'
+);
+
+SELECT is(
+  crm.frescura(NULL), 3::smallint,
+  'Y quien no habló nunca es lo más frío que hay'
+);
+
+-- =====================================================================
+-- LA ROTACIÓN que pidió Samuel: viejos primero
+--
+-- Va contra el instinto —lo recién entrado primero— y a favor del
+-- negocio: lo que lleva meses parado necesita salir más que lo de ayer.
+-- =====================================================================
+SELECT ok(
+  (SELECT disponible_desde FROM crm.inmuebles_para(
+     'bb000001-0000-0000-0000-000000000001', 50::smallint, 10, true) LIMIT 1)
+  <=
+  (SELECT disponible_desde FROM crm.inmuebles_para(
+     'bb000001-0000-0000-0000-000000000001', 50::smallint, 10, false) LIMIT 1),
+  'Con rotación sale primero el MÁS VIEJO; sin ella, el más nuevo'
 );
 
 -- =====================================================================
