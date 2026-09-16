@@ -9,6 +9,7 @@ import { PanelDatos } from './PanelDatos';
 import { Historial } from './Historial';
 import { PonerseAlDia } from './PonerseAlDia';
 import { MarcarLeido } from './MarcarLeido';
+import { Recomendaciones, type Recomendable } from './Recomendaciones';
 
 export default async function FichaContacto({
   params,
@@ -31,7 +32,12 @@ export default async function FichaContacto({
   // otra inmobiliaria.
   if (!contacto) notFound();
 
-  const [{ data: identidades }, { data: timeline }, { data: resumenFilas }] = await Promise.all([
+  const [
+    { data: identidades },
+    { data: timeline },
+    { data: resumenFilas },
+    { data: recomendables },
+  ] = await Promise.all([
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
       .from('v_timeline')
@@ -40,6 +46,14 @@ export default async function FichaContacto({
       .order('ocurrido_at', { ascending: false })
       .limit(500),
     crm.rpc('resumen_contacto', { p_contacto_id: id }),
+    // De VIEJOS a NUEVOS: lo recién entrado se mueve solo; lo que lleva
+    // meses parado necesita salir. El puntaje filtra pero no ordena.
+    crm.rpc('inmuebles_para', {
+      p_contacto_id: id,
+      p_minimo: 50,
+      p_limite: 6,
+      p_rotar: true,
+    }),
   ]);
 
   // El resumen se lee ANTES de marcar como leído, para que el separador
@@ -93,15 +107,21 @@ export default async function FichaContacto({
       </header>
 
       <div className="grid gap-6 md:grid-cols-[18rem_1fr]">
-        <PanelDatos
-          contactoId={contacto.id}
-          nombre={contacto.nombre}
-          tipo={contacto.tipo}
-          origen={contacto.origen}
-          telefonoCrudo={contacto.telefono_crudo}
-          creadoAt={contacto.created_at}
-          identidades={identidades ?? []}
-        />
+        {/* Los datos del lead, y justo debajo lo que se le puede
+            ofrecer. En móvil la rejilla se apila, así que el orden queda
+            igual: información, recomendaciones, conversación. */}
+        <div className="flex flex-col gap-4">
+          <PanelDatos
+            contactoId={contacto.id}
+            nombre={contacto.nombre}
+            tipo={contacto.tipo}
+            origen={contacto.origen}
+            telefonoCrudo={contacto.telefono_crudo}
+            creadoAt={contacto.created_at}
+            identidades={identidades ?? []}
+          />
+          <Recomendaciones inmuebles={(recomendables ?? []) as Recomendable[]} />
+        </div>
 
         <div className="flex min-w-0 flex-col gap-4">
           {resumen && <PonerseAlDia resumen={resumen} />}
