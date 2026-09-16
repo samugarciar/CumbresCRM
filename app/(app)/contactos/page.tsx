@@ -81,7 +81,7 @@ export default async function PaginaContactos({
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Contactos</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Contactos</h1>
           <p className="text-sm text-muted-foreground">
             {total !== null ? (
               <>

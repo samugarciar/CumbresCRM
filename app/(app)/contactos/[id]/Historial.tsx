@@ -219,13 +219,17 @@ function Linea({
 
             <div className="flex gap-3">
             <div className="flex flex-col items-center">
-              <span className={`grid size-8 shrink-0 place-items-center rounded-full ${aspecto.clase}`}>
-                <Icono className="size-4" />
+              {/* 24px en vez de 32, y pb-3 en vez de pb-5. Con 95 hechos
+                  —el timeline más largo de producción— eso son ~1.500px
+                  menos de primer render. La investigación de diseño lo
+                  medía y llevaba dos fases sin aplicarse. */}
+              <span className={`grid size-6 shrink-0 place-items-center rounded-full ${aspecto.clase}`}>
+                <Icono className="size-3.5" />
               </span>
               {!ultimo && <span className="w-px flex-1 bg-border" />}
             </div>
 
-            <div className={`min-w-0 flex-1 ${ultimo ? '' : 'pb-5'}`}>
+            <div className={`min-w-0 flex-1 ${ultimo ? '' : 'pb-3'}`}>
               <div className="flex flex-wrap items-baseline gap-x-2">
                 <span className="text-sm font-medium">{aspecto.etiqueta}</span>
 
@@ -241,8 +245,12 @@ function Linea({
                 </span>
               </div>
 
+              {/* Tres líneas y a otra cosa. Un mensaje largo del bot no
+                  puede empujar veinte hechos fuera de la pantalla; quien
+                  quiera leerlo entero lo tiene en la pestaña de
+                  conversación, que es donde se lee de verdad. */}
               {a.cuerpo && (
-                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+                <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-sm text-muted-foreground">
                   {a.cuerpo}
                 </p>
               )}

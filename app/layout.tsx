@@ -8,7 +8,12 @@ import "./globals.css";
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  // Tres pesos, no seis. El 300 no se puede usar por contraste y el
+  // 700/800 emborronan a 13px, que es el cuerpo de las superficies densas
+  // de este CRM. Quedarse con 400/500/600 obliga a jerarquizar con tamaño
+  // y color en vez de con negrita, que es lo que aguanta la densidad.
+  // Además son tres ficheros de fuente menos que descargar.
+  weight: ["400", "500", "600"],
 });
 
 const geistMono = Geist_Mono({

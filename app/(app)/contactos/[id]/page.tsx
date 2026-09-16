@@ -78,7 +78,7 @@ export default async function FichaContacto({
             {iniciales(contacto.nombre)}
           </span>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <h1 className="text-xl font-semibold tracking-tight">
               {contacto.nombre || 'Sin nombre'}
             </h1>
             <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
