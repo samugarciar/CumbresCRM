@@ -199,6 +199,80 @@ export type Database = {
           },
         ]
       }
+      envios: {
+        Row: {
+          canal: string | null
+          contacto_id: string
+          created_at: string
+          cuerpo: string
+          enviado_at: string | null
+          enviado_por: string | null
+          error: string | null
+          estado: string
+          id: string
+          inmobiliaria_id: string
+          inmueble_id: string | null
+          plantilla_id: string | null
+        }
+        Insert: {
+          canal?: string | null
+          contacto_id: string
+          created_at?: string
+          cuerpo: string
+          enviado_at?: string | null
+          enviado_por?: string | null
+          error?: string | null
+          estado?: string
+          id?: string
+          inmobiliaria_id: string
+          inmueble_id?: string | null
+          plantilla_id?: string | null
+        }
+        Update: {
+          canal?: string | null
+          contacto_id?: string
+          created_at?: string
+          cuerpo?: string
+          enviado_at?: string | null
+          enviado_por?: string | null
+          error?: string | null
+          estado?: string
+          id?: string
+          inmobiliaria_id?: string
+          inmueble_id?: string | null
+          plantilla_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "envios_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "contactos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_enviado_por_fkey"
+            columns: ["enviado_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_inmueble_id_fkey"
+            columns: ["inmueble_id"]
+            isOneToOne: false
+            referencedRelation: "v_inmuebles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_plantilla_id_fkey"
+            columns: ["plantilla_id"]
+            isOneToOne: false
+            referencedRelation: "plantillas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       etapas: {
         Row: {
           automatica: boolean
@@ -425,6 +499,56 @@ export type Database = {
             columns: ["inmueble_id"]
             isOneToOne: false
             referencedRelation: "v_inmuebles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plantillas: {
+        Row: {
+          activa: boolean
+          categoria: string
+          creada_por: string | null
+          created_at: string
+          cuerpo: string
+          estado_meta: string
+          id: string
+          inmobiliaria_id: string
+          nombre: string
+          nombre_meta: string | null
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean
+          categoria?: string
+          creada_por?: string | null
+          created_at?: string
+          cuerpo: string
+          estado_meta?: string
+          id?: string
+          inmobiliaria_id: string
+          nombre: string
+          nombre_meta?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean
+          categoria?: string
+          creada_por?: string | null
+          created_at?: string
+          cuerpo?: string
+          estado_meta?: string
+          id?: string
+          inmobiliaria_id?: string
+          nombre?: string
+          nombre_meta?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plantillas_creada_por_fkey"
+            columns: ["creada_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
             referencedColumns: ["id"]
           },
         ]
@@ -1076,6 +1200,15 @@ export type Database = {
         Returns: undefined
       }
       reintentar_eventos: { Args: { p_limite?: number }; Returns: Json }
+      render_plantilla: {
+        Args: {
+          p_asesor?: string
+          p_contacto_id?: string
+          p_inmueble_id?: string
+          p_plantilla_id: string
+        }
+        Returns: string
+      }
       resolver_contacto: {
         Args: {
           p_identidades: Json
@@ -1104,6 +1237,7 @@ export type Database = {
           visto_hasta: string
         }[]
       }
+      sembrar_plantillas: { Args: never; Returns: number }
       sincronizar_escalamientos: { Args: never; Returns: number }
       tablero: {
         Args: {
@@ -1131,6 +1265,8 @@ export type Database = {
           zona: string
         }[]
       }
+      variables_desconocidas: { Args: { p_cuerpo: string }; Returns: string[] }
+      variables_disponibles: { Args: never; Returns: string[] }
       zonas: {
         Args: never
         Returns: {

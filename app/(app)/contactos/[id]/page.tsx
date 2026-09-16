@@ -10,6 +10,8 @@ import { Historial } from './Historial';
 import { PonerseAlDia } from './PonerseAlDia';
 import { MarcarLeido } from './MarcarLeido';
 import { Recomendaciones, type Recomendable } from './Recomendaciones';
+import { UsarPlantilla, type PlantillaResumen } from './UsarPlantilla';
+import { TareaNueva } from '@/app/(app)/mi-dia/TareaNueva';
 
 export default async function FichaContacto({
   params,
@@ -19,6 +21,15 @@ export default async function FichaContacto({
   const { id } = await params;
   const supabase = await createClient();
   const crm = supabase.schema('crm');
+
+  // El nombre de quien mira, para la variable {{asesor}} de las plantillas.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: perfil } = user
+    ? await supabase.from('usuarios').select('nombre_completo').eq('id', user.id).single()
+    : { data: null };
+  const asesor = perfil?.nombre_completo ?? null;
 
   const { data: contacto } = await crm
     .from('contactos')
@@ -37,6 +48,7 @@ export default async function FichaContacto({
     { data: timeline },
     { data: resumenFilas },
     { data: recomendables },
+    { data: plantillas },
   ] = await Promise.all([
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
@@ -54,6 +66,7 @@ export default async function FichaContacto({
       p_limite: 6,
       p_rotar: true,
     }),
+    crm.from('plantillas').select('id, nombre, categoria').eq('activa', true).order('nombre'),
   ]);
 
   // El resumen se lee ANTES de marcar como leído, para que el separador
@@ -96,14 +109,22 @@ export default async function FichaContacto({
           </div>
         </div>
 
-        {wa && (
+        <div className="flex flex-wrap items-center gap-2">
+          <UsarPlantilla
+            plantillas={(plantillas ?? []) as PlantillaResumen[]}
+            contactoId={contacto.id}
+            asesor={asesor}
+          />
+          <TareaNueva contactoId={contacto.id} nombre={contacto.nombre} />
+          {wa && (
           <Button asChild>
             <a href={wa} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="size-4" />
               Abrir WhatsApp
             </a>
           </Button>
-        )}
+          )}
+        </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-[18rem_1fr]">
@@ -120,7 +141,12 @@ export default async function FichaContacto({
             creadoAt={contacto.created_at}
             identidades={identidades ?? []}
           />
-          <Recomendaciones inmuebles={(recomendables ?? []) as Recomendable[]} />
+          <Recomendaciones
+            inmuebles={(recomendables ?? []) as Recomendable[]}
+            plantillas={(plantillas ?? []) as PlantillaResumen[]}
+            contactoId={contacto.id}
+            asesor={asesor}
+          />
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">

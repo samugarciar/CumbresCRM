@@ -134,3 +134,8 @@ INSERT INTO public.citas (
    'b4444444-4444-4444-4444-444444444444', 'b2222222-2222-2222-2222-222222222222',
    current_date + 1, '14:00', '14:30', 'Cliente de Beta', '+573000000002')
 ON CONFLICT (id) DO NOTHING;
+
+-- Las plantillas de partida: la migración las siembra en producción,
+-- donde las inmobiliarias ya existen. Aquí hace falta llamarla porque el
+-- seed corre DESPUÉS de las migraciones.
+SELECT crm.sembrar_plantillas();

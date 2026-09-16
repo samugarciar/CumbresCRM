@@ -119,3 +119,31 @@ export async function marcarLeido(contactoId: string): Promise<void> {
   const supabase = await createClient();
   await supabase.schema('crm').rpc('marcar_leido', { p_contacto_id: contactoId });
 }
+
+/**
+ * Rellena una plantilla con los datos reales de una persona.
+ *
+ * El relleno ocurre en la BASE, no aquí: hoy lo usa esta pantalla, mañana
+ * el agente. Dos renderizadores es como el asesor y el bot acaban
+ * mandando textos distintos con la misma plantilla.
+ */
+export async function renderizar(
+  plantillaId: string,
+  contactoId: string,
+  inmuebleId: string | null,
+  asesor: string | null
+): Promise<string | null> {
+  const uuid = z.string().uuid();
+  if (!uuid.safeParse(plantillaId).success) return null;
+  if (!uuid.safeParse(contactoId).success) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.schema('crm').rpc('render_plantilla', {
+    p_plantilla_id: plantillaId,
+    p_contacto_id: contactoId,
+    p_inmueble_id: inmuebleId && uuid.safeParse(inmuebleId).success ? inmuebleId : undefined,
+    p_asesor: asesor ?? undefined,
+  });
+
+  return error ? null : data;
+}

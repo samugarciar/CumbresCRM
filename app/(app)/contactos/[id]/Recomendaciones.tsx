@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Check, ChevronDown, Copy, Home } from 'lucide-react';
 import { tiempoRelativo } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
+import { UsarPlantilla, type PlantillaResumen } from './UsarPlantilla';
 
 export interface Recomendable {
   inmueble_id: string;
@@ -52,7 +53,17 @@ function comoMensaje(i: Recomendable): string {
  * una herramienta que se coge cuando hace falta. Pero la cabecera lleva
  * el número, así que se anuncia sola sin ocupar sitio.
  */
-export function Recomendaciones({ inmuebles }: { inmuebles: Recomendable[] }) {
+export function Recomendaciones({
+  inmuebles,
+  plantillas,
+  contactoId,
+  asesor,
+}: {
+  inmuebles: Recomendable[];
+  plantillas: PlantillaResumen[];
+  contactoId: string;
+  asesor: string | null;
+}) {
   const [abierto, setAbierto] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
 
@@ -122,6 +133,17 @@ export function Recomendaciones({ inmuebles }: { inmuebles: Recomendable[] }) {
                 <span className="flex-1 text-xs text-muted-foreground">
                   disponible {tiempoRelativo(i.disponible_desde)}
                 </span>
+                {/* La plantilla es el camino principal: sale con el
+                    nombre de la persona y el del asesor, no como una ficha
+                    técnica pegada de golpe. El copiar crudo se queda al
+                    lado para cuando alguien solo quiere los datos. */}
+                <UsarPlantilla
+                  plantillas={plantillas}
+                  contactoId={contactoId}
+                  inmuebleId={i.inmueble_id}
+                  asesor={asesor}
+                  etiqueta="Plantilla"
+                />
                 <Button size="xs" variant="ghost" onClick={() => copiar(i)}>
                   {copiado === i.inmueble_id ? (
                     <>
@@ -131,7 +153,7 @@ export function Recomendaciones({ inmuebles }: { inmuebles: Recomendable[] }) {
                   ) : (
                     <>
                       <Copy className="size-3" />
-                      Copiar
+                      Datos
                     </>
                   )}
                 </Button>

@@ -56,6 +56,9 @@ export default async function LayoutApp({
             <Link href="/coincidencias" className="hover:text-foreground">
               Coincidencias
             </Link>
+            <Link href="/plantillas" className="hover:text-foreground">
+              Plantillas
+            </Link>
           </nav>
         </div>
 
