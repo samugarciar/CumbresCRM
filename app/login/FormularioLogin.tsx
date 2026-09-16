@@ -32,7 +32,7 @@ export function FormularioLogin() {
       if (resultado.ok) {
         // `siguiente` lo pone proxy.ts al desviar a alguien sin sesión.
         const siguiente = params.get('siguiente');
-        router.push(siguiente && siguiente.startsWith('/') ? siguiente : '/contactos');
+        router.push(siguiente && siguiente.startsWith('/') ? siguiente : '/mi-dia');
         router.refresh();
       } else {
         setError(resultado.error ?? 'No se pudo iniciar sesión.');

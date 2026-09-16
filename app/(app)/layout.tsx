@@ -38,12 +38,15 @@ export default async function LayoutApp({
       <header className="flex items-center justify-between gap-3 border-b bg-card px-4 py-2.5 md:gap-4 md:px-6 md:py-3">
         <div className="flex items-center gap-4 md:gap-6">
           <Link
-            href="/contactos"
+            href="/mi-dia"
             className="whitespace-nowrap font-semibold tracking-tight"
           >
             Cumbres CRM
           </Link>
           <nav className="flex items-center gap-4 whitespace-nowrap text-sm text-muted-foreground">
+            <Link href="/mi-dia" className="hover:text-foreground">
+              Mi día
+            </Link>
             <Link href="/contactos" className="hover:text-foreground">
               Contactos
             </Link>

@@ -488,6 +488,64 @@ export type Database = {
           },
         ]
       }
+      tareas: {
+        Row: {
+          asignado_a: string | null
+          completada_at: string | null
+          contacto_id: string | null
+          creado_por: string | null
+          created_at: string
+          id: string
+          inmobiliaria_id: string
+          titulo: string
+          vence_at: string
+        }
+        Insert: {
+          asignado_a?: string | null
+          completada_at?: string | null
+          contacto_id?: string | null
+          creado_por?: string | null
+          created_at?: string
+          id?: string
+          inmobiliaria_id: string
+          titulo: string
+          vence_at: string
+        }
+        Update: {
+          asignado_a?: string | null
+          completada_at?: string | null
+          contacto_id?: string | null
+          creado_por?: string | null
+          created_at?: string
+          id?: string
+          inmobiliaria_id?: string
+          titulo?: string
+          vence_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tareas_asignado_a_fkey"
+            columns: ["asignado_a"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tareas_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "contactos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tareas_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transiciones: {
         Row: {
           estado_hasta: string | null
@@ -905,6 +963,7 @@ export type Database = {
           ultima_actividad_at: string
         }[]
       }
+      completar_tarea: { Args: { p_tarea_id: string }; Returns: undefined }
       especificidad: { Args: { p_requerimiento_id: string }; Returns: number }
       frescura: { Args: { p_ultima: string }; Returns: number }
       identidades_de_conversacion: {
@@ -939,6 +998,21 @@ export type Database = {
       mejor_nombre: {
         Args: { p_actual: string; p_candidato: string }
         Returns: string
+      }
+      mi_dia: {
+        Args: { p_limite?: number }
+        Returns: {
+          cita_id: string
+          contacto_id: string
+          cuando: string
+          detalle: string
+          nombre: string
+          prioridad: number
+          tarea_id: string
+          telefono_e164: string
+          tipo: string
+          titulo: string
+        }[]
       }
       mover_etapa: {
         Args: { p_etapa: string; p_motivo?: string; p_oportunidad_id: string }
