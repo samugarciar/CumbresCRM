@@ -140,6 +140,9 @@ export default async function FichaContacto({
             telefonoCrudo={contacto.telefono_crudo}
             creadoAt={contacto.created_at}
             identidades={identidades ?? []}
+            botActivo={contacto.bot_activo ?? true}
+            botMotivo={contacto.bot_motivo}
+            botCambiadoAt={contacto.bot_cambiado_at}
           />
           <Recomendaciones
             inmuebles={(recomendables ?? []) as Recomendable[]}

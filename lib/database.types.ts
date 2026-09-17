@@ -118,6 +118,10 @@ export type Database = {
       contactos: {
         Row: {
           asesor_id: string | null
+          bot_activo: boolean
+          bot_cambiado_at: string | null
+          bot_cambiado_por: string | null
+          bot_motivo: string | null
           consentimiento: boolean
           consentimiento_at: string | null
           consentimiento_canal: string | null
@@ -140,6 +144,10 @@ export type Database = {
         }
         Insert: {
           asesor_id?: string | null
+          bot_activo?: boolean
+          bot_cambiado_at?: string | null
+          bot_cambiado_por?: string | null
+          bot_motivo?: string | null
           consentimiento?: boolean
           consentimiento_at?: string | null
           consentimiento_canal?: string | null
@@ -162,6 +170,10 @@ export type Database = {
         }
         Update: {
           asesor_id?: string | null
+          bot_activo?: boolean
+          bot_cambiado_at?: string | null
+          bot_cambiado_por?: string | null
+          bot_motivo?: string | null
           consentimiento?: boolean
           consentimiento_at?: string | null
           consentimiento_canal?: string | null
@@ -186,6 +198,13 @@ export type Database = {
           {
             foreignKeyName: "contactos_asesor_id_fkey"
             columns: ["asesor_id"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contactos_bot_cambiado_por_fkey"
+            columns: ["bot_cambiado_por"]
             isOneToOne: false
             referencedRelation: "v_asesores"
             referencedColumns: ["id"]
@@ -1027,7 +1046,15 @@ export type Database = {
           ultima_actividad_at: string
         }[]
       }
+      bot_puede_responder: {
+        Args: { p_inmobiliaria_id: string; p_telefono: string }
+        Returns: boolean
+      }
       calidad_nombre: { Args: { p_nombre: string }; Returns: number }
+      cambiar_bot: {
+        Args: { p_activo: boolean; p_contacto_id: string }
+        Returns: boolean
+      }
       cerrar_fantasmas: { Args: { p_dias?: number }; Returns: number }
       cerrar_oportunidad: {
         Args: {

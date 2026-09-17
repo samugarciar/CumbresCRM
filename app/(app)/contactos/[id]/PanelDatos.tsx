@@ -6,6 +6,7 @@ import { actualizarContacto } from './acciones';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fechaLarga } from '@/lib/formato';
+import { ControlBot } from './ControlBot';
 
 interface Props {
   contactoId: string;
@@ -15,6 +16,9 @@ interface Props {
   telefonoCrudo: string | null;
   creadoAt: string;
   identidades: { tipo: string; valor: string }[];
+  botActivo: boolean;
+  botMotivo: string | null;
+  botCambiadoAt: string | null;
 }
 
 const ETIQUETA_IDENTIDAD: Record<string, string> = {
@@ -45,6 +49,16 @@ export function PanelDatos(props: Props) {
 
   return (
     <aside className="flex flex-col gap-5 text-sm">
+      {/* Arriba del todo a propósito: es lo único de este panel sobre lo
+          que se ACTÚA, y un bot callado hay que verlo al abrir la ficha,
+          no después de bajar. */}
+      <ControlBot
+        contactoId={props.contactoId}
+        activo={props.botActivo}
+        motivo={props.botMotivo}
+        cambiadoAt={props.botCambiadoAt}
+      />
+
       <section className="flex flex-col gap-3 rounded-lg border bg-card p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Datos</h2>

@@ -147,3 +147,40 @@ export async function renderizar(
 
   return error ? null : data;
 }
+
+const esquemaBot = z.object({
+  contactoId: z.string().uuid(),
+  activo: z.boolean(),
+});
+
+/**
+ * Apaga o enciende el bot para esta persona.
+ *
+ * No es un UPDATE suelto: pasa por crm.cambiar_bot(), que además del
+ * cambio escribe la línea en el historial. Si esto fueran dos escrituras
+ * desde aquí, un fallo entre medias dejaría el bot callado sin que el
+ * timeline lo contara — y nadie sabría por qué no contesta.
+ */
+export async function cambiarBot(
+  contactoId: string,
+  activo: boolean
+): Promise<Resultado> {
+  const validado = esquemaBot.safeParse({ contactoId, activo });
+  if (!validado.success) return { ok: false, error: 'Petición inválida.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.schema('crm').rpc('cambiar_bot', {
+    p_contacto_id: validado.data.contactoId,
+    p_activo: validado.data.activo,
+  });
+
+  if (error) return { ok: false, error: 'No se pudo cambiar el bot.' };
+  // `false` = la RLS no lo dejó ver, o ya no existe. La función responde
+  // lo mismo en los dos casos a propósito.
+  if (data === false) {
+    return { ok: false, error: 'Ese lead ya no está disponible.' };
+  }
+
+  revalidatePath(`/contactos/${validado.data.contactoId}`);
+  return { ok: true };
+}
