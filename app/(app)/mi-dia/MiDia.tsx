@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   AlarmClock,
   BotOff,
+  MailWarning,
   CalendarCheck,
   CalendarClock,
   Check,
@@ -30,6 +31,7 @@ export interface Renglon {
 }
 
 const ICONO: Record<string, typeof Check> = {
+  envio_fallido: MailWarning,
   escalado: UserRoundCheck,
   visita_hoy: CalendarClock,
   tarea_vencida: AlarmClock,
@@ -47,7 +49,7 @@ const BLOQUES = [
   {
     clave: 'ahora',
     titulo: 'Alguien está esperando',
-    ayuda: 'El bot pidió una persona y nadie ha abierto la ficha',
+    ayuda: 'Pidieron una persona, o un mensaje nuestro no llegó',
     de: (p: number) => p === 1,
   },
   {

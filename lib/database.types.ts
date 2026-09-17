@@ -224,42 +224,60 @@ export type Database = {
           contacto_id: string
           created_at: string
           cuerpo: string
+          entregado_at: string | null
           enviado_at: string | null
           enviado_por: string | null
           error: string | null
+          error_codigo: number | null
           estado: string
+          fallido_at: string | null
           id: string
           inmobiliaria_id: string
           inmueble_id: string | null
+          leido_at: string | null
           plantilla_id: string | null
+          visto_at: string | null
+          wa_message_id: string | null
         }
         Insert: {
           canal?: string | null
           contacto_id: string
           created_at?: string
           cuerpo: string
+          entregado_at?: string | null
           enviado_at?: string | null
           enviado_por?: string | null
           error?: string | null
+          error_codigo?: number | null
           estado?: string
+          fallido_at?: string | null
           id?: string
           inmobiliaria_id: string
           inmueble_id?: string | null
+          leido_at?: string | null
           plantilla_id?: string | null
+          visto_at?: string | null
+          wa_message_id?: string | null
         }
         Update: {
           canal?: string | null
           contacto_id?: string
           created_at?: string
           cuerpo?: string
+          entregado_at?: string | null
           enviado_at?: string | null
           enviado_por?: string | null
           error?: string | null
+          error_codigo?: number | null
           estado?: string
+          fallido_at?: string | null
           id?: string
           inmobiliaria_id?: string
           inmueble_id?: string | null
+          leido_at?: string | null
           plantilla_id?: string | null
+          visto_at?: string | null
+          wa_message_id?: string | null
         }
         Relationships: [
           {
@@ -1046,6 +1064,10 @@ export type Database = {
           ultima_actividad_at: string
         }[]
       }
+      bot_atendido_desde: {
+        Args: { p_contacto_id: string; p_desde: string }
+        Returns: boolean
+      }
       bot_puede_responder: {
         Args: { p_inmobiliaria_id: string; p_telefono: string }
         Returns: boolean
@@ -1145,6 +1167,7 @@ export type Database = {
           titulo: string
         }[]
       }
+      marcar_envio_visto: { Args: { p_envio_id: string }; Returns: undefined }
       marcar_leido: { Args: { p_contacto_id: string }; Returns: undefined }
       mejor_nombre: {
         Args: { p_actual: string; p_candidato: string }
@@ -1198,6 +1221,7 @@ export type Database = {
         Args: { p_oportunidad_id: string }
         Returns: undefined
       }
+      reactivar_bots: { Args: { p_dias?: number }; Returns: number }
       recalcular_oportunidad: {
         Args: { p_contacto_id: string }
         Returns: boolean
@@ -1214,6 +1238,15 @@ export type Database = {
           se_fueron: number
           volvieron: number
         }[]
+      }
+      registrar_estado_envio: {
+        Args: {
+          p_error?: string
+          p_error_codigo?: number
+          p_estado: string
+          p_wa_message_id: string
+        }
+        Returns: boolean
       }
       registrar_fallo: {
         Args: {
@@ -1294,6 +1327,8 @@ export type Database = {
       }
       variables_desconocidas: { Args: { p_cuerpo: string }; Returns: string[] }
       variables_disponibles: { Args: never; Returns: string[] }
+      ventana_escalamiento: { Args: never; Returns: string }
+      ventana_whatsapp: { Args: { p_contacto_id: string }; Returns: string }
       zonas: {
         Args: never
         Returns: {

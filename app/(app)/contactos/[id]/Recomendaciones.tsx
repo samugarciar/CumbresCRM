@@ -58,11 +58,15 @@ export function Recomendaciones({
   plantillas,
   contactoId,
   asesor,
+  ventanaCierraAt,
+  ahora,
 }: {
   inmuebles: Recomendable[];
   plantillas: PlantillaResumen[];
   contactoId: string;
   asesor: string | null;
+  ventanaCierraAt: string | null;
+  ahora: string;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
@@ -143,6 +147,8 @@ export function Recomendaciones({
                   inmuebleId={i.inmueble_id}
                   asesor={asesor}
                   etiqueta="Plantilla"
+                  ventanaCierraAt={ventanaCierraAt}
+                  ahora={ahora}
                 />
                 <Button size="xs" variant="ghost" onClick={() => copiar(i)}>
                   {copiado === i.inmueble_id ? (

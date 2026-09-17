@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fechaLarga } from '@/lib/formato';
 import { ControlBot } from './ControlBot';
+import { VentanaWhatsApp } from './VentanaWhatsApp';
 
 interface Props {
   contactoId: string;
@@ -19,6 +20,8 @@ interface Props {
   botActivo: boolean;
   botMotivo: string | null;
   botCambiadoAt: string | null;
+  ventanaCierraAt: string | null;
+  ahora: string;
 }
 
 const ETIQUETA_IDENTIDAD: Record<string, string> = {
@@ -58,6 +61,9 @@ export function PanelDatos(props: Props) {
         motivo={props.botMotivo}
         cambiadoAt={props.botCambiadoAt}
       />
+
+      {/* Antes de escribir, no después de que falle. */}
+      <VentanaWhatsApp cierraAt={props.ventanaCierraAt} ahora={props.ahora} />
 
       <section className="flex flex-col gap-3 rounded-lg border bg-card p-4">
         <div className="flex items-center justify-between">

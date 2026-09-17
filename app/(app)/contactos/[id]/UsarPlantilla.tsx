@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { renderizar } from './acciones';
+import { VentanaWhatsApp } from './VentanaWhatsApp';
 
 export interface PlantillaResumen {
   id: string;
@@ -38,12 +39,16 @@ export function UsarPlantilla({
   inmuebleId = null,
   etiqueta = 'Usar plantilla',
   asesor,
+  ventanaCierraAt = null,
+  ahora,
 }: {
   plantillas: PlantillaResumen[];
   contactoId: string;
   inmuebleId?: string | null;
   etiqueta?: string;
   asesor: string | null;
+  ventanaCierraAt?: string | null;
+  ahora: string;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [elegida, setElegida] = useState<PlantillaResumen | null>(null);
@@ -145,6 +150,12 @@ export function UsarPlantilla({
                 </>
               )}
             </div>
+          )}
+
+          {/* El estado de la ventana, pegado al botón de copiar: es el
+              último momento en que sirve saberlo. */}
+          {elegida && !pendiente && (
+            <VentanaWhatsApp cierraAt={ventanaCierraAt} ahora={ahora} compacto />
           )}
 
           <DialogFooter>

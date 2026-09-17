@@ -49,6 +49,7 @@ export default async function FichaContacto({
     { data: resumenFilas },
     { data: recomendables },
     { data: plantillas },
+    { data: ventanaCierraAt },
   ] = await Promise.all([
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
@@ -67,11 +68,18 @@ export default async function FichaContacto({
       p_rotar: true,
     }),
     crm.from('plantillas').select('id, nombre, categoria').eq('activa', true).order('nombre'),
+    // Cuándo se cierra la ventana de 24 h de WhatsApp. Se calcula en la
+    // base, del último mensaje ENTRANTE: es lo único que la abre.
+    crm.rpc('ventana_whatsapp', { p_contacto_id: id }),
   ]);
 
   // El resumen se lee ANTES de marcar como leído, para que el separador
   // "nuevo desde tu última visita" sepa dónde va.
   const resumen = resumenFilas?.[0] ?? null;
+
+  // Un solo reloj para toda la página, y es el del servidor: el del
+  // celular del asesor puede estar desajustado.
+  const ahora = new Date().toISOString();
 
   const telefono = telefonoLegible(contacto.telefono_e164);
   const wa = enlaceWhatsApp(contacto.telefono_e164);
@@ -114,6 +122,8 @@ export default async function FichaContacto({
             plantillas={(plantillas ?? []) as PlantillaResumen[]}
             contactoId={contacto.id}
             asesor={asesor}
+            ventanaCierraAt={ventanaCierraAt}
+            ahora={ahora}
           />
           <TareaNueva contactoId={contacto.id} nombre={contacto.nombre} />
           {wa && (
@@ -143,12 +153,16 @@ export default async function FichaContacto({
             botActivo={contacto.bot_activo ?? true}
             botMotivo={contacto.bot_motivo}
             botCambiadoAt={contacto.bot_cambiado_at}
+            ventanaCierraAt={ventanaCierraAt}
+            ahora={ahora}
           />
           <Recomendaciones
             inmuebles={(recomendables ?? []) as Recomendable[]}
             plantillas={(plantillas ?? []) as PlantillaResumen[]}
             contactoId={contacto.id}
             asesor={asesor}
+            ventanaCierraAt={ventanaCierraAt}
+            ahora={ahora}
           />
         </div>
 
