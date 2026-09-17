@@ -50,6 +50,7 @@ export default async function FichaContacto({
     { data: recomendables },
     { data: plantillas },
     { data: ventanaCierraAt },
+    { data: responsableFilas },
   ] = await Promise.all([
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
@@ -71,6 +72,8 @@ export default async function FichaContacto({
     // Cuándo se cierra la ventana de 24 h de WhatsApp. Se calcula en la
     // base, del último mensaje ENTRANTE: es lo único que la abre.
     crm.rpc('ventana_whatsapp', { p_contacto_id: id }),
+    // Quién lleva esta conversación. Casi siempre nadie, todavía.
+    crm.rpc('responsable_de', { p_contacto_id: id }),
   ]);
 
   // El resumen se lee ANTES de marcar como leído, para que el separador
@@ -80,6 +83,8 @@ export default async function FichaContacto({
   // Un solo reloj para toda la página, y es el del servidor: el del
   // celular del asesor puede estar desajustado.
   const ahora = new Date().toISOString();
+
+  const responsable = responsableFilas?.[0] ?? null;
 
   const telefono = telefonoLegible(contacto.telefono_e164);
   const wa = enlaceWhatsApp(contacto.telefono_e164);
@@ -155,6 +160,10 @@ export default async function FichaContacto({
             botCambiadoAt={contacto.bot_cambiado_at}
             ventanaCierraAt={ventanaCierraAt}
             ahora={ahora}
+            responsableNombre={responsable?.nombre ?? null}
+            responsableEsMio={
+              responsable?.asesor_id != null && responsable.asesor_id === user?.id
+            }
           />
           <Recomendaciones
             inmuebles={(recomendables ?? []) as Recomendable[]}

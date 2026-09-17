@@ -125,9 +125,13 @@ CREATE TRIGGER crm_reclamar_al_tarear
 -- Deja rastro en el historial. Cambiar de responsable sin que conste es
 -- exactamente el tipo de cosa que después nadie consigue explicar.
 -- ---------------------------------------------------------------------
+-- p_asesor_id lleva DEFAULT NULL para que omitirlo signifique "quitarle
+-- el responsable". Además hace que el tipo generado para TypeScript sea
+-- opcional en vez de obligatorio, y así el cliente no tiene que mandar un
+-- null explícito donde el tipo dice que va un uuid.
 CREATE OR REPLACE FUNCTION crm.asignar_lead(
   p_contacto_id uuid,
-  p_asesor_id   uuid)
+  p_asesor_id   uuid DEFAULT NULL)
 RETURNS boolean
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 AS $asig$

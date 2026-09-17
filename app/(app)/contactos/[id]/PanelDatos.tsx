@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { fechaLarga } from '@/lib/formato';
 import { ControlBot } from './ControlBot';
+import { Responsable } from './Responsable';
 import { VentanaWhatsApp } from './VentanaWhatsApp';
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
   botCambiadoAt: string | null;
   ventanaCierraAt: string | null;
   ahora: string;
+  responsableNombre: string | null;
+  responsableEsMio: boolean;
 }
 
 const ETIQUETA_IDENTIDAD: Record<string, string> = {
@@ -52,9 +55,16 @@ export function PanelDatos(props: Props) {
 
   return (
     <aside className="flex flex-col gap-5 text-sm">
-      {/* Arriba del todo a propósito: es lo único de este panel sobre lo
-          que se ACTÚA, y un bot callado hay que verlo al abrir la ficha,
-          no después de bajar. */}
+      {/* Quién lleva esto va primero: si entras a una ficha ajena, es lo
+          que tienes que saber antes de escribir. */}
+      <Responsable
+        contactoId={props.contactoId}
+        nombre={props.responsableNombre}
+        esMio={props.responsableEsMio}
+      />
+
+      {/* Y después el bot: lo otro de este panel sobre lo que se ACTÚA, y
+          callado hay que verlo al abrir la ficha, no al bajar. */}
       <ControlBot
         contactoId={props.contactoId}
         activo={props.botActivo}

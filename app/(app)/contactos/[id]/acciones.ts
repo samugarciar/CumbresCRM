@@ -184,3 +184,46 @@ export async function cambiarBot(
   revalidatePath(`/contactos/${validado.data.contactoId}`);
   return { ok: true };
 }
+
+/**
+ * Hacerse responsable de un lead, o pasárselo a otro.
+ *
+ * Sin `asesorId` significa "me encargo yo". La función de la base deja el
+ * cambio escrito en el historial: cambiar de responsable sin que conste
+ * es de las cosas que después nadie consigue explicar.
+ */
+export async function asignarLead(
+  contactoId: string,
+  asesorId?: string | null
+): Promise<Resultado> {
+  if (!z.string().uuid().safeParse(contactoId).success) {
+    return { ok: false, error: 'Petición inválida.' };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Tu sesión expiró. Vuelve a entrar.' };
+
+  const destino = asesorId === undefined ? user.id : asesorId;
+  if (destino !== null && !z.string().uuid().safeParse(destino).success) {
+    return { ok: false, error: 'Petición inválida.' };
+  }
+
+  // Omitir el parámetro es lo que significa "sin responsable": la función
+  // lo tiene con DEFAULT NULL, y supabase-js no serializa las claves
+  // `undefined`.
+  const { data, error } = await supabase.schema('crm').rpc('asignar_lead', {
+    p_contacto_id: contactoId,
+    p_asesor_id: destino ?? undefined,
+  });
+
+  if (error) return { ok: false, error: 'No se pudo asignar.' };
+  if (data === false) {
+    return { ok: false, error: 'Ese lead no tiene una oportunidad abierta.' };
+  }
+
+  revalidatePath(`/contactos/${contactoId}`);
+  return { ok: true };
+}
