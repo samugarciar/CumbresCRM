@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   AlarmClock,
+  BotOff,
   CalendarCheck,
   CalendarClock,
   Check,
@@ -35,6 +36,7 @@ const ICONO: Record<string, typeof Check> = {
   visita_sin_cerrar: CalendarCheck,
   tarea_hoy: ClipboardList,
   tarea_plataforma: ClipboardList,
+  bot_callado: BotOff,
   estancada: AlarmClock,
 };
 

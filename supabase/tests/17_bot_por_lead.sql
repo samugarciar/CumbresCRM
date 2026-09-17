@@ -11,7 +11,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(19);
+SELECT plan(27);
 
 DELETE FROM crm.contactos;
 
@@ -185,6 +185,110 @@ SELECT ok(
   crm.bot_puede_responder('11111111-1111-1111-1111-111111111111', '+573001114441'),
   'Un escalamiento de HACE UNA SEMANA no calla nada: apagar el bot hacia atrás sería un incidente, no una función'
 );
+
+
+-- =====================================================================
+-- La caducidad del silencio
+--
+-- Regla aprobada: el silencio MANUAL no caduca nunca; el AUTOMÁTICO
+-- caduca a los 3 días si nadie del equipo hizo nada. Y "hacer algo" son
+-- actos deliberados: abrir la ficha NO cuenta, porque se marca sola al
+-- entrar y significa "le eché un ojo", no "lo atendí".
+-- =====================================================================
+INSERT INTO crm.contactos
+  (id, inmobiliaria_id, nombre, telefono_e164,
+   bot_activo, bot_motivo, bot_cambiado_at)
+VALUES
+  -- Silenciado a mano hace diez días. No debe volver jamás.
+  ('b0700010-0000-0000-0000-000000000010',
+   '11111111-1111-1111-1111-111111111111', 'Me encargo yo', '+573001115551',
+   false, 'manual', now() - interval '10 days'),
+  -- Escaló hace cinco días y nadie hizo nada. Debe volver.
+  ('b0700011-0000-0000-0000-000000000011',
+   '11111111-1111-1111-1111-111111111111', 'Nadie llegó', '+573001115552',
+   false, 'escalamiento', now() - interval '5 days'),
+  -- Escaló hace cinco días, pero alguien dejó una nota. No debe volver.
+  ('b0700012-0000-0000-0000-000000000012',
+   '11111111-1111-1111-1111-111111111111', 'Sí lo atendieron', '+573001115553',
+   false, 'escalamiento', now() - interval '5 days'),
+  -- Escaló hace cinco días y solo abrieron la ficha. Debe volver igual.
+  ('b0700013-0000-0000-0000-000000000013',
+   '11111111-1111-1111-1111-111111111111', 'Solo lo miraron', '+573001115554',
+   false, 'escalamiento', now() - interval '5 days'),
+  -- Escaló ayer. Todavía no le toca, pero ya tiene que avisar.
+  ('b0700014-0000-0000-0000-000000000014',
+   '11111111-1111-1111-1111-111111111111', 'Recién callado', '+573001115555',
+   false, 'escalamiento', now() - interval '1 day');
+
+INSERT INTO crm.actividades
+  (inmobiliaria_id, tipo, origen, contacto_id, cuerpo, creado_por, ocurrido_at)
+VALUES ('11111111-1111-1111-1111-111111111111', 'nota', 'humano',
+        'b0700012-0000-0000-0000-000000000012', 'Lo llamé, quedamos el viernes',
+        'cccccccc-cccc-cccc-cccc-cccccccccccc', now() - interval '1 day');
+
+INSERT INTO crm.lecturas (contacto_id, usuario_id, inmobiliaria_id, visto_hasta)
+VALUES ('b0700013-0000-0000-0000-000000000013',
+        'cccccccc-cccc-cccc-cccc-cccccccccccc',
+        '11111111-1111-1111-1111-111111111111', now());
+
+SELECT is(
+  crm.reactivar_bots(3::smallint), 2,
+  'Caducan exactamente dos: el abandonado y el que solo miraron'
+);
+
+SELECT ok(
+  (SELECT NOT bot_activo FROM crm.contactos
+    WHERE id = 'b0700010-0000-0000-0000-000000000010'),
+  'El silencio MANUAL no caduca ni a los diez días: alguien dijo que se encargaba'
+);
+
+SELECT ok(
+  (SELECT bot_activo FROM crm.contactos
+    WHERE id = 'b0700011-0000-0000-0000-000000000011'),
+  'El automático sí: escaló hace cinco días y nadie llegó'
+);
+
+SELECT ok(
+  (SELECT NOT bot_activo FROM crm.contactos
+    WHERE id = 'b0700012-0000-0000-0000-000000000012'),
+  'Una nota SÍ cuenta como atender: ese sigue callado'
+);
+
+SELECT ok(
+  (SELECT bot_activo FROM crm.contactos
+    WHERE id = 'b0700013-0000-0000-0000-000000000013'),
+  'Abrir la ficha NO cuenta: mirarlo no es atenderlo'
+);
+
+SELECT is(
+  (SELECT count(*)::int FROM crm.actividades
+    WHERE contacto_id = 'b0700011-0000-0000-0000-000000000011'
+      AND tipo = 'sistema'),
+  1,
+  'Y que el bot recupere la voz queda escrito: nadie debería tener que adivinar por qué volvió'
+);
+
+-- --- Avisar desde el primer día --------------------------------------
+SET LOCAL "request.jwt.claims" = '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","role":"authenticated"}';
+SET LOCAL ROLE authenticated;
+
+SELECT is(
+  (SELECT count(*)::int FROM crm.mi_dia(200)
+    WHERE tipo = 'bot_callado'
+      AND contacto_id = 'b0700014-0000-0000-0000-000000000014'),
+  1,
+  'El que lleva un día callado ya sale en «Mi día»: la reactivación es la red, no la sorpresa'
+);
+
+SELECT is(
+  (SELECT count(*)::int FROM crm.mi_dia(200)
+    WHERE tipo = 'bot_callado'
+      AND contacto_id = 'b0700012-0000-0000-0000-000000000012'),
+  0,
+  'Pero el que ya atendieron no ocupa sitio en la lista'
+);
+
+RESET ROLE;
 
 SELECT * FROM finish();
 ROLLBACK;
