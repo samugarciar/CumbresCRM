@@ -1223,7 +1223,7 @@ export type Database = {
       }
       reactivar_bots: { Args: { p_dias?: number }; Returns: number }
       recalcular_oportunidad: {
-        Args: { p_contacto_id: string }
+        Args: { p_abrir?: boolean; p_contacto_id: string }
         Returns: boolean
       }
       recalcular_pipeline: { Args: never; Returns: number }
