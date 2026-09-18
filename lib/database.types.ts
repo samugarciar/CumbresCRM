@@ -558,6 +558,7 @@ export type Database = {
           cuerpo: string
           estado_meta: string
           id: string
+          idioma: string
           inmobiliaria_id: string
           nombre: string
           nombre_meta: string | null
@@ -571,6 +572,7 @@ export type Database = {
           cuerpo: string
           estado_meta?: string
           id?: string
+          idioma?: string
           inmobiliaria_id: string
           nombre: string
           nombre_meta?: string | null
@@ -584,6 +586,7 @@ export type Database = {
           cuerpo?: string
           estado_meta?: string
           id?: string
+          idioma?: string
           inmobiliaria_id?: string
           nombre?: string
           nombre_meta?: string | null
@@ -1249,6 +1252,19 @@ export type Database = {
         Args: { p_oportunidad_id: string }
         Returns: undefined
       }
+      reactivables: {
+        Args: { p_dias?: number; p_limite?: number; p_salto?: number }
+        Returns: {
+          busca: string
+          calzan: number
+          contacto_id: string
+          dias_callado: number
+          nombre: string
+          telefono_e164: string
+          ultima_actividad_at: string
+        }[]
+      }
+      reactivables_total: { Args: { p_dias?: number }; Returns: number }
       reactivar_bots: { Args: { p_dias?: number }; Returns: number }
       recalcular_oportunidad: {
         Args: { p_abrir?: boolean; p_contacto_id: string }
