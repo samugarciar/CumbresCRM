@@ -1154,6 +1154,15 @@ export type Database = {
         }[]
       }
       completar_tarea: { Args: { p_tarea_id: string }; Returns: undefined }
+      encolar_envio: {
+        Args: {
+          p_contacto_id: string
+          p_cuerpo: string
+          p_inmueble_id?: string
+          p_plantilla_id?: string
+        }
+        Returns: string
+      }
       especificidad: { Args: { p_requerimiento_id: string }; Returns: number }
       frescura: { Args: { p_ultima: string }; Returns: number }
       identidades_de_conversacion: {
@@ -1225,6 +1234,10 @@ export type Database = {
           telefono_e164: string
           ultima_actividad_at: string
         }[]
+      }
+      puede_escribir_libre: {
+        Args: { p_contacto_id: string }
+        Returns: boolean
       }
       puntaje: {
         Args: {

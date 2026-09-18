@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { fechaLarga, tiempoRelativo } from '@/lib/formato';
+import { CajaDeEscribir } from './CajaDeEscribir';
 
 export interface Actividad {
   // Anulable porque viene de una vista: aunque crm.actividades.id sea
@@ -51,10 +52,16 @@ type Vista = 'todo' | 'conversacion' | 'visitas' | 'notas';
 export function Historial({
   actividades,
   vistoHasta,
+  ventanaCierraAt,
+  ahora,
 }: {
   actividades: Actividad[];
   /** Hasta dónde había leído esta persona ANTES de abrir la ficha. */
   vistoHasta?: string | null;
+  /** Cuándo se cierra la ventana de 24 h. NULL = nunca nos escribió. */
+  ventanaCierraAt: string | null;
+  /** El reloj, del servidor: React 19 prohíbe leerlo en el render. */
+  ahora: string;
 }) {
   const [vista, setVista] = useState<Vista>('todo');
 
@@ -108,7 +115,20 @@ export function Historial({
           Todavía no ha pasado nada con esta persona.
         </p>
       ) : vista === 'conversacion' ? (
-        <Conversacion mensajes={visibles} />
+        <>
+          <Conversacion mensajes={visibles} />
+          {/* La caja va DEBAJO de las burbujas, como en cualquier chat: se
+              lee hacia abajo y se escribe al final. */}
+          <CajaDeEscribir
+            ventanaAbierta={
+              ventanaCierraAt !== null &&
+              new Date(ventanaCierraAt).getTime() > new Date(ahora).getTime()
+            }
+            cierraAt={ventanaCierraAt}
+            nuncaEscribio={ventanaCierraAt === null}
+            ahora={ahora}
+          />
+        </>
       ) : (
         <Linea actividades={visibles} vistoHasta={vistoHasta} />
       )}
