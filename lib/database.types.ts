@@ -134,6 +134,9 @@ export type Database = {
           merged_into_id: string | null
           nombre: string | null
           notas: string | null
+          opt_out: boolean
+          opt_out_at: string | null
+          opt_out_motivo: string | null
           origen: string | null
           telefono_crudo: string | null
           telefono_e164: string | null
@@ -160,6 +163,9 @@ export type Database = {
           merged_into_id?: string | null
           nombre?: string | null
           notas?: string | null
+          opt_out?: boolean
+          opt_out_at?: string | null
+          opt_out_motivo?: string | null
           origen?: string | null
           telefono_crudo?: string | null
           telefono_e164?: string | null
@@ -186,6 +192,9 @@ export type Database = {
           merged_into_id?: string | null
           nombre?: string | null
           notas?: string | null
+          opt_out?: boolean
+          opt_out_at?: string | null
+          opt_out_motivo?: string | null
           origen?: string | null
           telefono_crudo?: string | null
           telefono_e164?: string | null
@@ -1024,7 +1033,12 @@ export type Database = {
     }
     Functions: {
       abrir_oportunidad: { Args: { p_contacto_id: string }; Returns: string }
+      asignar_lead: {
+        Args: { p_asesor_id?: string; p_contacto_id: string }
+        Returns: boolean
+      }
       backfill: { Args: { p_inmobiliaria_id: string }; Returns: Json }
+      backfill_consentimiento: { Args: never; Returns: number }
       backfill_pipeline: {
         Args: never
         Returns: {
@@ -1169,12 +1183,16 @@ export type Database = {
       }
       marcar_envio_visto: { Args: { p_envio_id: string }; Returns: undefined }
       marcar_leido: { Args: { p_contacto_id: string }; Returns: undefined }
+      marcar_opt_out: {
+        Args: { p_contacto_id: string; p_motivo?: string }
+        Returns: boolean
+      }
       mejor_nombre: {
         Args: { p_actual: string; p_candidato: string }
         Returns: string
       }
       mi_dia: {
-        Args: { p_limite?: number }
+        Args: { p_asesor?: string; p_limite?: number }
         Returns: {
           cita_id: string
           contacto_id: string
@@ -1195,6 +1213,16 @@ export type Database = {
       normaliza_zonas: { Args: { p: string[] }; Returns: string[] }
       normalizar_telefono: { Args: { p_tel: string }; Returns: string }
       orden_por_evidencia: { Args: { p_contacto_id: string }; Returns: number }
+      publico_marketing: {
+        Args: { p_dias_silencio?: number; p_limite?: number }
+        Returns: {
+          contacto_id: string
+          dias_callado: number
+          nombre: string
+          telefono_e164: string
+          ultima_actividad_at: string
+        }[]
+      }
       puntaje: {
         Args: {
           i_barrio: string
@@ -1227,6 +1255,10 @@ export type Database = {
         Returns: boolean
       }
       recalcular_pipeline: { Args: never; Returns: number }
+      reclamar_si_huerfana: {
+        Args: { p_contacto_id: string; p_usuario: string }
+        Returns: undefined
+      }
       recuperar_telefonos_desde_herramientas: {
         Args: { p_inmobiliaria_id: string }
         Returns: Json
@@ -1279,6 +1311,13 @@ export type Database = {
           p_tipo_contacto?: string
         }
         Returns: string
+      }
+      responsable_de: {
+        Args: { p_contacto_id: string }
+        Returns: {
+          asesor_id: string
+          nombre: string
+        }[]
       }
       resumen_contacto: {
         Args: { p_contacto_id: string }

@@ -4,8 +4,17 @@ import { TareaNueva } from './TareaNueva';
 
 export default async function PaginaMiDia() {
   const supabase = await createClient();
+
+  // El día es de quien lo mira. La función enseña lo suyo MÁS lo que no
+  // tiene dueño, y esconde lo que ya lleva otro: hoy casi nada tiene
+  // responsable, así que filtrar en seco dejaría la pantalla vacía.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data, error } = await supabase.schema('crm').rpc('mi_dia', {
     p_limite: 60,
+    p_asesor: user?.id,
   });
 
   if (error) {
