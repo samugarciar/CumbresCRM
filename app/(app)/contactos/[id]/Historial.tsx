@@ -52,12 +52,17 @@ type Vista = 'todo' | 'conversacion' | 'visitas' | 'notas';
 export function Historial({
   actividades,
   vistoHasta,
+  contactoId,
   ventanaCierraAt,
+  canalListo,
   ahora,
 }: {
   actividades: Actividad[];
   /** Hasta dónde había leído esta persona ANTES de abrir la ficha. */
   vistoHasta?: string | null;
+  contactoId: string;
+  /** Si el canal propio ya está montado: sin él, el avión no despega. */
+  canalListo: boolean;
   /** Cuándo se cierra la ventana de 24 h. NULL = nunca nos escribió. */
   ventanaCierraAt: string | null;
   /** El reloj, del servidor: React 19 prohíbe leerlo en el render. */
@@ -120,6 +125,8 @@ export function Historial({
           {/* La caja va DEBAJO de las burbujas, como en cualquier chat: se
               lee hacia abajo y se escribe al final. */}
           <CajaDeEscribir
+            contactoId={contactoId}
+            canalListo={canalListo}
             ventanaAbierta={
               ventanaCierraAt !== null &&
               new Date(ventanaCierraAt).getTime() > new Date(ahora).getTime()
