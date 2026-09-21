@@ -11,7 +11,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(11);
+SELECT plan(12);
 
 -- ---------------------------------------------------------------------
 -- Sesión de Alfa
@@ -104,18 +104,30 @@ RESET ROLE;
 -- auth.uid() hace nullif(current_setting(...), ''), así que la cadena
 -- vacía es la forma de simular "sin sesión".
 --
--- Y ojo con la primera afirmación: `anon` SÍ tiene el GRANT de SELECT
--- sobre citas —viene del acceso del agente por PostgREST— y aun así no ve
--- ninguna fila. Esa distinción entre "tener permiso sobre la tabla" y
--- "que una política te deje ver filas" es lo que hay que preservar.
+-- ACTUALIZADO EL 21 SEP 2026, y el cambio cuenta algo.
+--
+-- Esta prueba afirmaba que `anon` SÍ tenía el GRANT sobre citas y que lo
+-- paraba la RLS — la distinción entre "tener permiso sobre la tabla" y
+-- "que una política te deje ver filas". Era cierto cuando se escribió.
+--
+-- Al regenerar la línea base desde producción se vio que ya no: el
+-- permiso está REVOCADO. La garantía se volvió más fuerte, porque el
+-- corte ocurre antes de llegar a la RLS. Lo que había en local era un
+-- esquema más laxo que el real, y la prueba estaba midiendo contra él.
 -- ---------------------------------------------------------------------
+SELECT ok(
+  NOT has_table_privilege('anon', 'public.citas', 'SELECT'),
+  'Un anónimo ni siquiera puede leer la tabla de citas: el corte es ANTES de la RLS'
+);
+
 SET LOCAL "request.jwt.claims" = '';
 SET LOCAL ROLE anon;
 
-SELECT is(
-  (SELECT count(*) FROM citas),
-  0::bigint,
-  'Un anónimo NO ve citas, pese a tener el GRANT sobre la tabla'
+SELECT throws_ok(
+  $$SELECT count(*) FROM citas$$,
+  '42501',
+  NULL,
+  'Y si lo intenta, le responde el permiso, no la política'
 );
 
 RESET ROLE;
