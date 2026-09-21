@@ -39,9 +39,12 @@ SELECT is(
 );
 
 -- El orden era único en TODA la tabla: ese era uno de los tres bloqueos.
+-- Se afirma el INVARIANTE y no un número, para que añadir un embudo no
+-- rompa la prueba por ser un embudo más.
 SELECT is(
-  (SELECT count(*)::int FROM crm.etapas WHERE orden = 1), 2,
-  'Dos embudos pueden tener cada uno su peldaño número 1'
+  (SELECT count(DISTINCT embudo)::int FROM crm.etapas WHERE orden = 1),
+  (SELECT count(DISTINCT embudo)::int FROM crm.etapas),
+  'Cada embudo tiene su propio peldaño número 1: el orden ya no es único en toda la tabla'
 );
 
 -- --- La misma persona en dos embudos ---------------------------------
