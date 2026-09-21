@@ -232,7 +232,7 @@ VALUES ('b0700013-0000-0000-0000-000000000013',
         '11111111-1111-1111-1111-111111111111', now());
 
 SELECT is(
-  crm.reactivar_bots(3::smallint), 2,
+  crm.reactivar_bots(3), 2,
   'Caducan exactamente dos: el abandonado y el que solo miraron'
 );
 

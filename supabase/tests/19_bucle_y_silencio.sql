@@ -13,7 +13,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(10);
+SELECT plan(11);
 
 DELETE FROM crm.contactos;
 
@@ -90,6 +90,31 @@ SELECT is(
   (SELECT schedule FROM cron.job WHERE jobname = 'crm_cerrar_fantasmas'),
   '7 9 * * *',
   'Y como segunda línea, el cierre ya no cae en el minuto de la pasada'
+);
+
+-- --- Lo que los crones tienen AGENDADO, ¿se puede ejecutar? ----------
+-- Esta prueba nace de un fallo real: crm.reactivar_bots se declaró con
+-- `smallint` y su cron quedó como `SELECT crm.reactivar_bots(3)`, donde
+-- 3 es integer. Postgres no convierte integer → smallint al resolver la
+-- función, así que el cron falló CUATRO DÍAS seguidos sin que nadie se
+-- enterara — un cron que falla no avisa a nadie.
+--
+-- Y la prueba de entonces no lo vio porque llamaba con `3::smallint`:
+-- estaba escrita contra la implementación, no contra la llamada real.
+--
+-- Por eso esta ejecuta el comando EXACTO registrado en cron.job. Si
+-- alguien cambia una firma y deja el agendado atrás, se cae aquí.
+SELECT lives_ok(
+  $prueba$
+    DO $bloque$
+    DECLARE r record;
+    BEGIN
+      FOR r IN SELECT command FROM cron.job WHERE jobname LIKE 'crm%' LOOP
+        EXECUTE r.command;
+      END LOOP;
+    END $bloque$;
+  $prueba$,
+  'Todos los comandos que el CRM tiene agendados se pueden EJECUTAR de verdad'
 );
 
 -- =====================================================================
