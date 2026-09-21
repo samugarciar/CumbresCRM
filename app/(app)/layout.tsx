@@ -62,6 +62,9 @@ export default async function LayoutApp({
             <Link href="/plantillas" className="hover:text-foreground">
               Plantillas
             </Link>
+            <Link href="/lineas" className="hover:text-foreground">
+              Líneas
+            </Link>
           </nav>
         </div>
 

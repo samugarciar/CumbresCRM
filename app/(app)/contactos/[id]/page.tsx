@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, MessageCircle, PhoneOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { canalConfigurado } from '@/lib/canal';
 import { iniciales, telefonoLegible, tiempoRelativo, enlaceWhatsApp } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
 import { NotaNueva } from './NotaNueva';
@@ -185,6 +186,8 @@ export default async function FichaContacto({
           <Historial
             actividades={timeline ?? []}
             vistoHasta={resumen?.visto_hasta ?? null}
+            contactoId={contacto.id}
+            canalListo={canalConfigurado()}
             ventanaCierraAt={ventanaCierraAt}
             ahora={ahora}
           />

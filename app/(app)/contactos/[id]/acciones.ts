@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { enviarPorCanal } from '@/lib/canal';
 
 export interface Resultado {
   ok: boolean;
@@ -225,5 +226,88 @@ export async function asignarLead(
   }
 
   revalidatePath(`/contactos/${contactoId}`);
+  return { ok: true };
+}
+
+const esquemaMensaje = z.object({
+  contactoId: z.string().uuid(),
+  texto: z.string().trim().min(1, 'El mensaje está vacío').max(4000),
+});
+
+/**
+ * Mandarle un mensaje a alguien por WhatsApp.
+ *
+ * TRES PASOS, Y EL ORDEN IMPORTA:
+ *  1. `crm.encolar_envio()` crea la fila y APLICA LA REGLA: revienta si
+ *     es texto libre fuera de la ventana de 24 h. Primero, porque es la
+ *     comprobación que no se puede saltar.
+ *  2. La plataforma manda de verdad y escribe el mensaje donde viven los
+ *     del bot, de donde el trigger de proyección lo trae al timeline.
+ *  3. La fila queda 'enviado' o 'fallido' — eso lo escribe la plataforma,
+ *     que es quien sabe qué contestó Meta.
+ *
+ * SI FALLA LA RED NO SE MARCA NADA COMO FALLIDO, y es deliberado: el
+ * mensaje puede haber salido igualmente. Decirle al asesor "falló" lo
+ * llevaría a reenviarlo, y el cliente lo recibiría dos veces. La fila se
+ * queda pendiente y el acuse de Meta la resuelve sola.
+ */
+export async function enviarMensaje(
+  contactoId: string,
+  texto: string
+): Promise<Resultado> {
+  const validado = esquemaMensaje.safeParse({ contactoId, texto });
+  if (!validado.success) {
+    return { ok: false, error: validado.error.issues[0].message };
+  }
+
+  const supabase = await createClient();
+
+  const { data: contacto } = await supabase
+    .schema('crm')
+    .from('contactos')
+    .select('inmobiliaria_id, telefono_e164')
+    .eq('id', validado.data.contactoId)
+    .single();
+
+  if (!contacto?.telefono_e164) {
+    return { ok: false, error: 'Esta persona no tiene un número al que escribirle.' };
+  }
+
+  // 1 · La regla, donde no se puede saltar.
+  const { data: envioId, error: errorCola } = await supabase
+    .schema('crm')
+    .rpc('encolar_envio', {
+      p_contacto_id: validado.data.contactoId,
+      p_cuerpo: validado.data.texto,
+    });
+
+  if (errorCola || !envioId) {
+    // 23514 es la violación del CHECK: fuera de la ventana de 24 h.
+    const fueraDeVentana = errorCola?.code === '23514';
+    return {
+      ok: false,
+      error: fueraDeVentana
+        ? 'Pasaron más de 24 horas desde su último mensaje: solo le llega una plantilla aprobada.'
+        : 'No se pudo preparar el envío.',
+    };
+  }
+
+  // 2 y 3 · Mandar, y que la plataforma anote el resultado.
+  const r = await enviarPorCanal({
+    inmobiliariaId: contacto.inmobiliaria_id,
+    telefono: contacto.telefono_e164,
+    texto: validado.data.texto,
+    envioId: envioId as string,
+  });
+
+  revalidatePath(`/contactos/${validado.data.contactoId}`);
+
+  if (!r.ok) {
+    return {
+      ok: false,
+      error: r.error ?? 'No se pudo enviar.',
+    };
+  }
+
   return { ok: true };
 }
