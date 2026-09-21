@@ -185,6 +185,8 @@ export default async function FichaContacto({
           <Historial
             actividades={timeline ?? []}
             vistoHasta={resumen?.visto_hasta ?? null}
+            ventanaCierraAt={ventanaCierraAt}
+            ahora={ahora}
           />
         </div>
 
