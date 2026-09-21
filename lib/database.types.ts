@@ -227,6 +227,30 @@ export type Database = {
           },
         ]
       }
+      embudos: {
+        Row: {
+          activo: boolean
+          bot_atiende: boolean
+          codigo: string
+          etiqueta: string
+          orden: number
+        }
+        Insert: {
+          activo?: boolean
+          bot_atiende?: boolean
+          codigo: string
+          etiqueta: string
+          orden: number
+        }
+        Update: {
+          activo?: boolean
+          bot_atiende?: boolean
+          codigo?: string
+          etiqueta?: string
+          orden?: number
+        }
+        Relationships: []
+      }
       envios: {
         Row: {
           canal: string | null
@@ -324,6 +348,7 @@ export type Database = {
           automatica: boolean
           codigo: string
           dias_pudricion: number | null
+          embudo: string
           etiqueta: string
           orden: number
         }
@@ -331,6 +356,7 @@ export type Database = {
           automatica?: boolean
           codigo: string
           dias_pudricion?: number | null
+          embudo?: string
           etiqueta: string
           orden: number
         }
@@ -338,10 +364,19 @@ export type Database = {
           automatica?: boolean
           codigo?: string
           dias_pudricion?: number | null
+          embudo?: string
           etiqueta?: string
           orden?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "etapas_embudo_fkey"
+            columns: ["embudo"]
+            isOneToOne: false
+            referencedRelation: "embudos"
+            referencedColumns: ["codigo"]
+          },
+        ]
       }
       eventos: {
         Row: {
@@ -459,6 +494,50 @@ export type Database = {
           },
         ]
       }
+      lineas: {
+        Row: {
+          activa: boolean
+          created_at: string
+          embudo: string
+          id: string
+          inmobiliaria_id: string
+          nombre: string
+          telefono_e164: string | null
+          updated_at: string
+          wa_phone_number_id: string | null
+        }
+        Insert: {
+          activa?: boolean
+          created_at?: string
+          embudo: string
+          id?: string
+          inmobiliaria_id: string
+          nombre: string
+          telefono_e164?: string | null
+          updated_at?: string
+          wa_phone_number_id?: string | null
+        }
+        Update: {
+          activa?: boolean
+          created_at?: string
+          embudo?: string
+          id?: string
+          inmobiliaria_id?: string
+          nombre?: string
+          telefono_e164?: string | null
+          updated_at?: string
+          wa_phone_number_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lineas_embudo_fkey"
+            columns: ["embudo"]
+            isOneToOne: false
+            referencedRelation: "embudos"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
       oportunidades: {
         Row: {
           asesor_id: string | null
@@ -466,6 +545,7 @@ export type Database = {
           cerrada_por: string | null
           contacto_id: string
           created_at: string
+          embudo: string
           escalado_at: string | null
           estado: string
           etapa: string
@@ -483,6 +563,7 @@ export type Database = {
           cerrada_por?: string | null
           contacto_id: string
           created_at?: string
+          embudo?: string
           escalado_at?: string | null
           estado?: string
           etapa?: string
@@ -500,6 +581,7 @@ export type Database = {
           cerrada_por?: string | null
           contacto_id?: string
           created_at?: string
+          embudo?: string
           escalado_at?: string | null
           estado?: string
           etapa?: string
@@ -532,6 +614,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_embudo_fkey"
+            columns: ["embudo"]
+            isOneToOne: false
+            referencedRelation: "embudos"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "oportunidades_etapa_del_embudo"
+            columns: ["embudo", "etapa"]
+            isOneToOne: false
+            referencedRelation: "etapas"
+            referencedColumns: ["embudo", "codigo"]
           },
           {
             foreignKeyName: "oportunidades_etapa_fkey"
@@ -1035,7 +1131,10 @@ export type Database = {
       }
     }
     Functions: {
-      abrir_oportunidad: { Args: { p_contacto_id: string }; Returns: string }
+      abrir_oportunidad: {
+        Args: { p_contacto_id: string; p_embudo?: string }
+        Returns: string
+      }
       asignar_lead: {
         Args: { p_asesor_id?: string; p_contacto_id: string }
         Returns: boolean
@@ -1191,6 +1290,15 @@ export type Database = {
           puntaje: number
           tipo_inmueble: string
           titulo: string
+        }[]
+      }
+      linea_por_numero: {
+        Args: { p_wa_phone_number_id: string }
+        Returns: {
+          bot_atiende: boolean
+          embudo: string
+          inmobiliaria_id: string
+          nombre: string
         }[]
       }
       marcar_envio_visto: { Args: { p_envio_id: string }; Returns: undefined }
