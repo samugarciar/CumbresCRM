@@ -52,6 +52,7 @@ export default async function FichaContacto({
     { data: plantillas },
     { data: ventanaCierraAt },
     { data: responsableFilas },
+    { data: botVuelveAt },
   ] = await Promise.all([
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
@@ -75,6 +76,9 @@ export default async function FichaContacto({
     crm.rpc('ventana_whatsapp', { p_contacto_id: id }),
     // Quién lleva esta conversación. Casi siempre nadie, todavía.
     crm.rpc('responsable_de', { p_contacto_id: id }),
+    // Cuándo vuelve el bot tras un relevo. La perilla vive en la base: si
+    // la ficha sumara las horas por su cuenta, mentiría el día que cambie.
+    crm.rpc('bot_vuelve_at', { p_contacto_id: id }),
   ]);
 
   // El resumen se lee ANTES de marcar como leído, para que el separador
@@ -159,6 +163,7 @@ export default async function FichaContacto({
             botActivo={contacto.bot_activo ?? true}
             botMotivo={contacto.bot_motivo}
             botCambiadoAt={contacto.bot_cambiado_at}
+            botVuelveAt={botVuelveAt}
             ventanaCierraAt={ventanaCierraAt}
             ahora={ahora}
             responsableNombre={responsable?.nombre ?? null}

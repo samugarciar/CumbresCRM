@@ -21,6 +21,7 @@ interface Props {
   botActivo: boolean;
   botMotivo: string | null;
   botCambiadoAt: string | null;
+  botVuelveAt: string | null;
   ventanaCierraAt: string | null;
   ahora: string;
   responsableNombre: string | null;
@@ -70,6 +71,8 @@ export function PanelDatos(props: Props) {
         activo={props.botActivo}
         motivo={props.botMotivo}
         cambiadoAt={props.botCambiadoAt}
+        vuelveAt={props.botVuelveAt}
+        ahora={props.ahora}
       />
 
       {/* Antes de escribir, no después de que falle. */}

@@ -233,6 +233,7 @@ export type Database = {
           bot_atiende: boolean
           codigo: string
           etiqueta: string
+          lineal: boolean
           orden: number
         }
         Insert: {
@@ -240,6 +241,7 @@ export type Database = {
           bot_atiende?: boolean
           codigo: string
           etiqueta: string
+          lineal?: boolean
           orden: number
         }
         Update: {
@@ -247,6 +249,7 @@ export type Database = {
           bot_atiende?: boolean
           codigo?: string
           etiqueta?: string
+          lineal?: boolean
           orden?: number
         }
         Relationships: []
@@ -497,36 +500,69 @@ export type Database = {
       lineas: {
         Row: {
           activa: boolean
+          conectada_at: string | null
+          contactos_solicitados_at: string | null
           created_at: string
           embudo: string
+          historial_completado_at: string | null
+          historial_error: string | null
+          historial_error_codigo: number | null
+          historial_progreso: number | null
+          historial_solicitado_at: string | null
           id: string
           inmobiliaria_id: string
+          modo: string | null
           nombre: string
+          suscripcion_verificada_at: string | null
           telefono_e164: string | null
+          token_secreto_id: string | null
           updated_at: string
           wa_phone_number_id: string | null
+          waba_id: string | null
         }
         Insert: {
           activa?: boolean
+          conectada_at?: string | null
+          contactos_solicitados_at?: string | null
           created_at?: string
           embudo: string
+          historial_completado_at?: string | null
+          historial_error?: string | null
+          historial_error_codigo?: number | null
+          historial_progreso?: number | null
+          historial_solicitado_at?: string | null
           id?: string
           inmobiliaria_id: string
+          modo?: string | null
           nombre: string
+          suscripcion_verificada_at?: string | null
           telefono_e164?: string | null
+          token_secreto_id?: string | null
           updated_at?: string
           wa_phone_number_id?: string | null
+          waba_id?: string | null
         }
         Update: {
           activa?: boolean
+          conectada_at?: string | null
+          contactos_solicitados_at?: string | null
           created_at?: string
           embudo?: string
+          historial_completado_at?: string | null
+          historial_error?: string | null
+          historial_error_codigo?: number | null
+          historial_progreso?: number | null
+          historial_solicitado_at?: string | null
           id?: string
           inmobiliaria_id?: string
+          modo?: string | null
           nombre?: string
+          suscripcion_verificada_at?: string | null
           telefono_e164?: string | null
+          token_secreto_id?: string | null
           updated_at?: string
           wa_phone_number_id?: string | null
+          waba_id?: string | null
         }
         Relationships: [
           {
@@ -1188,6 +1224,7 @@ export type Database = {
         Args: { p_inmobiliaria_id: string; p_telefono: string }
         Returns: boolean
       }
+      bot_vuelve_at: { Args: { p_contacto_id: string }; Returns: string }
       calidad_nombre: { Args: { p_nombre: string }; Returns: number }
       cambiar_bot: {
         Args: { p_activo: boolean; p_contacto_id: string }
@@ -1253,6 +1290,30 @@ export type Database = {
         }[]
       }
       completar_tarea: { Args: { p_tarea_id: string }; Returns: undefined }
+      conectar_linea: {
+        Args: {
+          p_embudo: string
+          p_inmobiliaria_id: string
+          p_modo: string
+          p_nombre?: string
+          p_telefono_e164?: string
+          p_token: string
+          p_wa_phone_number_id: string
+          p_waba_id: string
+        }
+        Returns: string
+      }
+      credencial_linea: {
+        Args: { p_wa_phone_number_id: string }
+        Returns: {
+          embudo: string
+          inmobiliaria_id: string
+          linea_id: string
+          modo: string
+          token: string
+          waba_id: string
+        }[]
+      }
       encolar_envio: {
         Args: {
           p_contacto_id: string
@@ -1263,6 +1324,10 @@ export type Database = {
         Returns: string
       }
       especificidad: { Args: { p_requerimiento_id: string }; Returns: number }
+      estado_sincronizacion: {
+        Args: { l: Database["crm"]["Tables"]["lineas"]["Row"] }
+        Returns: string
+      }
       frescura: { Args: { p_ultima: string }; Returns: number }
       identidades_de_conversacion: {
         Args: {
@@ -1387,6 +1452,7 @@ export type Database = {
       }
       reactivables_total: { Args: { p_dias?: number }; Returns: number }
       reactivar_bots: { Args: { p_dias?: number }; Returns: number }
+      reactivar_relevos: { Args: never; Returns: number }
       recalcular_oportunidad: {
         Args: { p_abrir?: boolean; p_contacto_id: string }
         Returns: boolean
@@ -1417,6 +1483,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      registrar_estado_linea: {
+        Args: {
+          p_error?: string
+          p_error_codigo?: number
+          p_evento: string
+          p_progreso?: number
+          p_wa_phone_number_id: string
+        }
+        Returns: boolean
+      }
       registrar_fallo: {
         Args: {
           p_error: string
@@ -1427,6 +1503,14 @@ export type Database = {
           p_tipo: string
         }
         Returns: undefined
+      }
+      registrar_relevo: {
+        Args: {
+          p_ocurrido_at?: string
+          p_telefono: string
+          p_wa_phone_number_id: string
+        }
+        Returns: boolean
       }
       reintentar_eventos: { Args: { p_limite?: number }; Returns: Json }
       render_plantilla: {
@@ -1501,9 +1585,20 @@ export type Database = {
           zona: string
         }[]
       }
+      tiempo_en_estado: {
+        Args: { p_embudo?: string }
+        Returns: {
+          cuantos: number
+          dias_maximo: number
+          dias_mediana: number
+          etapa: string
+          etiqueta: string
+        }[]
+      }
       variables_desconocidas: { Args: { p_cuerpo: string }; Returns: string[] }
       variables_disponibles: { Args: never; Returns: string[] }
       ventana_escalamiento: { Args: never; Returns: string }
+      ventana_relevo: { Args: never; Returns: string }
       ventana_whatsapp: { Args: { p_contacto_id: string }; Returns: string }
       zonas: {
         Args: never
@@ -1530,6 +1625,9 @@ export type Database = {
           inmobiliaria_id: string
           kommo_contact_id: string | null
           kommo_lead_id: string | null
+          referral: Json | null
+          referral_ctwa_clid: string | null
+          referral_source_id: string | null
           telefono: string
           updated_at: string
         }
@@ -1540,6 +1638,9 @@ export type Database = {
           inmobiliaria_id: string
           kommo_contact_id?: string | null
           kommo_lead_id?: string | null
+          referral?: Json | null
+          referral_ctwa_clid?: string | null
+          referral_source_id?: string | null
           telefono: string
           updated_at?: string
         }
@@ -1550,6 +1651,9 @@ export type Database = {
           inmobiliaria_id?: string
           kommo_contact_id?: string | null
           kommo_lead_id?: string | null
+          referral?: Json | null
+          referral_ctwa_clid?: string | null
+          referral_source_id?: string | null
           telefono?: string
           updated_at?: string
         }
@@ -1571,6 +1675,7 @@ export type Database = {
           herramientas_usadas: Json | null
           id: string
           rol: string
+          wa_message_id: string | null
         }
         Insert: {
           contenido: string
@@ -1579,6 +1684,7 @@ export type Database = {
           herramientas_usadas?: Json | null
           id?: string
           rol: string
+          wa_message_id?: string | null
         }
         Update: {
           contenido?: string
@@ -1587,6 +1693,7 @@ export type Database = {
           herramientas_usadas?: Json | null
           id?: string
           rol?: string
+          wa_message_id?: string | null
         }
         Relationships: [
           {
@@ -2359,18 +2466,21 @@ export type Database = {
           id: string
           nit: string
           nombre: string
+          wa_phone_number_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           nit: string
           nombre: string
+          wa_phone_number_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           nit?: string
           nombre?: string
+          wa_phone_number_id?: string | null
         }
         Relationships: []
       }
