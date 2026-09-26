@@ -42,10 +42,18 @@ SELECT ok(
   'Un asesor —no admin— puede callar al bot en su lead'
 );
 
+-- Quien pregunta si el bot puede contestar es la plataforma, con
+-- service_role, no el asesor. Desde 20260926170001 una sesión de usuario
+-- ya no puede preguntarlo: con el id de otra inmobiliaria, preguntaría
+-- por sus leads.
+SET LOCAL ROLE service_role;
+
 SELECT ok(
   NOT crm.bot_puede_responder('11111111-1111-1111-1111-111111111111', '+573001112221'),
   'Y el bot deja de responderle'
 );
+
+SET LOCAL ROLE authenticated;
 
 SELECT is(
   (SELECT bot_cambiado_por FROM crm.contactos
@@ -79,6 +87,8 @@ SELECT ok(
   crm.cambiar_bot('b0700001-0000-0000-0000-000000000001', true),
   'Y se puede volver a encender'
 );
+
+SET LOCAL ROLE service_role;
 
 -- En sentencia aparte a propósito: bot_puede_responder es STABLE y
 -- dentro de la misma sentencia vería la instantánea de antes del cambio.
