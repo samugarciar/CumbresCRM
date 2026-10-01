@@ -37,7 +37,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.cerrar_oportunidad(uuid, text, text, uuid, text)'),
   ('crm.coincidencias(smallint, int, int, uuid, smallint)'),
   ('crm.completar_tarea(uuid)'),
-  ('crm.encolar_envio(uuid, text, uuid, uuid)'),
+  ('crm.encolar_envio(uuid, text, uuid, uuid, text)'),
   ('crm.inmuebles_para(uuid, smallint, int, boolean)'),
   ('crm.marcar_leido(uuid)'),
   ('crm.marcar_opt_out(uuid, text)'),
@@ -50,7 +50,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.resumen_contacto(uuid)'),
   ('crm.tablero(int, text, uuid, boolean, text)'),
   ('crm.variables_disponibles()'),
-  ('crm.ventana_whatsapp(uuid)'),
+  ('crm.ventana_whatsapp(uuid, text)'),
   ('crm.zonas()'),
 
   -- Lo que esas pantallas llaman por dentro. Corre con el rol de quien
@@ -59,7 +59,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.frescura(timestamptz)'),
   ('crm.igual_zona(text, text)'),
   ('crm.normaliza_zonas(text[])'),
-  ('crm.puede_escribir_libre(uuid)'),
+  ('crm.puede_escribir_libre(uuid, text)'),
   ('crm.publico_marketing(int, int)'),
   ('crm.puntaje(text, text[], text[], text, numeric, smallint, text, text, text, text, numeric, int, text)'),
   ('crm.ventana_escalamiento()'),
