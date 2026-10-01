@@ -39,8 +39,17 @@
 -- final—: se borran las viejas en la misma transacción para no dejar dos.
 -- =====================================================================
 
+-- crm.actividades recibe una fila por cada mensaje de WhatsApp. Añadir
+-- una columna sin valor por defecto es instantáneo, pero necesita la
+-- tabla un momento en exclusiva: si alguien la tiene ocupada, mejor que
+-- la migración falle a los 5 s y se reintente que dejar la proyección
+-- esperando detrás de ella.
+SET lock_timeout = '5s';
+
 ALTER TABLE crm.actividades
   ADD COLUMN wa_phone_number_id text;
+
+RESET lock_timeout;
 
 COMMENT ON COLUMN crm.actividades.wa_phone_number_id IS
   'phone_number_id de Meta del número por el que entró o salió el mensaje. NULL en lo anterior a que la plataforma lo mande: cuenta para todas las líneas.';
