@@ -119,6 +119,7 @@ export type Database = {
         Row: {
           asesor_id: string | null
           bot_activo: boolean
+          bot_caduca: boolean
           bot_cambiado_at: string | null
           bot_cambiado_por: string | null
           bot_motivo: string | null
@@ -148,6 +149,7 @@ export type Database = {
         Insert: {
           asesor_id?: string | null
           bot_activo?: boolean
+          bot_caduca?: boolean
           bot_cambiado_at?: string | null
           bot_cambiado_por?: string | null
           bot_motivo?: string | null
@@ -177,6 +179,7 @@ export type Database = {
         Update: {
           asesor_id?: string | null
           bot_activo?: boolean
+          bot_caduca?: boolean
           bot_cambiado_at?: string | null
           bot_cambiado_por?: string | null
           bot_motivo?: string | null
@@ -1451,7 +1454,7 @@ export type Database = {
         }[]
       }
       reactivables_total: { Args: { p_dias?: number }; Returns: number }
-      reactivar_bots: { Args: { p_dias?: number }; Returns: number }
+      reactivar_bots: { Args: never; Returns: number }
       reactivar_relevos: { Args: never; Returns: number }
       recalcular_oportunidad: {
         Args: { p_abrir?: boolean; p_contacto_id: string }
@@ -1599,6 +1602,7 @@ export type Database = {
       variables_disponibles: { Args: never; Returns: string[] }
       ventana_escalamiento: { Args: never; Returns: string }
       ventana_relevo: { Args: never; Returns: string }
+      ventana_silencio_escalamiento: { Args: never; Returns: string }
       ventana_whatsapp: { Args: { p_contacto_id: string }; Returns: string }
       zonas: {
         Args: never

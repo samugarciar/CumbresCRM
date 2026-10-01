@@ -201,8 +201,9 @@ SELECT ok(
 -- La caducidad del silencio
 --
 -- Regla aprobada: el silencio MANUAL no caduca nunca; el AUTOMÁTICO
--- caduca a los 3 días si nadie del equipo hizo nada. Y "hacer algo" son
--- actos deliberados: abrir la ficha NO cuenta, porque se marca sola al
+-- caduca al vencer crm.ventana_silencio_escalamiento() —6 h desde el
+-- 1/oct/2026, antes 3 días— si nadie del equipo hizo nada. Y "hacer algo"
+-- son actos deliberados: abrir la ficha NO cuenta, porque se marca sola al
 -- entrar y significa "le eché un ojo", no "lo atendí".
 -- =====================================================================
 INSERT INTO crm.contactos
@@ -225,10 +226,11 @@ VALUES
   ('b0700013-0000-0000-0000-000000000013',
    '11111111-1111-1111-1111-111111111111', 'Solo lo miraron', '+573001115554',
    false, 'escalamiento', now() - interval '5 days'),
-  -- Escaló ayer. Todavía no le toca, pero ya tiene que avisar.
+  -- Escaló hace dos horas: dentro de la ventana. Todavía no le toca, pero
+  -- ya tiene que avisar.
   ('b0700014-0000-0000-0000-000000000014',
    '11111111-1111-1111-1111-111111111111', 'Recién callado', '+573001115555',
-   false, 'escalamiento', now() - interval '1 day');
+   false, 'escalamiento', now() - interval '2 hours');
 
 INSERT INTO crm.actividades
   (inmobiliaria_id, tipo, origen, contacto_id, cuerpo, creado_por, ocurrido_at)
@@ -242,7 +244,7 @@ VALUES ('b0700013-0000-0000-0000-000000000013',
         '11111111-1111-1111-1111-111111111111', now());
 
 SELECT is(
-  crm.reactivar_bots(3), 2,
+  crm.reactivar_bots(), 2,
   'Caducan exactamente dos: el abandonado y el que solo miraron'
 );
 
@@ -278,7 +280,7 @@ SELECT is(
   'Y que el bot recupere la voz queda escrito: nadie debería tener que adivinar por qué volvió'
 );
 
--- --- Avisar desde el primer día --------------------------------------
+-- --- Avisar desde el primer momento ----------------------------------
 SET LOCAL "request.jwt.claims" = '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","role":"authenticated"}';
 SET LOCAL ROLE authenticated;
 
@@ -287,7 +289,7 @@ SELECT is(
     WHERE tipo = 'bot_callado'
       AND contacto_id = 'b0700014-0000-0000-0000-000000000014'),
   1,
-  'El que lleva un día callado ya sale en «Mi día»: la reactivación es la red, no la sorpresa'
+  'El que lleva dos horas callado ya sale en «Mi día»: la reactivación es la red, no la sorpresa'
 );
 
 SELECT is(
