@@ -12,7 +12,10 @@ export default async function PaginaLineas() {
 
   const [{ data: embudos }, { data: lineas }, { data: perfil }] = await Promise.all([
     crm.from('embudos').select('codigo, etiqueta, bot_atiende').eq('activo', true).order('orden'),
-    crm.from('lineas').select('embudo, nombre, wa_phone_number_id, telefono_e164').eq('activa', true),
+    crm
+      .from('lineas')
+      .select('embudo, nombre, wa_phone_number_id, telefono_e164, token_invalido_at, token_error_codigo, token_error')
+      .eq('activa', true),
     user
       ? supabase.from('usuarios').select('rol').eq('id', user.id).single()
       : Promise.resolve({ data: null }),

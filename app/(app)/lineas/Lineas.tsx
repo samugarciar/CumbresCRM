@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Check, Loader2, Pencil, Phone, PhoneOff } from 'lucide-react';
+import { Check, KeyRound, Loader2, Pencil, Phone, PhoneOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { fechaLarga } from '@/lib/formato';
 import { guardarLinea } from './acciones';
 
 export interface Embudo {
@@ -18,6 +19,11 @@ export interface Linea {
   nombre: string;
   wa_phone_number_id: string | null;
   telefono_e164: string | null;
+  /** Desde cuándo Meta rechaza el token (el primer rechazo). Lo anota la plataforma. */
+  token_invalido_at: string | null;
+  token_error_codigo: number | null;
+  /** El mensaje de Meta, con cualquier cosa con forma de token ya retirada en la base. */
+  token_error: string | null;
 }
 
 /**
@@ -87,6 +93,10 @@ function Fila({
   const [guardando, iniciar] = useTransition();
 
   const conectada = Boolean(linea?.wa_phone_number_id);
+  // Una línea con el token rechazado sigue "conectada" en el sentido de
+  // que tiene número, pero no sale ni entra nada. Es lo primero que tiene
+  // que verse, por encima del estado normal.
+  const tokenCaido = Boolean(linea?.token_invalido_at);
 
   const guardar = () => {
     setError(null);
@@ -103,20 +113,49 @@ function Fila({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-medium">{embudo.etiqueta}</h2>
-            <span
-              className={`inline-flex items-center gap-1 rounded-4xl px-2 py-0.5 text-xs font-medium ${
-                conectada ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
-              }`}
-            >
-              {conectada ? <Phone className="size-3" /> : <PhoneOff className="size-3" />}
-              {conectada ? 'Conectada' : 'Sin conectar'}
-            </span>
+            {tokenCaido ? (
+              <span className="inline-flex items-center gap-1 rounded-4xl bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                <KeyRound className="size-3" />
+                Meta rechaza el token
+              </span>
+            ) : (
+              <span
+                className={`inline-flex items-center gap-1 rounded-4xl px-2 py-0.5 text-xs font-medium ${
+                  conectada ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
+                }`}
+              >
+                {conectada ? <Phone className="size-3" /> : <PhoneOff className="size-3" />}
+                {conectada ? 'Conectada' : 'Sin conectar'}
+              </span>
+            )}
             {embudo.bot_atiende && (
               <span className="rounded-4xl bg-primary/10 px-2 py-0.5 text-xs text-primary">
                 el bot contesta aquí
               </span>
             )}
           </div>
+
+          {tokenCaido && (
+            <div role="alert" className="mt-2 max-w-[60ch] text-sm text-destructive">
+              <p>
+                Desde el {fechaLarga(linea!.token_invalido_at)} Meta no acepta la
+                credencial de esta línea: <b>no sale ni entra ningún mensaje</b> por
+                este número. Se arregla volviendo a conectarlo con Meta.
+              </p>
+              {(linea!.token_error_codigo !== null || linea!.token_error) && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Meta respondió
+                  {linea!.token_error_codigo !== null && (
+                    <>
+                      {' '}
+                      <span className="font-mono">{linea!.token_error_codigo}</span>
+                    </>
+                  )}
+                  {linea!.token_error && <>: «{linea!.token_error}»</>}
+                </p>
+              )}
+            </div>
+          )}
 
           {conectada ? (
             <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
