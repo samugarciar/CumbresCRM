@@ -244,6 +244,83 @@ export type Database = {
           },
         ]
       }
+      contactos_importados: {
+        Row: {
+          contacto_id: string | null
+          id: string
+          inmobiliaria_id: string
+          linea_id: string
+          meta_at: string | null
+          nombre: string | null
+          nombre_corto: string | null
+          promovido_at: string | null
+          promovido_como: string | null
+          promovido_por: string | null
+          recibido_at: string
+          telefono_crudo: string
+          telefono_e164: string | null
+        }
+        Insert: {
+          contacto_id?: string | null
+          id?: string
+          inmobiliaria_id: string
+          linea_id: string
+          meta_at?: string | null
+          nombre?: string | null
+          nombre_corto?: string | null
+          promovido_at?: string | null
+          promovido_como?: string | null
+          promovido_por?: string | null
+          recibido_at?: string
+          telefono_crudo: string
+          telefono_e164?: string | null
+        }
+        Update: {
+          contacto_id?: string | null
+          id?: string
+          inmobiliaria_id?: string
+          linea_id?: string
+          meta_at?: string | null
+          nombre?: string | null
+          nombre_corto?: string | null
+          promovido_at?: string | null
+          promovido_como?: string | null
+          promovido_por?: string | null
+          recibido_at?: string
+          telefono_crudo?: string
+          telefono_e164?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contactos_importados_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "contactos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contactos_importados_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
+          },
+          {
+            foreignKeyName: "contactos_importados_linea_id_fkey"
+            columns: ["linea_id"]
+            isOneToOne: false
+            referencedRelation: "lineas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contactos_importados_promovido_por_fkey"
+            columns: ["promovido_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       embudos: {
         Row: {
           activo: boolean
