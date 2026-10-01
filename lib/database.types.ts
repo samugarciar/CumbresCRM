@@ -464,6 +464,56 @@ export type Database = {
           },
         ]
       }
+      intentos_incorporacion: {
+        Row: {
+          embudo: string
+          error: Json | null
+          error_codigo: string | null
+          id: string
+          inmobiliaria_id: string
+          ocurrido_at: string
+          registrado_at: string
+          resultado: string
+          token_retirado: boolean
+          wa_phone_number_id: string | null
+          waba_id: string | null
+        }
+        Insert: {
+          embudo: string
+          error?: Json | null
+          error_codigo?: string | null
+          id?: string
+          inmobiliaria_id: string
+          ocurrido_at?: string
+          registrado_at?: string
+          resultado: string
+          token_retirado?: boolean
+          wa_phone_number_id?: string | null
+          waba_id?: string | null
+        }
+        Update: {
+          embudo?: string
+          error?: Json | null
+          error_codigo?: string | null
+          id?: string
+          inmobiliaria_id?: string
+          ocurrido_at?: string
+          registrado_at?: string
+          resultado?: string
+          token_retirado?: boolean
+          wa_phone_number_id?: string | null
+          waba_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intentos_incorporacion_embudo_fkey"
+            columns: ["embudo"]
+            isOneToOne: false
+            referencedRelation: "embudos"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
       lecturas: {
         Row: {
           contacto_id: string
@@ -504,6 +554,7 @@ export type Database = {
         Row: {
           activa: boolean
           conectada_at: string | null
+          contactos_request_id: string | null
           contactos_solicitados_at: string | null
           created_at: string
           embudo: string
@@ -511,6 +562,7 @@ export type Database = {
           historial_error: string | null
           historial_error_codigo: number | null
           historial_progreso: number | null
+          historial_request_id: string | null
           historial_solicitado_at: string | null
           id: string
           inmobiliaria_id: string
@@ -526,6 +578,7 @@ export type Database = {
         Insert: {
           activa?: boolean
           conectada_at?: string | null
+          contactos_request_id?: string | null
           contactos_solicitados_at?: string | null
           created_at?: string
           embudo: string
@@ -533,6 +586,7 @@ export type Database = {
           historial_error?: string | null
           historial_error_codigo?: number | null
           historial_progreso?: number | null
+          historial_request_id?: string | null
           historial_solicitado_at?: string | null
           id?: string
           inmobiliaria_id: string
@@ -548,6 +602,7 @@ export type Database = {
         Update: {
           activa?: boolean
           conectada_at?: string | null
+          contactos_request_id?: string | null
           contactos_solicitados_at?: string | null
           created_at?: string
           embudo?: string
@@ -555,6 +610,7 @@ export type Database = {
           historial_error?: string | null
           historial_error_codigo?: number | null
           historial_progreso?: number | null
+          historial_request_id?: string | null
           historial_solicitado_at?: string | null
           id?: string
           inmobiliaria_id?: string
@@ -1332,6 +1388,7 @@ export type Database = {
         Returns: string
       }
       frescura: { Args: { p_ultima: string }; Returns: number }
+      frescura_relevo: { Args: never; Returns: string }
       identidades_de_conversacion: {
         Args: {
           p_kommo_contact: string
@@ -1492,6 +1549,7 @@ export type Database = {
           p_error_codigo?: number
           p_evento: string
           p_progreso?: number
+          p_request_id?: string
           p_wa_phone_number_id: string
         }
         Returns: boolean
@@ -1506,6 +1564,19 @@ export type Database = {
           p_tipo: string
         }
         Returns: undefined
+      }
+      registrar_intento_incorporacion: {
+        Args: {
+          p_embudo: string
+          p_error?: Json
+          p_error_codigo?: string
+          p_inmobiliaria_id: string
+          p_ocurrido_at?: string
+          p_resultado: string
+          p_wa_phone_number_id?: string
+          p_waba_id?: string
+        }
+        Returns: string
       }
       registrar_relevo: {
         Args: {
