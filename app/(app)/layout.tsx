@@ -59,6 +59,9 @@ export default async function LayoutApp({
             <Link href="/reactivacion" className="hover:text-foreground">
               Reactivación
             </Link>
+            <Link href="/bot-callado" className="hover:text-foreground">
+              Bot callado
+            </Link>
             <Link href="/plantillas" className="hover:text-foreground">
               Plantillas
             </Link>
