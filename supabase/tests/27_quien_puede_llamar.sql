@@ -64,6 +64,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.puntaje(text, text[], text[], text, numeric, smallint, text, text, text, text, numeric, int, text)'),
   ('crm.ventana_escalamiento()'),
   ('crm.ventana_relevo()'),
+  ('crm.ventana_silencio_escalamiento()'),
 
   -- Lo que Postgres evalúa con el rol del usuario sin que nadie lo llame
   ('crm.variables_desconocidas(text)'),       -- el CHECK de crm.plantillas
@@ -146,10 +147,10 @@ SET LOCAL "request.jwt.claims" = '{"sub":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
 SET LOCAL ROLE authenticated;
 
 SELECT throws_ok(
-  $$SELECT crm.reactivar_bots(0)$$,
+  $$SELECT crm.reactivar_bots()$$,
   '42501',
   NULL,
-  'La función del cron ya no se llama desde una sesión: antes, con un 0, despertaba el bot en los leads escalados de TODAS las inmobiliarias'
+  'La función del cron no se llama desde una sesión: despertaría el bot en los leads escalados de TODAS las inmobiliarias'
 );
 
 SELECT throws_ok(
