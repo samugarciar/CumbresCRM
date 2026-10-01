@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { enviarPorCanal } from '@/lib/canal';
+import { lineaDeEnvio } from './lineaDeEnvio';
 
 export interface Resultado {
   ok: boolean;
@@ -232,6 +233,8 @@ export async function asignarLead(
 const esquemaMensaje = z.object({
   contactoId: z.string().uuid(),
   texto: z.string().trim().min(1, 'El mensaje está vacío').max(4000),
+  // El embudo cuya línea eligió la caja. Opcional: sin él, manda la regla.
+  embudo: z.string().regex(/^[a-z_]{1,40}$/).optional(),
 });
 
 /**
@@ -250,12 +253,17 @@ const esquemaMensaje = z.object({
  * mensaje puede haber salido igualmente. Decirle al asesor "falló" lo
  * llevaría a reenviarlo, y el cliente lo recibiría dos veces. La fila se
  * queda pendiente y el acuse de Meta la resuelve sola.
+ *
+ * LA LÍNEA se recalcula aquí con la misma regla que enseña la caja. El
+ * embudo que manda el navegador solo sirve para elegir entre las líneas
+ * que la regla permite; cualquier otro se rechaza.
  */
 export async function enviarMensaje(
   contactoId: string,
-  texto: string
+  texto: string,
+  embudo?: string
 ): Promise<Resultado> {
-  const validado = esquemaMensaje.safeParse({ contactoId, texto });
+  const validado = esquemaMensaje.safeParse({ contactoId, texto, embudo });
   if (!validado.success) {
     return { ok: false, error: validado.error.issues[0].message };
   }
@@ -271,6 +279,23 @@ export async function enviarMensaje(
 
   if (!contacto?.telefono_e164) {
     return { ok: false, error: 'Esta persona no tiene un número al que escribirle.' };
+  }
+
+  // 0 · Por qué línea. Antes de encolar: un envío por una línea caída no
+  // debe dejar ni la fila.
+  const { opciones } = await lineaDeEnvio(validado.data.contactoId);
+  const linea = validado.data.embudo
+    ? opciones.find((l) => l.embudo === validado.data.embudo)
+    : opciones[0];
+
+  if (validado.data.embudo && !linea) {
+    return { ok: false, error: 'Esa línea no corresponde a esta conversación. Recarga la ficha.' };
+  }
+  if (linea?.token_invalido_at) {
+    return {
+      ok: false,
+      error: `Meta rechaza la credencial de la línea ${linea.nombre}: no saldría. Hay que reconectarla.`,
+    };
   }
 
   // 1 · La regla, donde no se puede saltar.
@@ -298,6 +323,10 @@ export async function enviarMensaje(
     telefono: contacto.telefono_e164,
     texto: validado.data.texto,
     envioId: envioId as string,
+    // Sin línea conectada no se manda el campo: la plataforma usa su número.
+    desde: linea
+      ? { waPhoneNumberId: linea.wa_phone_number_id, embudo: linea.embudo }
+      : undefined,
   });
 
   revalidatePath(`/contactos/${validado.data.contactoId}`);

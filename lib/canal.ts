@@ -11,6 +11,13 @@ import 'server-only';
  *
  * Todo el acoplamiento entre los dos repos vive en este fichero. Si algún
  * día el canal se muda, se cambia aquí y en ningún otro sitio.
+ *
+ * DESDE QUÉ LÍNEA (1 oct 2026, antes del paso 5)
+ * Con una línea por embudo, el CRM dice por cuál quiere mandar: `desde`,
+ * con el `phone_number_id` de Meta —la misma llave que usa
+ * crm.credencial_linea()— y el embudo. Es OPCIONAL y la plataforma
+ * todavía no lo lee: hoy manda por su número de siempre. El contrato de
+ * lo que tendrá que hacer con él está en la nota 9 del vault.
  */
 
 export interface ResultadoCanal {
@@ -31,6 +38,11 @@ export async function enviarPorCanal(opciones: {
   telefono: string;
   texto: string;
   envioId: string;
+  /** Por qué línea mandar. Sin línea conectada, se omite y la plataforma usa la suya. */
+  desde?: {
+    waPhoneNumberId: string;
+    embudo: string;
+  };
   plantilla?: {
     nombre_meta: string;
     idioma: string;
@@ -58,6 +70,12 @@ export async function enviarPorCanal(opciones: {
         telefono: opciones.telefono,
         texto: opciones.texto,
         envio_id: opciones.envioId,
+        // JSON.stringify omite las claves undefined: sin línea, el campo
+        // no viaja y la plataforma ve exactamente lo de antes.
+        desde: opciones.desde && {
+          wa_phone_number_id: opciones.desde.waPhoneNumberId,
+          embudo: opciones.desde.embudo,
+        },
         plantilla: opciones.plantilla,
       }),
     });

@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Check, Copy, Loader2, Lock, SendHorizontal } from 'lucide-react';
+import { Check, Copy, KeyRound, Loader2, Lock, Phone, SendHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { telefonoLegible } from '@/lib/formato';
+import type { EleccionLinea } from '@/lib/lineas';
 import { enviarMensaje } from './acciones';
 
 /**
@@ -24,6 +26,10 @@ import { enviarMensaje } from './acciones';
  * Mientras el número siga en Kommo, `canalListo` es false y el botón dice
  * por qué. Encenderlo antes sería un botón que dice "enviado" sobre algo
  * que nadie entregó.
+ *
+ * Y SALE POR UNA LÍNEA CONCRETA
+ * La del embudo de la persona (lib/lineas.ts). Si está en dos embudos con
+ * línea, se elige; si la línea tiene el token rechazado, no se manda.
  */
 export function CajaDeEscribir({
   contactoId,
@@ -31,6 +37,7 @@ export function CajaDeEscribir({
   cierraAt,
   nuncaEscribio,
   canalListo,
+  linea,
   ahora,
 }: {
   contactoId: string;
@@ -38,9 +45,13 @@ export function CajaDeEscribir({
   cierraAt: string | null;
   nuncaEscribio: boolean;
   canalListo: boolean;
+  linea: EleccionLinea;
   ahora: string;
 }) {
   const [texto, setTexto] = useState('');
+  const [embudo, setEmbudo] = useState(linea.opciones[0]?.embudo);
+  const elegida = linea.opciones.find((l) => l.embudo === embudo) ?? null;
+  const lineaCaida = Boolean(elegida?.token_invalido_at);
   const [copiado, setCopiado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
@@ -67,7 +78,7 @@ export function CajaDeEscribir({
   const enviar = () => {
     setError(null);
     iniciar(async () => {
-      const r = await enviarMensaje(contactoId, texto);
+      const r = await enviarMensaje(contactoId, texto, elegida?.embudo);
       if (r.ok) {
         // Se vacía solo si salió. Si falló, el texto se queda: volver a
         // escribirlo por un error nuestro es la peor forma de perderlo.
@@ -126,6 +137,50 @@ export function CajaDeEscribir({
         disabled={enviando}
       />
 
+      {elegida && (
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+          <Phone className="size-3" />
+          {linea.opciones.length > 1 ? (
+            <>
+              <label htmlFor={`linea-${contactoId}`}>Sale por la línea</label>
+              <select
+                id={`linea-${contactoId}`}
+                value={elegida.embudo}
+                onChange={(e) => setEmbudo(e.target.value)}
+                disabled={enviando}
+                className="rounded-md border bg-background px-1.5 py-0.5 text-xs text-foreground"
+              >
+                {linea.opciones.map((l) => (
+                  <option key={l.embudo} value={l.embudo}>
+                    {l.nombre}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <span>
+              Sale por la línea <b className="font-medium text-foreground">{elegida.nombre}</b>
+            </span>
+          )}
+          {elegida.telefono_e164 && (
+            <span className="tabular">· {telefonoLegible(elegida.telefono_e164)}</span>
+          )}
+          {linea.porDefecto && (
+            <span>· no tiene una oportunidad abierta, así que va por esta</span>
+          )}
+        </div>
+      )}
+
+      {lineaCaida && (
+        <p role="alert" className="flex items-start gap-1.5 text-sm text-destructive">
+          <KeyRound className="mt-0.5 size-3.5 shrink-0" />
+          <span>
+            Meta rechaza la credencial de esta línea: el mensaje no saldría. Hay que
+            reconectarla en <Link href="/lineas" className="underline">Líneas</Link>.
+          </span>
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">
           {horas >= 1
@@ -147,7 +202,7 @@ export function CajaDeEscribir({
           <Button
             size="sm"
             onClick={enviar}
-            disabled={!canalListo || !texto.trim() || enviando}
+            disabled={!canalListo || lineaCaida || !texto.trim() || enviando}
             title={
               canalListo
                 ? 'Enviar por WhatsApp'
