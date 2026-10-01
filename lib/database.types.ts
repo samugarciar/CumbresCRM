@@ -68,6 +68,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "actividades_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
+          },
+          {
             foreignKeyName: "actividades_creado_por_fkey"
             columns: ["creado_por"]
             isOneToOne: false
@@ -228,6 +235,13 @@ export type Database = {
             referencedRelation: "contactos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contactos_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
+          },
         ]
       }
       embudos: {
@@ -325,6 +339,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
           },
           {
             foreignKeyName: "envios_enviado_por_fkey"
@@ -462,6 +483,13 @@ export type Database = {
             referencedRelation: "contactos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "identidades_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
+          },
         ]
       }
       intentos_incorporacion: {
@@ -540,6 +568,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lecturas_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
           },
           {
             foreignKeyName: "lecturas_usuario_id_fkey"
@@ -720,6 +755,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "oportunidades_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
+          },
+          {
             foreignKeyName: "oportunidades_embudo_fkey"
             columns: ["embudo"]
             isOneToOne: false
@@ -859,6 +901,13 @@ export type Database = {
             referencedRelation: "contactos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "requerimientos_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
+          },
         ]
       }
       tareas: {
@@ -909,6 +958,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tareas_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
           },
           {
             foreignKeyName: "tareas_creado_por_fkey"
@@ -1022,6 +1078,31 @@ export type Database = {
           telefono?: string | null
         }
         Relationships: []
+      }
+      v_bot_callado: {
+        Row: {
+          atendido: boolean | null
+          bot_caduca: boolean | null
+          callado_desde: string | null
+          callado_por: string | null
+          callado_por_nombre: string | null
+          contacto_id: string | null
+          inmobiliaria_id: string | null
+          motivo: string | null
+          nombre: string | null
+          telefono_e164: string | null
+          ultimo_entrante_at: string | null
+          vuelve_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contactos_bot_cambiado_por_fkey"
+            columns: ["callado_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_citas: {
         Row: {
@@ -1187,6 +1268,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "oportunidades_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
+          },
+          {
             foreignKeyName: "oportunidades_etapa_fkey"
             columns: ["etapa"]
             isOneToOne: false
@@ -1223,6 +1311,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actividades_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
           },
           {
             foreignKeyName: "actividades_inmueble_id_fkey"
