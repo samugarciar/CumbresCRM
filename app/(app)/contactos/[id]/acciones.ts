@@ -304,6 +304,9 @@ export async function enviarMensaje(
     .rpc('encolar_envio', {
       p_contacto_id: validado.data.contactoId,
       p_cuerpo: validado.data.texto,
+      // Con línea, la base mira la ventana de ESA línea: en WhatsApp la
+      // ventana es de un número con una persona, no de la persona.
+      p_wa_phone_number_id: linea?.wa_phone_number_id,
     });
 
   if (errorCola || !envioId) {
@@ -312,7 +315,9 @@ export async function enviarMensaje(
     return {
       ok: false,
       error: fueraDeVentana
-        ? 'Pasaron más de 24 horas desde su último mensaje: solo le llega una plantilla aprobada.'
+        ? linea
+          ? `Pasaron más de 24 horas desde su último mensaje a la línea ${linea.nombre}: por ahí solo le llega una plantilla aprobada.`
+          : 'Pasaron más de 24 horas desde su último mensaje: solo le llega una plantilla aprobada.'
         : 'No se pudo preparar el envío.',
     };
   }

@@ -23,6 +23,7 @@ export type Database = {
           ocurrido_at: string
           origen: string
           tipo: string
+          wa_phone_number_id: string | null
         }
         Insert: {
           cita_id?: string | null
@@ -37,6 +38,7 @@ export type Database = {
           ocurrido_at?: string
           origen?: string
           tipo: string
+          wa_phone_number_id?: string | null
         }
         Update: {
           cita_id?: string | null
@@ -51,6 +53,7 @@ export type Database = {
           ocurrido_at?: string
           origen?: string
           tipo?: string
+          wa_phone_number_id?: string | null
         }
         Relationships: [
           {
@@ -368,6 +371,7 @@ export type Database = {
           plantilla_id: string | null
           visto_at: string | null
           wa_message_id: string | null
+          wa_phone_number_id: string | null
         }
         Insert: {
           canal?: string | null
@@ -388,6 +392,7 @@ export type Database = {
           plantilla_id?: string | null
           visto_at?: string | null
           wa_message_id?: string | null
+          wa_phone_number_id?: string | null
         }
         Update: {
           canal?: string | null
@@ -408,6 +413,7 @@ export type Database = {
           plantilla_id?: string | null
           visto_at?: string | null
           wa_message_id?: string | null
+          wa_phone_number_id?: string | null
         }
         Relationships: [
           {
@@ -1560,6 +1566,7 @@ export type Database = {
           p_cuerpo: string
           p_inmueble_id?: string
           p_plantilla_id?: string
+          p_wa_phone_number_id?: string
         }
         Returns: string
       }
@@ -1650,7 +1657,7 @@ export type Database = {
         }[]
       }
       puede_escribir_libre: {
-        Args: { p_contacto_id: string }
+        Args: { p_contacto_id: string; p_wa_phone_number_id?: string }
         Returns: boolean
       }
       puntaje: {
@@ -1856,7 +1863,10 @@ export type Database = {
       ventana_escalamiento: { Args: never; Returns: string }
       ventana_relevo: { Args: never; Returns: string }
       ventana_silencio_escalamiento: { Args: never; Returns: string }
-      ventana_whatsapp: { Args: { p_contacto_id: string }; Returns: string }
+      ventana_whatsapp: {
+        Args: { p_contacto_id: string; p_wa_phone_number_id?: string }
+        Returns: string
+      }
       zonas: {
         Args: never
         Returns: {
