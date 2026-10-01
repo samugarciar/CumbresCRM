@@ -14,6 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { fechaLarga, tiempoRelativo } from '@/lib/formato';
 import { CajaDeEscribir } from './CajaDeEscribir';
+import type { EleccionLinea } from '@/lib/lineas';
 
 export interface Actividad {
   // Anulable porque viene de una vista: aunque crm.actividades.id sea
@@ -55,6 +56,7 @@ export function Historial({
   contactoId,
   ventanaCierraAt,
   canalListo,
+  linea,
   ahora,
 }: {
   actividades: Actividad[];
@@ -63,6 +65,8 @@ export function Historial({
   contactoId: string;
   /** Si el canal propio ya está montado: sin él, el avión no despega. */
   canalListo: boolean;
+  /** Por qué línea se le escribe, según sus embudos. */
+  linea: EleccionLinea;
   /** Cuándo se cierra la ventana de 24 h. NULL = nunca nos escribió. */
   ventanaCierraAt: string | null;
   /** El reloj, del servidor: React 19 prohíbe leerlo en el render. */
@@ -127,6 +131,7 @@ export function Historial({
           <CajaDeEscribir
             contactoId={contactoId}
             canalListo={canalListo}
+            linea={linea}
             ventanaAbierta={
               ventanaCierraAt !== null &&
               new Date(ventanaCierraAt).getTime() > new Date(ahora).getTime()

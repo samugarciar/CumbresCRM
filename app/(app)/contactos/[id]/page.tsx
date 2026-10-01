@@ -13,6 +13,7 @@ import { MarcarLeido } from './MarcarLeido';
 import { Recomendaciones, type Recomendable } from './Recomendaciones';
 import { UsarPlantilla, type PlantillaResumen } from './UsarPlantilla';
 import { TareaNueva } from '@/app/(app)/mi-dia/TareaNueva';
+import { lineaDeEnvio } from './lineaDeEnvio';
 
 export default async function FichaContacto({
   params,
@@ -53,6 +54,7 @@ export default async function FichaContacto({
     { data: ventanaCierraAt },
     { data: responsableFilas },
     { data: botVuelveAt },
+    linea,
   ] = await Promise.all([
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
@@ -79,6 +81,8 @@ export default async function FichaContacto({
     // Cuándo vuelve el bot tras un relevo. La perilla vive en la base: si
     // la ficha sumara las horas por su cuenta, mentiría el día que cambie.
     crm.rpc('bot_vuelve_at', { p_contacto_id: id }),
+    // Por qué línea se le escribe: la decide el embudo de sus oportunidades.
+    lineaDeEnvio(id),
   ]);
 
   // El resumen se lee ANTES de marcar como leído, para que el separador
@@ -193,6 +197,7 @@ export default async function FichaContacto({
             vistoHasta={resumen?.visto_hasta ?? null}
             contactoId={contacto.id}
             canalListo={canalConfigurado()}
+            linea={linea}
             ventanaCierraAt={ventanaCierraAt}
             ahora={ahora}
           />
