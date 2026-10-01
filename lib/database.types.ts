@@ -570,6 +570,9 @@ export type Database = {
           nombre: string
           suscripcion_verificada_at: string | null
           telefono_e164: string | null
+          token_error: string | null
+          token_error_codigo: number | null
+          token_invalido_at: string | null
           token_secreto_id: string | null
           updated_at: string
           wa_phone_number_id: string | null
@@ -594,6 +597,9 @@ export type Database = {
           nombre: string
           suscripcion_verificada_at?: string | null
           telefono_e164?: string | null
+          token_error?: string | null
+          token_error_codigo?: number | null
+          token_invalido_at?: string | null
           token_secreto_id?: string | null
           updated_at?: string
           wa_phone_number_id?: string | null
@@ -618,6 +624,9 @@ export type Database = {
           nombre?: string
           suscripcion_verificada_at?: string | null
           telefono_e164?: string | null
+          token_error?: string | null
+          token_error_codigo?: number | null
+          token_invalido_at?: string | null
           token_secreto_id?: string | null
           updated_at?: string
           wa_phone_number_id?: string | null
@@ -1631,6 +1640,7 @@ export type Database = {
           visto_hasta: string
         }[]
       }
+      retirar_token: { Args: { p_texto: string }; Returns: string }
       sembrar_plantillas: { Args: never; Returns: number }
       sincronizar_escalamientos: { Args: never; Returns: number }
       tablero: {
