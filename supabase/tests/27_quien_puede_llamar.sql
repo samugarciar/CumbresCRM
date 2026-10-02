@@ -7,17 +7,19 @@
 -- vez para todo el esquema.
 --
 -- LA LISTA BLANCA ES EL CONTRATO
--- Postgres da EXECUTE a PUBLIC en toda función nueva, y el privilegio por
--- defecto del esquema no puede quitárselo (lo explica
--- 20260926170001_crm_cerrar_funciones_de_sistema.sql). O sea: TODA
--- función nueva de crm nace ejecutable por authenticated, y esta prueba
--- se cae hasta que alguien decida quién la llama.
+-- Desde el 1 oct (20261001235001) las funciones nuevas NACEN CERRADAS:
+-- solo las ejecutan postgres y service_role. Antes nacían abiertas a
+-- todos, y esta prueba era la alarma de quien olvidaba un REVOKE. Ahora
+-- vigila lo contrario y lo mismo a la vez: que lo que authenticated
+-- puede ejecutar sea exactamente lo decidido, ni más ni menos.
 --
 -- Si se cae por una función que no está en la lista:
 --   · ¿La llama la app con la sesión del usuario? Tiene que ser SECURITY
---     INVOKER, y se añade abajo, en su grupo.
---   · ¿Es de sistema (cron, trigger, plataforma)? En su migración:
---       REVOKE ALL ON FUNCTION crm.x(...) FROM PUBLIC, anon, authenticated;
+--     INVOKER, llevar en su migración
+--       GRANT EXECUTE ON FUNCTION crm.x(...) TO authenticated;
+--     y añadirse abajo, en su grupo.
+--   · ¿Es de sistema (cron, trigger, plataforma)? No necesita nada: ya
+--     nace cerrada. Si se cae, alguien le dio un GRANT que sobra.
 --   · Añadirla a la lista sin mirar qué hace no arregla nada: solo
 --     silencia la alarma.
 -- =====================================================================

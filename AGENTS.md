@@ -32,6 +32,7 @@ El CRM comparte el proyecto de Supabase con `CumbresStateInventory`, pero:
 - Validación con zod en toda entrada de servidor, aunque el cliente valide.
 - Dinero en `numeric`, nunca `float`. Fechas en `timestamptz`.
 - Teléfonos normalizados a E.164 (`+57...`): es la llave natural del contacto.
+- **Las funciones nuevas nacen cerradas** (desde el 1 oct 2026): solo `postgres` y `service_role` pueden ejecutarlas. Una función que llama la app con la sesión del usuario lleva en su migración `GRANT EXECUTE ON FUNCTION crm.x(...) TO authenticated` y entra en la lista blanca de la prueba 27.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

@@ -1,0 +1,39 @@
+-- =====================================================================
+-- Las funciones nuevas nacen cerradas.
+--
+-- DECISIÓN DE SAMUEL (1 oct 2026)
+-- Hasta hoy, Postgres daba EXECUTE a PUBLIC en toda función nueva, así
+-- que cualquier usuario con sesión podía llamar desde el navegador a
+-- cualquier función nueva de `crm` hasta que alguien escribiera su
+-- REVOKE. El privilegio por defecto del ESQUEMA no lo arreglaba: solo
+-- suma al global, nunca resta (20260926170001). Lo único que cierra de
+-- verdad es la forma global, y esa es esta línea.
+--
+-- QUÉ CAMBIA, MEDIDO EN LOCAL EL 1 OCT ANTES DE DECIDIR
+--   · Función nueva en crm:    solo postgres y service_role (por el
+--                              privilegio de esquema de crm_esquema).
+--   · Función nueva en public: IGUAL que antes para anon, authenticated
+--                              y service_role, porque public ya se los da
+--                              explícitamente en su propio privilegio por
+--                              defecto. Solo pierden acceso los roles que
+--                              dependían de PUBLIC (bi_reader, pgbouncer,
+--                              cli_login_postgres), y solo en funciones
+--                              NUEVAS.
+--   · Funciones que ya existen: nada. Esto solo mira hacia adelante.
+--   · Extensiones nuevas: nada. Sus funciones siguen abiertas.
+--
+-- ESTO TOCA ALGO MÁS QUE `crm`, Y SE HACE A SABIENDAS
+-- El privilegio por defecto global no es de un esquema. Por eso lo
+-- decidió Samuel y queda anotado en la nota 9 para la plataforma: una
+-- función nueva de `public` que tenga que leer bi_reader necesita su
+-- GRANT explícito.
+--
+-- LA CONVENCIÓN DEL CRM SE INVIERTE
+-- Antes: toda función nacía abierta y las de sistema llevaban REVOKE.
+-- Ahora: toda función nace cerrada y las de PANTALLA llevan
+--   GRANT EXECUTE ON FUNCTION crm.x(...) TO authenticated;
+-- La prueba 27 sigue de guardia con su lista blanca: comprueba que lo
+-- que authenticated puede ejecutar es exactamente lo decidido.
+-- =====================================================================
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
