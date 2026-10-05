@@ -885,8 +885,10 @@ export type Database = {
           id: string
           idioma: string
           inmobiliaria_id: string
+          motivo_rechazo_meta: string | null
           nombre: string
           nombre_meta: string | null
+          tipo: string
           updated_at: string
         }
         Insert: {
@@ -899,8 +901,10 @@ export type Database = {
           id?: string
           idioma?: string
           inmobiliaria_id: string
+          motivo_rechazo_meta?: string | null
           nombre: string
           nombre_meta?: string | null
+          tipo?: string
           updated_at?: string
         }
         Update: {
@@ -913,8 +917,10 @@ export type Database = {
           id?: string
           idioma?: string
           inmobiliaria_id?: string
+          motivo_rechazo_meta?: string | null
           nombre?: string
           nombre_meta?: string | null
+          tipo?: string
           updated_at?: string
         }
         Relationships: [

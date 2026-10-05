@@ -13,7 +13,7 @@ export default async function PaginaPlantillas() {
     await Promise.all([
       crm
         .from('plantillas')
-        .select('id, nombre, cuerpo, categoria, estado_meta, nombre_meta')
+        .select('id, nombre, cuerpo, categoria, estado_meta, nombre_meta, tipo, idioma, motivo_rechazo_meta')
         .eq('activa', true)
         .order('nombre'),
       user
@@ -24,21 +24,19 @@ export default async function PaginaPlantillas() {
 
   if (error) {
     return (
-      <p className="text-sm text-destructive">
+      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
         No se pudieron cargar las plantillas: {error.message}
-      </p>
+      </div>
     );
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Plantillas</h1>
-        <p className="max-w-[62ch] text-sm text-muted-foreground">
-          Mensajes que se rellenan solos con los datos de cada persona.
-          Pasadas 24 horas desde el último mensaje del cliente, WhatsApp solo
-          deja mandar plantillas aprobadas — así que para reactivar a alguien
-          dormido no hay otro camino.
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Plantillas y Respuestas</h1>
+        <p className="max-w-[70ch] text-sm text-muted-foreground mt-1">
+          Gestiona las respuestas rápidas para el chat del día a día y las plantillas oficiales de WhatsApp
+          (HSM) sincronizadas con Meta para abrir conversaciones fuera de la ventana de 24 horas.
         </p>
       </header>
 

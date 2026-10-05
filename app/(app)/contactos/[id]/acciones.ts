@@ -235,6 +235,7 @@ const esquemaMensaje = z.object({
   texto: z.string().trim().min(1, 'El mensaje está vacío').max(4000),
   // El embudo cuya línea eligió la caja. Opcional: sin él, manda la regla.
   embudo: z.string().regex(/^[a-z_]{1,40}$/).optional(),
+  plantillaId: z.string().uuid().optional(),
 });
 
 /**
@@ -242,8 +243,8 @@ const esquemaMensaje = z.object({
  *
  * TRES PASOS, Y EL ORDEN IMPORTA:
  *  1. `crm.encolar_envio()` crea la fila y APLICA LA REGLA: revienta si
- *     es texto libre fuera de la ventana de 24 h. Primero, porque es la
- *     comprobación que no se puede saltar.
+ *     es texto libre fuera de la ventana de 24 h. Con plantillaId aprobada,
+ *     sí permite reactivar la conversación fuera de la ventana.
  *  2. La plataforma manda de verdad y escribe el mensaje donde viven los
  *     del bot, de donde el trigger de proyección lo trae al timeline.
  *  3. La fila queda 'enviado' o 'fallido' — eso lo escribe la plataforma,
@@ -261,9 +262,10 @@ const esquemaMensaje = z.object({
 export async function enviarMensaje(
   contactoId: string,
   texto: string,
-  embudo?: string
+  embudo?: string,
+  plantillaId?: string
 ): Promise<Resultado> {
-  const validado = esquemaMensaje.safeParse({ contactoId, texto, embudo });
+  const validado = esquemaMensaje.safeParse({ contactoId, texto, embudo, plantillaId });
   if (!validado.success) {
     return { ok: false, error: validado.error.issues[0].message };
   }
@@ -298,12 +300,31 @@ export async function enviarMensaje(
     };
   }
 
+  // Si viene plantillaId, buscamos si tiene nombre_meta e idioma
+  let infoPlantilla: { nombre_meta: string; idioma: string } | undefined = undefined;
+  if (validado.data.plantillaId) {
+    const { data: pData } = await supabase
+      .schema('crm')
+      .from('plantillas')
+      .select('nombre_meta, idioma')
+      .eq('id', validado.data.plantillaId)
+      .maybeSingle();
+
+    if (pData?.nombre_meta) {
+      infoPlantilla = {
+        nombre_meta: pData.nombre_meta,
+        idioma: pData.idioma || 'es',
+      };
+    }
+  }
+
   // 1 · La regla, donde no se puede saltar.
   const { data: envioId, error: errorCola } = await supabase
     .schema('crm')
     .rpc('encolar_envio', {
       p_contacto_id: validado.data.contactoId,
       p_cuerpo: validado.data.texto,
+      p_plantilla_id: validado.data.plantillaId ?? undefined,
       // Con línea, la base mira la ventana de ESA línea: en WhatsApp la
       // ventana es de un número con una persona, no de la persona.
       p_wa_phone_number_id: linea?.wa_phone_number_id,
@@ -332,6 +353,7 @@ export async function enviarMensaje(
     desde: linea
       ? { waPhoneNumberId: linea.wa_phone_number_id, embudo: linea.embudo }
       : undefined,
+    plantilla: infoPlantilla,
   });
 
   revalidatePath(`/contactos/${validado.data.contactoId}`);

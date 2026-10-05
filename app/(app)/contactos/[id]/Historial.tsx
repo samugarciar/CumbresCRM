@@ -19,6 +19,7 @@ import { fechaLarga, tiempoRelativo } from '@/lib/formato';
 import { CajaDeEscribir } from './CajaDeEscribir';
 import { NotaNueva } from './NotaNueva';
 import type { EleccionLinea } from '@/lib/lineas';
+import type { PlantillaResumen } from './UsarPlantilla';
 
 export interface Actividad {
   id: number | null;
@@ -59,6 +60,8 @@ export function Historial({
   canalListo,
   linea,
   ahora,
+  plantillas = [],
+  asesor = null,
 }: {
   actividades: Actividad[];
   vistoHasta?: string | null;
@@ -67,10 +70,25 @@ export function Historial({
   linea: EleccionLinea;
   ventanaCierraAt: string | null;
   ahora: string;
+  plantillas?: PlantillaResumen[];
+  asesor?: string | null;
 }) {
   const tieneMensajes = actividades.some((a) => MENSAJES.includes(a.tipo ?? ''));
   // Si la persona tiene chat de WhatsApp, el asesor busca de inmediato ver la conversación
   const [vista, setVista] = useState<Vista>(tieneMensajes ? 'conversacion' : 'todo');
+
+  const ventanaAbierta =
+    ventanaCierraAt !== null &&
+    new Date(ventanaCierraAt).getTime() > new Date(ahora).getTime();
+
+  const horasRestantes = ventanaCierraAt
+    ? Math.max(
+        0,
+        Math.round(
+          (new Date(ventanaCierraAt).getTime() - new Date(ahora).getTime()) / 3_600_000
+        )
+      )
+    : 0;
 
   const grupos = useMemo(
     () => ({
@@ -150,19 +168,45 @@ export function Historial({
         </div>
       ) : vista === 'conversacion' ? (
         <div className="flex flex-col gap-4">
+          {/* Indicador de estado de la ventana en el chat */}
+          {ventanaAbierta ? (
+            <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
+              <div className="flex items-center gap-2">
+                <span className="relative flex size-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
+                </span>
+                <span className="font-semibold">Ventana de WhatsApp abierta</span>
+              </div>
+              <span className="tabular font-medium text-emerald-700 dark:text-emerald-400">
+                {horasRestantes >= 1 ? `Quedan ~${horasRestantes} h de texto libre` : 'Menos de 1 h de ventana'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-300">
+              <div className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-amber-500"></span>
+                <span className="font-semibold">Ventana de 24 horas cerrada</span>
+              </div>
+              <span className="text-[11px] text-amber-800/90 dark:text-amber-300/90">
+                Solo admite plantillas oficiales de WhatsApp (Meta HSM)
+              </span>
+            </div>
+          )}
+
           <Conversacion mensajes={visibles} />
+
           {/* Caja de escribir WhatsApp debajo del chat */}
           <CajaDeEscribir
             contactoId={contactoId}
             canalListo={canalListo}
             linea={linea}
-            ventanaAbierta={
-              ventanaCierraAt !== null &&
-              new Date(ventanaCierraAt).getTime() > new Date(ahora).getTime()
-            }
+            ventanaAbierta={ventanaAbierta}
             cierraAt={ventanaCierraAt}
             nuncaEscribio={ventanaCierraAt === null}
             ahora={ahora}
+            plantillas={plantillas}
+            asesor={asesor}
           />
         </div>
       ) : (
