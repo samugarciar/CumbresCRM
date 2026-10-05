@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition, useRef } from 'react';
-import { Search, X, Loader2 } from 'lucide-react';
+import { Search, X, Loader2, PhoneOff, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -42,14 +42,14 @@ export function FiltrosContactos({ sinTelefono }: Props) {
   const hayFiltros = Boolean(params.get('q') || tipo || params.get('sin_telefono'));
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-56 flex-1">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/60 p-2 shadow-2xs backdrop-blur-xs">
+      <div className="relative min-w-64 flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           defaultValue={params.get('q') ?? ''}
           onChange={(e) => buscar(e.target.value)}
-          placeholder="Nombre o teléfono…"
-          className="pl-9"
+          placeholder="Buscar por nombre o teléfono…"
+          className="h-9 rounded-xl border-border/60 bg-background/70 pl-9 text-sm focus-visible:bg-background"
           aria-label="Buscar contactos"
         />
         {navegando && (
@@ -57,27 +57,44 @@ export function FiltrosContactos({ sinTelefono }: Props) {
         )}
       </div>
 
-      <div className="flex items-center gap-1">
-        {(['cliente', 'propietario'] as const).map((t) => (
-          <Button
-            key={t}
-            variant={tipo === t ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => aplicar({ tipo: tipo === t ? null : t })}
-            className="capitalize"
-          >
-            {t}s
-          </Button>
-        ))}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-1">
+          {(['cliente', 'propietario'] as const).map((t) => (
+            <Button
+              key={t}
+              variant={tipo === t ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => aplicar({ tipo: tipo === t ? null : t })}
+              className={`h-9 rounded-xl text-xs font-medium capitalize transition-all ${
+                tipo === t ? 'shadow-xs' : ''
+              }`}
+            >
+              <Users className="size-3.5 opacity-60" />
+              {t}s
+            </Button>
+          ))}
+        </div>
+
+        <div className="mx-1 hidden h-5 w-px bg-border/60 sm:block" />
 
         <Button
           variant={soloSinTelefono ? 'default' : 'outline'}
           size="sm"
           onClick={() => aplicar({ sin_telefono: soloSinTelefono ? null : '1' })}
+          className={`h-9 rounded-xl text-xs font-medium transition-all ${
+            soloSinTelefono
+              ? 'bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-700 shadow-xs'
+              : 'hover:border-amber-500/40 hover:text-amber-600 dark:hover:text-amber-400'
+          }`}
           title="Personas reales con conversación, pero sin un número al que llamar"
         >
-          Sin teléfono
-          <span className="ml-1.5 tabular opacity-70">{sinTelefono}</span>
+          <PhoneOff className="size-3.5" />
+          <span>Sin teléfono</span>
+          <span className={`ml-1.5 rounded-full px-1.5 py-0.2 tabular text-[11px] font-semibold ${
+            soloSinTelefono ? 'bg-black/20 text-white' : 'bg-muted text-muted-foreground'
+          }`}>
+            {sinTelefono}
+          </span>
         </Button>
 
         {hayFiltros && (
@@ -85,8 +102,9 @@ export function FiltrosContactos({ sinTelefono }: Props) {
             variant="ghost"
             size="sm"
             onClick={() => iniciarNavegacion(() => router.push('/contactos'))}
+            className="h-9 rounded-xl text-xs text-muted-foreground hover:text-foreground"
           >
-            <X className="size-4" />
+            <X className="size-3.5" />
             Limpiar
           </Button>
         )}

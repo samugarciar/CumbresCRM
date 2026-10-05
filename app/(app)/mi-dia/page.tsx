@@ -36,17 +36,17 @@ export default async function PaginaMiDia() {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <header className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Mi día</h1>
-          <p className="text-sm capitalize text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Mi día</h1>
+          <p className="text-sm capitalize text-muted-foreground mt-0.5">
             {hoy}
-            <span className="normal-case">
+            <span className="normal-case font-medium">
               {' · '}
               {renglones.length === 0
                 ? 'nada pendiente'
-                : `${renglones.length} ${renglones.length === 1 ? 'cosa' : 'cosas'}`}
+                : `${renglones.length} ${renglones.length === 1 ? 'asunto pendiente' : 'asuntos pendientes'}`}
             </span>
           </p>
         </div>

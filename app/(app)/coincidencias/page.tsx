@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { ArrowLeft, Home, MessageCircle, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { tiempoRelativo, telefonoLegible, enlaceWhatsApp } from '@/lib/formato';
+import { tiempoRelativo, enlaceWhatsApp } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FiltrosCoincidencias } from './FiltrosCoincidencias';

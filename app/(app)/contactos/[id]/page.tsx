@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { canalConfigurado } from '@/lib/canal';
 import { iniciales, telefonoLegible, tiempoRelativo, enlaceWhatsApp } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
-import { NotaNueva } from './NotaNueva';
+import { Badge } from '@/components/ui/badge';
 import { PanelDatos } from './PanelDatos';
 import { Historial } from './Historial';
 import { PonerseAlDia } from './PonerseAlDia';
@@ -99,62 +99,75 @@ export default async function FichaContacto({
   const wa = enlaceWhatsApp(contacto.telefono_e164);
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <Button variant="ghost" size="sm" asChild className="-ml-2 w-fit">
-        <Link href="/contactos">
-          <ArrowLeft className="size-4" />
-          Contactos
-        </Link>
-      </Button>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      {/* Botón de retroceso */}
+      <div>
+        <Button variant="ghost" size="sm" asChild className="-ml-2 gap-1.5 text-muted-foreground hover:text-foreground">
+          <Link href="/contactos">
+            <ArrowLeft className="size-4" />
+            <span>Volver a Contactos</span>
+          </Link>
+        </Button>
+      </div>
 
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-accent text-base font-semibold text-accent-foreground">
-            {iniciales(contacto.nombre)}
-          </span>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">
-              {contacto.nombre || 'Sin nombre'}
-            </h1>
-            <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {telefono ? (
-                <span className="tabular">{telefono}</span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5">
-                  <PhoneOff className="size-3.5" />
-                  Sin número al que llamar
-                </span>
-              )}
-              <span aria-hidden>·</span>
-              <span>Última actividad {tiempoRelativo(contacto.ultima_actividad_at)}</span>
-            </p>
+      {/* Encabezado del Contacto Tipo Cockpit */}
+      <header className="rounded-2xl border bg-card p-5 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary text-lg font-bold border border-primary/20 shadow-2xs">
+              {iniciales(contacto.nombre)}
+            </div>
+
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight text-foreground truncate">
+                  {contacto.nombre || 'Sin nombre'}
+                </h1>
+                <Badge variant="outline" className="text-xs capitalize font-medium">
+                  {contacto.tipo}
+                </Badge>
+              </div>
+
+              <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {telefono ? (
+                  <span className="tabular font-medium text-foreground/80">{telefono}</span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-warning">
+                    <PhoneOff className="size-3.5" />
+                    Sin número registrado
+                  </span>
+                )}
+                <span aria-hidden>·</span>
+                <span>Actividad {tiempoRelativo(contacto.ultima_actividad_at)}</span>
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <UsarPlantilla
-            plantillas={(plantillas ?? []) as PlantillaResumen[]}
-            contactoId={contacto.id}
-            asesor={asesor}
-            ventanaCierraAt={ventanaCierraAt}
-            ahora={ahora}
-          />
-          <TareaNueva contactoId={contacto.id} nombre={contacto.nombre} />
-          {wa && (
-          <Button asChild>
-            <a href={wa} target="_blank" rel="noopener noreferrer">
-              <MessageCircle className="size-4" />
-              Abrir WhatsApp
-            </a>
-          </Button>
-          )}
+          {/* Acciones principales a la derecha */}
+          <div className="flex flex-wrap items-center gap-2">
+            <UsarPlantilla
+              plantillas={(plantillas ?? []) as PlantillaResumen[]}
+              contactoId={contacto.id}
+              asesor={asesor}
+              ventanaCierraAt={ventanaCierraAt}
+              ahora={ahora}
+            />
+            <TareaNueva contactoId={contacto.id} nombre={contacto.nombre} />
+            {wa && (
+              <Button asChild size="sm" className="gap-1.5 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs">
+                <a href={wa} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="size-4" />
+                  Abrir WhatsApp
+                </a>
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-[18rem_1fr]">
-        {/* Los datos del lead, y justo debajo lo que se le puede
-            ofrecer. En móvil la rejilla se apila, así que el orden queda
-            igual: información, recomendaciones, conversación. */}
+      {/* Distribución en 2 Columnas: Contexto a la izquierda, Conversación y Timeline a la derecha */}
+      <div className="grid gap-6 lg:grid-cols-[21rem_1fr] items-start">
+        {/* Columna Izquierda: Inteligencia & Datos */}
         <div className="flex flex-col gap-4">
           <PanelDatos
             contactoId={contacto.id}
@@ -175,6 +188,7 @@ export default async function FichaContacto({
               responsable?.asesor_id != null && responsable.asesor_id === user?.id
             }
           />
+
           <Recomendaciones
             inmuebles={(recomendables ?? []) as Recomendable[]}
             plantillas={(plantillas ?? []) as PlantillaResumen[]}
@@ -185,12 +199,9 @@ export default async function FichaContacto({
           />
         </div>
 
+        {/* Columna Derecha: Hub de Conversación y Actividad */}
         <div className="flex min-w-0 flex-col gap-4">
           {resumen && <PonerseAlDia resumen={resumen} />}
-
-          <div className="rounded-lg border bg-card p-4">
-            <NotaNueva contactoId={contacto.id} />
-          </div>
 
           <Historial
             actividades={timeline ?? []}

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import type { PlantillaResumen } from '@/app/(app)/contactos/[id]/UsarPlantilla';
 import { Bandeja, CabeceraVentana, type Reactivable } from './Bandeja';
@@ -75,21 +76,21 @@ export default async function PaginaReactivacion({
 
       {paginas > 1 && (
         <nav className="flex items-center justify-between text-sm">
-          <a
+          <Link
             href={`/reactivacion?pagina=${n - 1}`}
             className={`text-primary hover:underline ${n <= 1 ? 'pointer-events-none opacity-40' : ''}`}
           >
             ← Menos callados
-          </a>
+          </Link>
           <span className="tabular text-muted-foreground">
             {n} de {paginas}
           </span>
-          <a
+          <Link
             href={`/reactivacion?pagina=${n + 1}`}
             className={`text-primary hover:underline ${n >= paginas ? 'pointer-events-none opacity-40' : ''}`}
           >
             Más callados →
-          </a>
+          </Link>
         </nav>
       )}
     </div>

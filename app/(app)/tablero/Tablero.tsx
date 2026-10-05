@@ -2,8 +2,17 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { AlarmClock, Check, MoreHorizontal, Undo2, UserRoundCheck, X } from 'lucide-react';
-import { tiempoRelativo, telefonoLegible } from '@/lib/formato';
+import {
+  AlarmClock,
+  Check,
+  MoreHorizontal,
+  Undo2,
+  UserRoundCheck,
+  X,
+  Phone,
+  ArrowRight,
+} from 'lucide-react';
+import { tiempoRelativo, telefonoLegible, iniciales } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -60,19 +69,16 @@ export function Tablero({
   const [moviendo, setMoviendo] = useState<string | null>(null);
   const [deshacer, setDeshacer] = useState<Deshacer | null>(null);
   const [error, setError] = useState<string | null>(null);
+
   // ARRASTRAR ES EL ATAJO, NO EL MECANISMO. El menú de cada tarjeta sigue
   // siendo el camino completo: es el que funciona con teclado, con lector
   // de pantalla y en un teléfono, donde el tablero es una sola columna y
   // no hay a dónde arrastrar. Esto de aquí es comodidad de escritorio.
-  //
-  // Se usa el arrastre NATIVO del navegador a propósito: no añade ni una
-  // dependencia, y su limitación —que no responde al dedo— coincide
-  // exactamente con el único sitio donde no hace falta.
   const [arrastrando, setArrastrando] = useState<Tarjeta | null>(null);
   const [encima, setEncima] = useState<string | null>(null);
-  // En móvil no hay siete columnas: hay una, y unas pastillas para
-  // cambiarla. El desplazamiento horizontal pelea con el de la página y
-  // en un teléfono siempre gana el equivocado.
+
+  // En móvil no hay siete columnas en paralelo: hay una a la vez y pastillas
+  // cómodas para alternar rápidamente.
   const [visible, setVisible] = useState(columnas[0]?.codigo ?? '');
 
   function mover(t: Tarjeta, destino: string, etiquetaDestino: string) {
@@ -98,8 +104,7 @@ export function Tablero({
     const t = arrastrando;
     setArrastrando(null);
     setEncima(null);
-    // Soltar una tarjeta en su propia columna no es un movimiento, y
-    // registrarlo ensuciaría el historial de etapas con ruido.
+    // Soltar una tarjeta en su propia columna no es un movimiento
     if (!t || t.etapa === destino.codigo) return;
     mover(t, destino.codigo, destino.etiqueta);
   }
@@ -116,127 +121,142 @@ export function Tablero({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
-        </p>
-      )}
-
-      {/* Deshacer. Mover una tarjeta por error es cuestión de tiempo, y
-          una acción que no se puede revertir se usa con miedo. */}
-      {deshacer && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
-          <span className="text-muted-foreground">
-            <span className="font-medium text-foreground">{deshacer.nombre}</span> pasó a{' '}
-            {deshacer.etiquetaNueva}
-          </span>
-          <Button size="xs" variant="outline" onClick={() => revertir(deshacer)}>
-            <Undo2 className="size-3" />
-            Deshacer
-          </Button>
-          <button
-            type="button"
-            onClick={() => setDeshacer(null)}
-            className="ml-auto text-muted-foreground hover:text-foreground"
-            aria-label="Cerrar aviso"
-          >
-            <X className="size-4" />
-          </button>
         </div>
       )}
 
-      {/* Pastillas de etapa: solo en móvil */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 md:hidden">
+      {/* Deshacer toast notification */}
+      {deshacer && (
+        <div className="flex animate-in fade-in slide-in-from-top-2 items-center justify-between gap-3 rounded-xl border border-border/80 bg-card p-3 shadow-sm">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="inline-flex size-2 rounded-full bg-primary" />
+            <span>
+              <strong className="text-foreground">{deshacer.nombre}</strong> pasó a{' '}
+              <span className="font-semibold text-primary">{deshacer.etiquetaNueva}</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="xs" variant="outline" className="h-7 rounded-lg" onClick={() => revertir(deshacer)}>
+              <Undo2 className="size-3.5" />
+              Deshacer
+            </Button>
+            <button
+              type="button"
+              onClick={() => setDeshacer(null)}
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Cerrar aviso"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Selector de etapa en móvil: pastillas limpias */}
+      <div className="flex gap-1.5 overflow-x-auto rounded-xl bg-muted/40 p-1 md:hidden">
         {columnas.map((c) => (
           <button
             key={c.codigo}
             type="button"
             onClick={() => setVisible(c.codigo)}
             aria-pressed={visible === c.codigo}
-            className={`flex shrink-0 items-center gap-1.5 rounded-4xl border px-3 py-1.5 text-xs transition-colors ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
               visible === c.codigo
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-card hover:bg-muted'
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {c.etiqueta}
-            <span className="tabular opacity-70">{c.total}</span>
+            <span>{c.etiqueta}</span>
+            <span className={`tabular rounded-full px-1.5 py-0.2 text-[10px] font-semibold ${
+              visible === c.codigo ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+            }`}>
+              {c.total}
+            </span>
           </button>
         ))}
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-3 md:overflow-x-auto md:pb-2">
-        {columnas.map((c) => (
-          <section
-            key={c.codigo}
-            onDragOver={(e) => {
-              if (!arrastrando) return;
-              // Sin este preventDefault el navegador NO permite soltar:
-              // por defecto ningún elemento es destino válido.
-              e.preventDefault();
-              e.dataTransfer.dropEffect = 'move';
-              if (encima !== c.codigo) setEncima(c.codigo);
-            }}
-            onDragLeave={(e) => {
-              // currentTarget vs target: sin esta comprobación, pasar por
-              // encima de una tarjeta hija cuenta como salir de la columna
-              // y el resaltado parpadea.
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                setEncima((z) => (z === c.codigo ? null : z));
-              }
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              soltar(c);
-            }}
-            className={`min-h-0 w-full shrink-0 flex-col rounded-lg transition-colors md:flex md:w-72 ${
-              visible === c.codigo ? 'flex' : 'hidden'
-            } ${
-              encima === c.codigo && arrastrando && arrastrando.etapa !== c.codigo
-                ? 'bg-accent/60 outline-2 outline-dashed outline-primary/40'
-                : ''
-            }`}
-            aria-label={c.etiqueta}
-          >
-            {/* La cabecera de columna NO lleva color. La identidad de una
-                etapa es su posición y su nombre; el color se reserva para
-                lo que está mal. */}
-            <header className="flex items-baseline justify-between gap-2 px-1 pb-2">
-              <h2 className="text-sm font-semibold">{c.etiqueta}</h2>
-              <span className="tabular text-xs text-muted-foreground">{c.total}</span>
-            </header>
+      {/* Contenedor de columnas */}
+      <div className="flex min-h-0 flex-1 gap-3.5 md:overflow-x-auto md:pb-2">
+        {columnas.map((c) => {
+          const esDropTarget = encima === c.codigo && arrastrando && arrastrando.etapa !== c.codigo;
+          return (
+            <section
+              key={c.codigo}
+              onDragOver={(e) => {
+                if (!arrastrando) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (encima !== c.codigo) setEncima(c.codigo);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setEncima((z) => (z === c.codigo ? null : z));
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                soltar(c);
+              }}
+              className={`min-h-0 w-full shrink-0 flex-col rounded-2xl border transition-all md:flex md:w-80 ${
+                visible === c.codigo ? 'flex' : 'hidden'
+              } ${
+                esDropTarget
+                  ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/20'
+                  : 'border-border/50 bg-muted/20'
+              } p-2.5`}
+              aria-label={c.etiqueta}
+            >
+              {/* Cabecera de Columna */}
+              <header className="flex items-center justify-between gap-2 pb-2.5 px-1 border-b border-border/40">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold tracking-tight text-foreground">{c.etiqueta}</h2>
+                  <span className="rounded-full bg-background/80 border border-border/40 px-2 py-0.5 text-xs font-semibold tabular text-muted-foreground shadow-2xs">
+                    {c.total}
+                  </span>
+                </div>
+                {c.diasPudricion && (
+                  <span className="text-[11px] text-muted-foreground/70" title={`Se considera estancada a los ${c.diasPudricion} días`}>
+                    {c.diasPudricion}d
+                  </span>
+                )}
+              </header>
 
-            <div className="flex min-h-0 flex-1 flex-col gap-2 md:overflow-y-auto">
-              {c.tarjetas.length === 0 && (
-                <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
-                  Vacía
-                </p>
-              )}
+              {/* Lista de Tarjetas */}
+              <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-0.5 pt-2">
+                {c.tarjetas.length === 0 && (
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-background/30 py-8 text-center text-xs text-muted-foreground">
+                    <span>Sin oportunidades aquí</span>
+                  </div>
+                )}
 
-              {c.tarjetas.map((t) => (
-                <TarjetaOportunidad
-                  key={t.id}
-                  tarjeta={t}
-                  columnas={columnas}
-                  atenuada={moviendo === t.id || pendiente}
-                  arrastrandose={arrastrando?.id === t.id}
-                  onMover={mover}
-                  onArrastrar={setArrastrando}
-                  onSoltarFuera={() => {
-                    setArrastrando(null);
-                    setEncima(null);
-                  }}
-                />
-              ))}
+                {c.tarjetas.map((t) => (
+                  <TarjetaOportunidad
+                    key={t.id}
+                    tarjeta={t}
+                    columnas={columnas}
+                    atenuada={moviendo === t.id || pendiente}
+                    arrastrandose={arrastrando?.id === t.id}
+                    onMover={mover}
+                    onArrastrar={setArrastrando}
+                    onSoltarFuera={() => {
+                      setArrastrando(null);
+                      setEncima(null);
+                    }}
+                  />
+                ))}
 
-              {c.total > c.tarjetas.length && (
-                <p className="px-1 py-2 text-center text-xs text-muted-foreground">
-                  {(c.total - c.tarjetas.length).toLocaleString('es-CO')} más. Se
-                  muestran las {porColumna} que más lo piden — filtra para ver otras.
-                </p>
-              )}
-            </div>
-          </section>
-        ))}
+                {c.total > c.tarjetas.length && (
+                  <div className="rounded-xl border border-dashed border-border/60 bg-background/20 px-2 py-2.5 text-center text-xs text-muted-foreground">
+                    <span className="font-medium">{(c.total - c.tarjetas.length).toLocaleString('es-CO')} más</span> en esta etapa.
+                    <p className="mt-0.5 text-[11px] opacity-80">Mostrando las {porColumna} prioritarias.</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );
@@ -259,17 +279,6 @@ function TarjetaOportunidad({
   onArrastrar: (t: Tarjeta) => void;
   onSoltarFuera: () => void;
 }) {
-  // ACENTO ÚNICO, Y NO SOLO DENTRO DE LA TARJETA.
-  //
-  // La primera versión pintaba una banda de color para "esperando" y
-  // otra para "estancada". Por tarjeta la regla se cumplía, pero en una
-  // columna de 824 en la que el 95% lleva más de tres días quieto, el
-  // resultado era una pared ámbar donde las DOS que de verdad urgen no
-  // se distinguían de nada.
-  //
-  // Así que la banda es solo para lo que exige acción hoy. Lo estancado
-  // colorea la fecha que ya estaba ahí: se sigue viendo, no ocupa una
-  // fila más, y deja que el rojo signifique algo.
   const urgente = Boolean(t.escalado_sin_atender);
 
   return (
@@ -277,48 +286,61 @@ function TarjetaOportunidad({
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move';
-        // Hace falta escribir ALGO o Firefox cancela el arrastre.
         e.dataTransfer.setData('text/plain', t.id);
         onArrastrar(t);
       }}
       onDragEnd={onSoltarFuera}
-      className={`group rounded-lg border bg-card transition-opacity md:cursor-grab md:active:cursor-grabbing ${
+      className={`group relative rounded-xl border border-border/70 bg-card shadow-2xs transition-all duration-150 md:cursor-grab md:active:cursor-grabbing hover:border-border hover:shadow-xs ${
         atenuada ? 'opacity-50' : ''
-      } ${arrastrandose ? 'opacity-40 ring-2 ring-primary' : ''}`}
+      } ${arrastrandose ? 'opacity-40 ring-2 ring-primary scale-[0.98] shadow-md' : ''}`}
     >
-      <div className="flex items-start gap-1 p-3">
+      <div className="flex items-start gap-2.5 p-3">
+        {/* Avatar chip con iniciales */}
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-[11px] font-semibold">
+          {iniciales(t.nombre)}
+        </span>
+
         <Link
           href={`/contactos/${t.contacto_id}`}
           draggable={false}
-          className="min-w-0 flex-1 outline-none focus-visible:underline"
+          className="min-w-0 flex-1 outline-none group-hover:text-primary transition-colors"
         >
-          <p className="truncate text-sm font-medium">
-            {t.nombre || <span className="text-muted-foreground">Sin nombre</span>}
+          <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+            {t.nombre || <span className="text-muted-foreground font-normal">Sin nombre</span>}
           </p>
-          <p className="tabular truncate text-xs text-muted-foreground">
-            {telefonoLegible(t.telefono_e164) ?? 'Sin número'}
-          </p>
+          <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+            <Phone className="size-3 opacity-60 shrink-0" />
+            <span className="tabular truncate">
+              {telefonoLegible(t.telefono_e164) ?? 'Sin número'}
+            </span>
+          </div>
         </Link>
 
+        {/* Menú de acciones / teclado */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon-xs"
+              className="text-muted-foreground/60 hover:text-foreground hover:bg-muted/80 rounded-md"
               aria-label={`Acciones de ${t.nombre || 'esta oportunidad'}`}
             >
-              <MoreHorizontal />
+              <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuLabel>Mover a</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-54 rounded-xl">
+            <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+              Mover a otra etapa
+            </DropdownMenuLabel>
             {columnas
               .filter((c) => c.codigo !== t.etapa)
               .map((c) => (
                 <DropdownMenuItem
                   key={c.codigo}
                   onSelect={() => onMover(t, c.codigo, c.etiqueta)}
+                  className="text-xs font-medium cursor-pointer"
                 >
+                  <ArrowRight className="size-3.5 opacity-60" />
                   {c.etiqueta}
                 </DropdownMenuItem>
               ))}
@@ -332,53 +354,54 @@ function TarjetaOportunidad({
         </DropdownMenu>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 pb-2 text-xs text-muted-foreground">
+      {/* Metadatos: zona, estancada, tiempo */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5 text-xs text-muted-foreground">
         {t.zona && (
-          <span className="rounded-4xl bg-muted px-1.5 py-0.5">{t.zona}</span>
+          <span className="rounded-md bg-muted/80 px-1.5 py-0.5 text-[11px] font-medium text-foreground/80">
+            {t.zona}
+          </span>
         )}
         {t.estancada ? (
           <span
-            className="inline-flex items-center gap-1 font-medium text-warning"
+            className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400"
             title="Lleva más días quieta de los que esta etapa tolera"
           >
             <AlarmClock className="size-3 shrink-0" />
             {tiempoRelativo(t.ultima_actividad_at)}
           </span>
         ) : (
-          <span>{tiempoRelativo(t.ultima_actividad_at)}</span>
+          <span className="text-[11px]">{tiempoRelativo(t.ultima_actividad_at)}</span>
         )}
         {t.visita_realizada_origen === 'retroactiva' && (
-          <span title="Se cerró en bloque el 14 sep 2026: nadie vio ocurrir la visita">
+          <span className="rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground" title="Se cerró en bloque el 14 sep 2026: nadie vio ocurrir la visita">
             visita sin confirmar
           </span>
         )}
       </div>
 
-      {/* La ÚNICA banda de color de la tarjeta, y por eso se ve. */}
+      {/* Alerta de urgencia: única banda viva */}
       {urgente && (
-        <p className="flex items-center gap-1.5 rounded-b-lg bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive">
+        <div className="flex items-center gap-1.5 rounded-b-xl border-t border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
           <UserRoundCheck className="size-3.5 shrink-0" />
-          Pidió una persona {tiempoRelativo(t.escalado_at)}
-        </p>
+          <span>Pidió una persona {tiempoRelativo(t.escalado_at)}</span>
+        </div>
       )}
 
-      {/* Escalada vieja: ya no es tarea, pero decir "atendida" cuando
-          nadie la abrió sería mentir. Va en gris, que es lo que es:
-          contexto. */}
+      {/* Escalada previa informativa */}
       {!urgente && t.escalado_at && (
-        <p className="flex items-center gap-1.5 rounded-b-lg px-3 pb-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5 rounded-b-xl border-t border-border/40 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
           {t.escalado_atendido ? (
             <>
-              <Check className="size-3.5 shrink-0" />
-              Escalada y atendida
+              <Check className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span>Escalada y atendida</span>
             </>
           ) : (
             <>
-              <UserRoundCheck className="size-3.5 shrink-0" />
-              Pidió una persona {tiempoRelativo(t.escalado_at)} · nadie abrió la ficha
+              <UserRoundCheck className="size-3.5 shrink-0 opacity-70" />
+              <span>Pidió persona {tiempoRelativo(t.escalado_at)} · sin abrir ficha</span>
             </>
           )}
-        </p>
+        </div>
       )}
     </article>
   );

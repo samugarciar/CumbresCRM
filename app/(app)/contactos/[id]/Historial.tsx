@@ -6,20 +6,21 @@ import {
   CalendarCheck,
   CalendarClock,
   CalendarX,
+  Clock,
+  Layers,
   MessageCircle,
   MessageSquare,
   Send,
   StickyNote,
+  User,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { fechaLarga, tiempoRelativo } from '@/lib/formato';
 import { CajaDeEscribir } from './CajaDeEscribir';
+import { NotaNueva } from './NotaNueva';
 import type { EleccionLinea } from '@/lib/lineas';
 
 export interface Actividad {
-  // Anulable porque viene de una vista: aunque crm.actividades.id sea
-  // NOT NULL, PostgREST no puede garantizarlo a través de la vista y el
-  // tipo generado lo refleja. Se usa el índice como llave de respaldo.
   id: number | null;
   tipo: string | null;
   origen: string | null;
@@ -48,7 +49,7 @@ const MENSAJES = ['mensaje_entrante', 'mensaje_saliente'];
 const VISITAS = ['visita_agendada', 'visita_realizada', 'visita_cancelada', 'solicitud_apertura'];
 const NOTAS = ['nota', 'llamada'];
 
-type Vista = 'todo' | 'conversacion' | 'visitas' | 'notas';
+type Vista = 'conversacion' | 'todo' | 'visitas' | 'notas';
 
 export function Historial({
   actividades,
@@ -60,74 +61,97 @@ export function Historial({
   ahora,
 }: {
   actividades: Actividad[];
-  /** Hasta dónde había leído esta persona ANTES de abrir la ficha. */
   vistoHasta?: string | null;
   contactoId: string;
-  /** Si el canal propio ya está montado: sin él, el avión no despega. */
   canalListo: boolean;
-  /** Por qué línea se le escribe, según sus embudos. */
   linea: EleccionLinea;
-  /** Cuándo se cierra la ventana de 24 h. NULL = nunca nos escribió. */
   ventanaCierraAt: string | null;
-  /** El reloj, del servidor: React 19 prohíbe leerlo en el render. */
   ahora: string;
 }) {
-  const [vista, setVista] = useState<Vista>('todo');
+  const tieneMensajes = actividades.some((a) => MENSAJES.includes(a.tipo ?? ''));
+  // Si la persona tiene chat de WhatsApp, el asesor busca de inmediato ver la conversación
+  const [vista, setVista] = useState<Vista>(tieneMensajes ? 'conversacion' : 'todo');
 
   const grupos = useMemo(
     () => ({
-      todo: actividades,
       conversacion: actividades.filter((a) => MENSAJES.includes(a.tipo ?? '')),
+      todo: actividades,
       visitas: actividades.filter((a) => VISITAS.includes(a.tipo ?? '')),
       notas: actividades.filter((a) => NOTAS.includes(a.tipo ?? '')),
     }),
     [actividades]
   );
 
-  const pestanas: { id: Vista; texto: string }[] = [
-    { id: 'todo', texto: 'Todo' },
-    { id: 'conversacion', texto: 'Conversación' },
-    { id: 'visitas', texto: 'Visitas' },
-    { id: 'notas', texto: 'Notas' },
+  const pestanas: { id: Vista; texto: string; icono: typeof MessageCircle }[] = [
+    { id: 'conversacion', texto: 'Chat WhatsApp', icono: MessageCircle },
+    { id: 'todo', texto: 'Historial', icono: Layers },
+    { id: 'visitas', texto: 'Visitas', icono: CalendarClock },
+    { id: 'notas', texto: 'Notas internas', icono: StickyNote },
   ];
 
   const visibles = grupos[vista];
 
   return (
     <section className="flex min-w-0 flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-1 rounded-lg border bg-card p-1">
+      {/* Selector de Pestañas Estilizado */}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border bg-card/80 p-1.5 shadow-2xs">
         {pestanas.map((p) => {
           const activa = vista === p.id;
           const n = grupos[p.id].length;
+          const Icono = p.icono;
+
           return (
             <button
               key={p.id}
               type="button"
               onClick={() => setVista(p.id)}
-              disabled={n === 0 && p.id !== 'todo'}
+              disabled={n === 0 && p.id !== 'todo' && p.id !== 'notas'}
               aria-pressed={activa}
-              className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors disabled:opacity-40 ${
+              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 activa
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-muted disabled:hover:bg-transparent'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
-              {p.texto}
-              <span className="tabular text-xs opacity-70">{n}</span>
+              <Icono className="size-3.5" />
+              <span>{p.texto}</span>
+              <span
+                className={`tabular text-[11px] rounded-full px-1.5 py-0.2 ${
+                  activa ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {n}
+              </span>
             </button>
           );
         })}
       </div>
 
+      {/* Vista de Notas Internas: añade el editor de notas arriba del listado */}
+      {vista === 'notas' && (
+        <div className="rounded-xl border bg-card p-4 shadow-2xs">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">
+            Nueva nota interna para el equipo
+          </p>
+          <NotaNueva contactoId={contactoId} />
+        </div>
+      )}
+
+      {/* Contenido según pestaña */}
       {visibles.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Todavía no ha pasado nada con esta persona.
-        </p>
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-10 text-center bg-card/50">
+          <Clock className="size-6 text-muted-foreground/60" />
+          <p className="text-sm font-medium text-foreground">Sin registros en esta vista</p>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            {vista === 'notas'
+              ? 'No hay notas registradas. Usa el formulario de arriba para dejar un apunte sobre esta persona.'
+              : 'Aún no se registran actividades para esta categoría.'}
+          </p>
+        </div>
       ) : vista === 'conversacion' ? (
-        <>
+        <div className="flex flex-col gap-4">
           <Conversacion mensajes={visibles} />
-          {/* La caja va DEBAJO de las burbujas, como en cualquier chat: se
-              lee hacia abajo y se escribe al final. */}
+          {/* Caja de escribir WhatsApp debajo del chat */}
           <CajaDeEscribir
             contactoId={contactoId}
             canalListo={canalListo}
@@ -140,25 +164,24 @@ export function Historial({
             nuncaEscribio={ventanaCierraAt === null}
             ahora={ahora}
           />
-        </>
+        </div>
       ) : (
-        <Linea actividades={visibles} vistoHasta={vistoHasta} />
+        <div className="rounded-xl border bg-card p-4 shadow-2xs">
+          <Linea actividades={visibles} vistoHasta={vistoHasta} />
+        </div>
       )}
     </section>
   );
 }
 
 /**
- * La conversación se lee como un chat, y por eso va en orden
- * CRONOLÓGICO: de lo más viejo arriba a lo más reciente abajo, igual que
- * WhatsApp. El timeline hace lo contrario —lo último primero— porque ahí
- * la pregunta es "¿qué pasó últimamente?" y aquí es "¿qué se dijeron?".
+ * Chat WhatsApp con burbujas modernas y claras.
  */
 function Conversacion({ mensajes }: { mensajes: Actividad[] }) {
   const enOrden = [...mensajes].reverse();
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-card p-4">
+    <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-2xs">
       {enOrden.map((m, i) => {
         const delCliente = m.tipo === 'mensaje_entrante';
         const anterior = enOrden[i - 1];
@@ -170,36 +193,51 @@ function Conversacion({ mensajes }: { mensajes: Actividad[] }) {
         return (
           <div key={m.id ?? i} className="flex flex-col gap-3">
             {dia !== diaAnterior && (
-              <div className="flex items-center gap-3 py-1">
-                <span className="h-px flex-1 bg-border" />
-                <span className="text-xs text-muted-foreground">
+              <div className="flex items-center gap-3 py-1.5">
+                <span className="h-px flex-1 bg-border/60" />
+                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider bg-muted/60 px-2 py-0.5 rounded-full border">
                   {fechaLarga(m.ocurrido_at).split(',')[0]}
                 </span>
-                <span className="h-px flex-1 bg-border" />
+                <span className="h-px flex-1 bg-border/60" />
               </div>
             )}
 
             <div className={`flex ${delCliente ? 'justify-start' : 'justify-end'}`}>
               <div
-                className={`flex max-w-[75%] flex-col gap-1 rounded-2xl px-3.5 py-2 ${
+                className={`flex max-w-[80%] flex-col gap-1 rounded-2xl px-4 py-2.5 shadow-2xs ${
                   delCliente
-                    ? 'rounded-bl-sm bg-muted text-foreground'
-                    : 'rounded-br-sm bg-primary text-primary-foreground'
+                    ? 'rounded-bl-xs bg-muted/80 text-foreground border border-border/50'
+                    : 'rounded-br-xs bg-primary text-primary-foreground'
                 }`}
               >
-                <p className="whitespace-pre-wrap break-words text-sm">{m.cuerpo}</p>
-                <span
-                  className={`self-end text-[10px] ${
-                    delCliente ? 'text-muted-foreground' : 'text-primary-foreground/70'
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{m.cuerpo}</p>
+                <div
+                  className={`flex items-center justify-end gap-1 text-[10px] ${
+                    delCliente ? 'text-muted-foreground' : 'text-primary-foreground/75'
                   }`}
                   title={fechaLarga(m.ocurrido_at)}
                 >
-                  {m.origen === 'agente_ia' ? 'agente · ' : ''}
-                  {new Date(m.ocurrido_at ?? '').toLocaleTimeString('es-CO', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
+                  {m.origen === 'agente_ia' && (
+                    <span className="inline-flex items-center gap-0.5 font-medium">
+                      <Bot className="size-2.5" />
+                      Bot
+                      <span>·</span>
+                    </span>
+                  )}
+                  {m.origen === 'asesor' && (
+                    <span className="inline-flex items-center gap-0.5 font-medium">
+                      <User className="size-2.5" />
+                      Asesor
+                      <span>·</span>
+                    </span>
+                  )}
+                  <span>
+                    {new Date(m.ocurrido_at ?? '').toLocaleTimeString('es-CO', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -216,10 +254,6 @@ function Linea({
   actividades: Actividad[];
   vistoHasta?: string | null;
 }) {
-  // El corte entre lo que ya viste y lo que llegó después. Se calcula una
-  // vez: es el primer índice cuya actividad es ANTERIOR a tu última
-  // visita — como la lista va de lo más nuevo a lo más viejo, todo lo que
-  // está encima de ese índice es nuevo.
   const corte =
     vistoHasta == null
       ? -1
@@ -234,7 +268,6 @@ function Linea({
         const aspecto = ASPECTO[a.tipo ?? 'sistema'] ?? ASPECTO.sistema;
         const Icono = aspecto.icono;
         const ultimo = i === actividades.length - 1;
-
         const marcarCorte = nuevas > 0 && i === nuevas;
 
         return (
@@ -242,7 +275,7 @@ function Linea({
             {marcarCorte && (
               <div className="flex items-center gap-3 pb-4">
                 <span className="h-px flex-1 bg-primary/40" />
-                <span className="text-xs font-medium text-primary">
+                <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                   {nuevas === 1 ? '1 hecho nuevo' : `${nuevas} hechos nuevos`} desde tu última visita
                 </span>
                 <span className="h-px flex-1 bg-primary/40" />
@@ -250,49 +283,41 @@ function Linea({
             )}
 
             <div className="flex gap-3">
-            <div className="flex flex-col items-center">
-              {/* 24px en vez de 32, y pb-3 en vez de pb-5. Con 95 hechos
-                  —el timeline más largo de producción— eso son ~1.500px
-                  menos de primer render. La investigación de diseño lo
-                  medía y llevaba dos fases sin aplicarse. */}
-              <span className={`grid size-6 shrink-0 place-items-center rounded-full ${aspecto.clase}`}>
-                <Icono className="size-3.5" />
-              </span>
-              {!ultimo && <span className="w-px flex-1 bg-border" />}
-            </div>
-
-            <div className={`min-w-0 flex-1 ${ultimo ? '' : 'pb-3'}`}>
-              <div className="flex flex-wrap items-baseline gap-x-2">
-                <span className="text-sm font-medium">{aspecto.etiqueta}</span>
-
-                {a.origen === 'agente_ia' && (
-                  <Badge variant="outline" className="gap-1 text-[10px]">
-                    <Bot className="size-3" />
-                    Agente
-                  </Badge>
-                )}
-
-                <span className="text-xs text-muted-foreground" title={fechaLarga(a.ocurrido_at)}>
-                  {tiempoRelativo(a.ocurrido_at)}
+              <div className="flex flex-col items-center">
+                <span className={`grid size-6 shrink-0 place-items-center rounded-full ${aspecto.clase}`}>
+                  <Icono className="size-3.5" />
                 </span>
+                {!ultimo && <span className="w-px flex-1 bg-border my-1" />}
               </div>
 
-              {/* Tres líneas y a otra cosa. Un mensaje largo del bot no
-                  puede empujar veinte hechos fuera de la pantalla; quien
-                  quiera leerlo entero lo tiene en la pestaña de
-                  conversación, que es donde se lee de verdad. */}
-              {a.cuerpo && (
-                <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-sm text-muted-foreground">
-                  {a.cuerpo}
-                </p>
-              )}
+              <div className={`min-w-0 flex-1 ${ultimo ? '' : 'pb-3.5'}`}>
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-sm font-semibold text-foreground">{aspecto.etiqueta}</span>
 
-              {a.inmueble_titulo && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {a.inmueble_titulo}
-                  {a.inmueble_barrio ? ` · ${a.inmueble_barrio}` : ''}
-                </p>
-              )}
+                  {a.origen === 'agente_ia' && (
+                    <Badge variant="outline" className="gap-1 text-[10px] h-4 px-1.5">
+                      <Bot className="size-2.5" />
+                      Bot
+                    </Badge>
+                  )}
+
+                  <span className="text-xs text-muted-foreground" title={fechaLarga(a.ocurrido_at)}>
+                    {tiempoRelativo(a.ocurrido_at)}
+                  </span>
+                </div>
+
+                {a.cuerpo && (
+                  <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-xs text-muted-foreground leading-relaxed">
+                    {a.cuerpo}
+                  </p>
+                )}
+
+                {a.inmueble_titulo && (
+                  <p className="mt-1 text-xs text-foreground/80 font-medium">
+                    {a.inmueble_titulo}
+                    {a.inmueble_barrio ? ` · ${a.inmueble_barrio}` : ''}
+                  </p>
+                )}
               </div>
             </div>
           </li>

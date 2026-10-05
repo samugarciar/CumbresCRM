@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition, useRef } from 'react';
-import { Search, X, Loader2, Flame } from 'lucide-react';
+import { Search, X, Loader2, Flame, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -38,14 +38,14 @@ export function FiltrosTablero({ zonas }: { zonas: Zona[] }) {
   const hayFiltros = Boolean(params.get('q') || zona || params.get('pendiente'));
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-56 flex-1">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/60 p-2 shadow-2xs backdrop-blur-xs">
+      <div className="relative min-w-64 flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           defaultValue={params.get('q') ?? ''}
           onChange={(e) => buscar(e.target.value)}
-          placeholder="Nombre o teléfono…"
-          className="pl-9"
+          placeholder="Buscar por nombre o teléfono…"
+          className="h-9 rounded-xl border-border/60 bg-background/70 pl-9 text-sm focus-visible:bg-background"
           aria-label="Buscar en el tablero"
         />
         {navegando && (
@@ -53,43 +53,59 @@ export function FiltrosTablero({ zonas }: { zonas: Zona[] }) {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1.5">
         {/* El filtro que convierte el tablero en una lista de trabajo:
             solo lo que espera a una persona o lleva demasiado quieto. */}
         <Button
           variant={soloPendiente ? 'default' : 'outline'}
           size="sm"
           onClick={() => aplicar({ pendiente: soloPendiente ? null : '1' })}
+          className={`h-9 rounded-xl transition-all ${
+            soloPendiente
+              ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xs'
+              : 'hover:border-destructive/40 hover:text-destructive'
+          }`}
           title="Las que piden una persona y las que llevan demasiado tiempo quietas"
         >
-          <Flame className="size-3.5" />
-          Lo que urge
+          <Flame className={`size-3.5 ${soloPendiente ? 'animate-pulse' : 'text-amber-500'}`} />
+          <span>Lo que urge</span>
         </Button>
 
-        {/* Las zonas salen de los datos, no de una lista inventada: son
-            lo que las "etapas" BELLO y MEDELLIN de Kommo eran de verdad. */}
-        {zonas.map((z) =>
-          z.zona ? (
-            <Button
-              key={z.zona}
-              variant={zona === z.zona ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => aplicar({ zona: zona === z.zona ? null : z.zona })}
-            >
-              {z.zona}
-              <span className="ml-1.5 tabular opacity-70">{z.oportunidades}</span>
-            </Button>
-          ) : null
+        {/* Separador sutil si hay zonas */}
+        {zonas.filter((z) => z.zona).length > 0 && (
+          <div className="mx-1 hidden h-5 w-px bg-border/60 sm:block" />
         )}
+
+        {/* Las zonas salen de los datos */}
+        <div className="flex flex-wrap items-center gap-1">
+          {zonas.map((z) =>
+            z.zona ? (
+              <Button
+                key={z.zona}
+                variant={zona === z.zona ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => aplicar({ zona: zona === z.zona ? null : z.zona })}
+                className="h-9 rounded-xl text-xs font-medium"
+              >
+                <MapPin className="size-3 opacity-60" />
+                {z.zona}
+                <span className="ml-1 rounded-full bg-background/40 px-1.5 py-0.2 tabular text-[11px] font-semibold opacity-80">
+                  {z.oportunidades}
+                </span>
+              </Button>
+            ) : null
+          )}
+        </div>
 
         {hayFiltros && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => iniciarNavegacion(() => router.push('/tablero'))}
+            className="h-9 rounded-xl text-xs text-muted-foreground hover:text-foreground"
           >
-            <X className="size-4" />
-            Limpiar
+            <X className="size-3.5" />
+            Limpiar filtros
           </Button>
         )}
       </div>
