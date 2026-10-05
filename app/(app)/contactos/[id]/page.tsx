@@ -211,6 +211,8 @@ export default async function FichaContacto({
             linea={linea}
             ventanaCierraAt={ventanaCierraAt}
             ahora={ahora}
+            plantillas={(plantillas ?? []) as PlantillaResumen[]}
+            asesor={asesor}
           />
         </div>
 
