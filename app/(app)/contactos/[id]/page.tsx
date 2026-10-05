@@ -72,7 +72,7 @@ export default async function FichaContacto({
       p_limite: 6,
       p_rotar: true,
     }),
-    crm.from('plantillas').select('id, nombre, categoria').eq('activa', true).order('nombre'),
+    crm.from('plantillas').select('id, nombre, categoria, tipo, estado_meta').eq('activa', true).order('nombre'),
     // Cuándo se cierra la ventana de 24 h de WhatsApp. Se calcula en la
     // base, del último mensaje ENTRANTE: es lo único que la abre.
     crm.rpc('ventana_whatsapp', { p_contacto_id: id }),
