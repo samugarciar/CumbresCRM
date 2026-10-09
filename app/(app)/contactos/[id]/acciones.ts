@@ -438,3 +438,30 @@ export async function cambiarEtapaOportunidad(
   revalidatePath(`/contactos/${contactoId}`);
   return { ok: true };
 }
+
+/**
+ * Marca una conversación como atendida por el equipo (sin necesidad de enviar WhatsApp).
+ * Nivela el turno de respuesta y limpia los mensajes sin leer.
+ */
+export async function marcarAtendido(
+  contactoId: string,
+  nota: string = 'Conversación marcada como atendida',
+): Promise<Resultado> {
+  if (!z.string().uuid().safeParse(contactoId).success) {
+    return { ok: false, error: 'Contacto inválido.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.schema('crm').rpc('marcar_atendido', {
+    p_contacto_id: contactoId,
+    p_nota: nota,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message || 'No se pudo marcar como atendido.' };
+  }
+
+  revalidatePath('/contactos');
+  revalidatePath(`/contactos/${contactoId}`);
+  return { ok: true };
+}

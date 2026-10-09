@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { MessageSquare, PhoneOff, Users, Phone, ArrowRight, Clock } from 'lucide-react';
+import { MessageSquare, PhoneOff, Phone, ArrowRight, Clock, Check, Inbox } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { tiempoRelativo, telefonoLegible, iniciales } from '@/lib/formato';
 import { FiltrosContactos } from './FiltrosContactos';
+import { BotonMarcarAtendido } from './BotonMarcarAtendido';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +23,7 @@ interface Busqueda {
   q?: string;
   tipo?: string;
   sin_telefono?: string;
+  esperando?: string;
   cursor_at?: string;
   cursor_id?: string;
 }
@@ -37,24 +39,30 @@ export default async function PaginaContactos({
 
   // Toda la lógica de filtros, búsqueda y paginación vive en la base
   // (crm.bandeja_contactos), que además es SECURITY INVOKER: la RLS se
-  // aplica con el token de este usuario. Aquí solo se pasan parámetros.
-  const [{ data: filas, error }, { count: total }, { count: sinTelefono }] =
-    await Promise.all([
-      crm.rpc('bandeja_contactos', {
-        p_texto: sp.q || undefined,
-        p_tipo: sp.tipo || undefined,
-        p_sin_telefono: sp.sin_telefono === '1' ? true : undefined,
-        p_cursor_at: sp.cursor_at || undefined,
-        p_cursor_id: sp.cursor_id || undefined,
-        p_limite: POR_PAGINA,
-      }),
-      crm.from('contactos').select('*', { count: 'exact', head: true }).is('deleted_at', null),
-      crm
-        .from('contactos')
-        .select('*', { count: 'exact', head: true })
-        .is('deleted_at', null)
-        .is('telefono_e164', null),
-    ]);
+  // aplica con el token de este usuario.
+  const [
+    { data: filas, error },
+    { count: total },
+    { count: sinTelefono },
+    { data: esperandoFilas },
+  ] = await Promise.all([
+    crm.rpc('bandeja_contactos', {
+      p_texto: sp.q || undefined,
+      p_tipo: sp.tipo || undefined,
+      p_sin_telefono: sp.sin_telefono === '1' ? true : undefined,
+      p_cursor_at: sp.cursor_at || undefined,
+      p_cursor_id: sp.cursor_id || undefined,
+      p_limite: POR_PAGINA,
+      p_solo_esperando: sp.esperando === '1' ? true : undefined,
+    }),
+    crm.from('contactos').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+    crm
+      .from('contactos')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .is('telefono_e164', null),
+    crm.rpc('bandeja_contactos', { p_solo_esperando: true, p_limite: 200 }),
+  ]);
 
   if (error) {
     return (
@@ -67,11 +75,13 @@ export default async function PaginaContactos({
   const contactos = filas ?? [];
   const ultimo = contactos.at(-1);
   const hayMas = contactos.length === POR_PAGINA && ultimo;
+  const esperandoTotal = esperandoFilas?.length ?? 0;
 
   const siguiente = new URLSearchParams();
   if (sp.q) siguiente.set('q', sp.q);
   if (sp.tipo) siguiente.set('tipo', sp.tipo);
   if (sp.sin_telefono) siguiente.set('sin_telefono', sp.sin_telefono);
+  if (sp.esperando) siguiente.set('esperando', sp.esperando);
   if (ultimo) {
     siguiente.set('cursor_at', ultimo.orden_at ?? '');
     siguiente.set('cursor_id', ultimo.id);
@@ -81,38 +91,43 @@ export default async function PaginaContactos({
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">Contactos</h1>
-          <p className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Inbox className="size-6 text-primary" />
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">
+              Bandeja de entrada
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">
             {total !== null ? (
               <>
                 <span className="font-semibold text-foreground tabular">{total.toLocaleString('es-CO')}</span>{' '}
-                personas unificadas desde WhatsApp, visitas y solicitudes
+                conversaciones y contactos organizados por turno de respuesta
               </>
             ) : (
-              'Directorio central de personas'
+              'Atención y seguimiento de conversaciones de WhatsApp'
             )}
           </p>
         </div>
       </header>
 
-      <Suspense fallback={<Skeleton className="h-13 w-full rounded-2xl" />}>
-        <FiltrosContactos sinTelefono={sinTelefono ?? 0} />
+      <Suspense fallback={<Skeleton className="h-24 w-full rounded-2xl" />}>
+        <FiltrosContactos sinTelefono={sinTelefono ?? 0} esperandoTotal={esperandoTotal} />
       </Suspense>
 
       {contactos.length === 0 ? (
-        <EstadoVacio hayBusqueda={Boolean(sp.q || sp.tipo || sp.sin_telefono)} />
+        <EstadoVacio hayBusqueda={Boolean(sp.q || sp.tipo || sp.sin_telefono || sp.esperando)} />
       ) : (
         <>
-          {/* Vista Escritorio / Tablet: Tabla pulida */}
+          {/* Vista Escritorio / Tablet: Tabla Inbox */}
           <div className="hidden md:block overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xs">
             <Table>
               <TableHeader className="bg-muted/30">
                 <TableRow className="border-border/60 hover:bg-transparent">
-                  <TableHead className="w-80 py-3 font-semibold text-xs text-foreground/80">Persona</TableHead>
+                  <TableHead className="w-[42%] py-3 font-semibold text-xs text-foreground/80">Contacto y último mensaje</TableHead>
                   <TableHead className="py-3 font-semibold text-xs text-foreground/80">Teléfono</TableHead>
                   <TableHead className="py-3 font-semibold text-xs text-foreground/80">Tipo</TableHead>
-                  <TableHead className="py-3 text-right font-semibold text-xs text-foreground/80">Mensajes</TableHead>
-                  <TableHead className="py-3 text-right font-semibold text-xs text-foreground/80">Última interacción</TableHead>
+                  <TableHead className="py-3 font-semibold text-xs text-foreground/80">Turno</TableHead>
+                  <TableHead className="py-3 text-right font-semibold text-xs text-foreground/80">Estado / Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -121,14 +136,37 @@ export default async function PaginaContactos({
                     <TableCell className="py-3">
                       <Link
                         href={`/contactos/${c.id}`}
-                        className="flex items-center gap-3 font-medium outline-none"
+                        className="flex items-start gap-3 outline-none"
                       >
-                        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-xs font-semibold group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                          {iniciales(c.nombre)}
-                        </span>
-                        <span className="truncate group-hover:text-primary group-hover:underline underline-offset-4 transition-colors">
-                          {c.nombre || <span className="text-muted-foreground font-normal">Sin nombre</span>}
-                        </span>
+                        <div className="relative mt-0.5">
+                          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-xs font-semibold group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                            {iniciales(c.nombre)}
+                          </span>
+                          {c.esperando_respuesta && (
+                            <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-background animate-pulse" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-sm group-hover:text-primary group-hover:underline underline-offset-4 transition-colors">
+                            {c.nombre || <span className="text-muted-foreground font-normal">Sin nombre</span>}
+                          </p>
+                          {c.ultimo_mensaje ? (
+                            <p className="line-clamp-1 text-xs text-muted-foreground mt-0.5">
+                              <span className="font-semibold text-foreground/75">
+                                {c.ultimo_mensaje_tipo === 'mensaje_entrante'
+                                  ? 'Cliente: '
+                                  : c.ultimo_mensaje_tipo === 'nota'
+                                  ? 'Nota: '
+                                  : 'Tú: '}
+                              </span>
+                              {c.ultimo_mensaje}
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground/60 italic mt-0.5">
+                              Sin mensajes registrados
+                            </p>
+                          )}
+                        </div>
                       </Link>
                     </TableCell>
 
@@ -157,25 +195,40 @@ export default async function PaginaContactos({
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="text-right tabular text-xs">
-                      {c.sin_leer && c.sin_leer > 0 ? (
-                        <span
-                          className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary"
-                          title={`${c.n_actividades} en total`}
-                        >
-                          <MessageSquare className="size-3" />
-                          {c.sin_leer} nuevos
+                    <TableCell>
+                      {c.esperando_respuesta ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                          <Clock className="size-3 text-amber-600 animate-pulse" />
+                          Esperando respuesta
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-muted-foreground">
-                          <MessageSquare className="size-3 opacity-60" />
-                          {c.n_actividades}
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
+                          <Check className="size-3 text-emerald-500" />
+                          Al día
                         </span>
                       )}
                     </TableCell>
 
-                    <TableCell className="text-right text-xs text-muted-foreground tabular">
-                      {tiempoRelativo(c.ultima_actividad_at)}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {c.esperando_respuesta && (
+                          <BotonMarcarAtendido contactoId={c.id} variante="compacto" />
+                        )}
+
+                        {c.sin_leer && c.sin_leer > 0 ? (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
+                            title={`${c.n_actividades} mensajes en total`}
+                          >
+                            <MessageSquare className="size-3" />
+                            {c.sin_leer} nuevos
+                          </span>
+                        ) : null}
+
+                        <span className="text-xs text-muted-foreground tabular whitespace-nowrap">
+                          {tiempoRelativo(c.ultima_actividad_at)}
+                        </span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -183,58 +236,73 @@ export default async function PaginaContactos({
             </Table>
           </div>
 
-          {/* Vista Móvil: Tarjetas ergonómicas con acción táctil */}
+          {/* Vista Móvil: Tarjetas de conversación */}
           <div className="flex flex-col gap-2.5 md:hidden">
             {contactos.map((c) => (
-              <Link
+              <div
                 key={c.id}
-                href={`/contactos/${c.id}`}
-                className="group flex flex-col gap-2 rounded-2xl border border-border/70 bg-card p-3.5 shadow-2xs transition-all active:bg-muted/40"
+                className="group flex flex-col gap-2.5 rounded-2xl border border-border/70 bg-card p-3.5 shadow-2xs transition-all"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                      {iniciales(c.nombre)}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold tracking-tight text-foreground">
-                        {c.nombre || <span className="text-muted-foreground font-normal">Sin nombre</span>}
-                      </p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Phone className="size-3 opacity-60" />
-                        <span className="tabular">
-                          {c.telefono_e164 ? telefonoLegible(c.telefono_e164) : 'Sin número'}
-                        </span>
+                <Link href={`/contactos/${c.id}`} className="block">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                        {iniciales(c.nombre)}
+                        {c.esperando_respuesta && (
+                          <span className="absolute top-0 right-0 size-2.5 rounded-full bg-amber-500 ring-2 ring-background" />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold tracking-tight text-foreground">
+                          {c.nombre || <span className="text-muted-foreground font-normal">Sin nombre</span>}
+                        </p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Phone className="size-3 opacity-60" />
+                          <span className="tabular">
+                            {c.telefono_e164 ? telefonoLegible(c.telefono_e164) : 'Sin número'}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <ArrowRight className="size-4 shrink-0 text-muted-foreground/50 group-hover:text-primary transition-colors mt-1" />
                   </div>
-                  <ArrowRight className="size-4 shrink-0 text-muted-foreground/50 group-hover:text-primary transition-colors" />
-                </div>
+
+                  {c.ultimo_mensaje && (
+                    <div className="mt-2 rounded-xl bg-muted/40 p-2 text-xs text-muted-foreground">
+                      <p className="line-clamp-2 italic">
+                        <span className="font-semibold text-foreground/75 not-italic">
+                          {c.ultimo_mensaje_tipo === 'mensaje_entrante' ? 'Cliente: ' : 'Tú: '}
+                        </span>
+                        {c.ultimo_mensaje}
+                      </p>
+                    </div>
+                  )}
+                </Link>
 
                 <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs">
-                  <Badge variant="outline" className="capitalize text-[11px] rounded-md">
-                    {c.tipo}
-                  </Badge>
-
-                  <div className="flex items-center gap-3">
-                    {c.sin_leer && c.sin_leer > 0 ? (
-                      <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                        <MessageSquare className="size-3" />
-                        {c.sin_leer} nuevos
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="capitalize text-[11px] rounded-md">
+                      {c.tipo}
+                    </Badge>
+                    {c.esperando_respuesta ? (
+                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                        Esperando
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-muted-foreground">
-                        <MessageSquare className="size-3 opacity-60" />
-                        {c.n_actividades}
-                      </span>
+                      <span className="text-[11px] text-muted-foreground">Al día</span>
                     )}
-                    <span className="flex items-center gap-1 text-muted-foreground tabular">
-                      <Clock className="size-3 opacity-60" />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {c.esperando_respuesta && (
+                      <BotonMarcarAtendido contactoId={c.id} variante="compacto" />
+                    )}
+                    <span className="text-[11px] text-muted-foreground tabular">
                       {tiempoRelativo(c.ultima_actividad_at)}
                     </span>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </>
@@ -243,7 +311,7 @@ export default async function PaginaContactos({
       {hayMas && (
         <div className="flex justify-center pt-2 pb-6">
           <Button variant="outline" className="h-10 rounded-xl px-6 font-medium shadow-2xs" asChild>
-            <Link href={`/contactos?${siguiente.toString()}`}>Cargar más contactos</Link>
+            <Link href={`/contactos?${siguiente.toString()}`}>Cargar más</Link>
           </Button>
         </div>
       )}
@@ -255,16 +323,16 @@ function EstadoVacio({ hayBusqueda }: { hayBusqueda: boolean }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/80 bg-card/40 py-16 px-4 text-center">
       <div className="grid size-12 place-items-center rounded-full bg-muted">
-        <Users className="size-6 text-muted-foreground" />
+        <MessageSquare className="size-6 text-muted-foreground" />
       </div>
       <div>
         <p className="font-semibold text-foreground">
-          {hayBusqueda ? 'Nadie coincide con los criterios de búsqueda' : 'Todavía no hay contactos registrados'}
+          {hayBusqueda ? 'No hay mensajes que coincidan con los filtros' : 'Bandeja de entrada limpia'}
         </p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
           {hayBusqueda
-            ? 'Prueba ajustando los filtros o buscando por los últimos dígitos del teléfono.'
-            : 'Los contactos se crearán automáticamente al recibir mensajes de WhatsApp, visitas o solicitudes.'}
+            ? 'Prueba desactivando «Esperando respuesta» o ajustando el texto de búsqueda.'
+            : 'Los mensajes nuevos de WhatsApp y solicitudes de clientes aparecerán aquí automáticamente.'}
         </p>
       </div>
     </div>

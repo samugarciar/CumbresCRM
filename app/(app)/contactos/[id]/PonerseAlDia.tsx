@@ -14,7 +14,7 @@ export interface Resumen {
   visto_hasta: string | null;
 }
 
-function esperaLegible(segundos: number): string {
+export function esperaLegible(segundos: number): string {
   const min = Math.round(segundos / 60);
   if (min < 60) return `${min} min`;
   const horas = Math.round(min / 60);

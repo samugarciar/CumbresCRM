@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PanelDatos } from './PanelDatos';
 import { Historial } from './Historial';
-import { PonerseAlDia } from './PonerseAlDia';
+import { PonerseAlDia, esperaLegible } from './PonerseAlDia';
 import { MarcarLeido } from './MarcarLeido';
 import { Recomendaciones, type Recomendable } from './Recomendaciones';
 import { UsarPlantilla, type PlantillaResumen } from './UsarPlantilla';
 import { TareaNueva } from '@/app/(app)/mi-dia/TareaNueva';
+import { BotonMarcarAtendido } from '../BotonMarcarAtendido';
 import { lineaDeEnvio } from './lineaDeEnvio';
 import { CasosYEmbudos, type OportunidadContacto, type EtapaConfig } from './CasosYEmbudos';
 
@@ -118,7 +119,7 @@ export default async function FichaContacto({
         <Button variant="ghost" size="sm" asChild className="-ml-2 gap-1.5 text-muted-foreground hover:text-foreground">
           <Link href="/contactos">
             <ArrowLeft className="size-4" />
-            <span>Volver a Contactos</span>
+            <span>Volver a Bandeja de entrada</span>
           </Link>
         </Button>
       </div>
@@ -220,6 +221,26 @@ export default async function FichaContacto({
 
         {/* Columna Derecha: Hub de Conversación y Actividad */}
         <div className="flex min-w-0 flex-col gap-4">
+          {resumen?.esperando_segundos !== null && (resumen?.esperando_segundos ?? 0) > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-950 dark:text-amber-200 shadow-2xs">
+              <div className="flex items-center gap-3">
+                <span className="relative flex size-3 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full size-3 bg-amber-500"></span>
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    Esta persona está esperando una respuesta tuya
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Último mensaje recibido hace {esperaLegible(resumen!.esperando_segundos!)}. Si ya lo atendiste por llamada, presencial o no requiere mensaje, márcalo como atendido.
+                  </p>
+                </div>
+              </div>
+              <BotonMarcarAtendido contactoId={contacto.id} variante="completo" />
+            </div>
+          )}
+
           {resumen && <PonerseAlDia resumen={resumen} />}
 
           <Historial

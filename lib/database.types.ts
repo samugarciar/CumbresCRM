@@ -1481,11 +1481,13 @@ export type Database = {
           p_cursor_id?: string
           p_limite?: number
           p_sin_telefono?: boolean
+          p_solo_esperando?: boolean
           p_texto?: string
           p_tipo?: string
         }
         Returns: {
           asesor_id: string
+          esperando_respuesta: boolean
           id: string
           n_actividades: number
           nombre: string
@@ -1496,6 +1498,9 @@ export type Database = {
           telefono_e164: string
           tipo: string
           ultima_actividad_at: string
+          ultimo_mensaje: string
+          ultimo_mensaje_at: string
+          ultimo_mensaje_tipo: string
         }[]
       }
       bot_atendido_desde: {
@@ -1653,6 +1658,10 @@ export type Database = {
           inmobiliaria_id: string
           nombre: string
         }[]
+      }
+      marcar_atendido: {
+        Args: { p_contacto_id: string; p_nota?: string }
+        Returns: undefined
       }
       marcar_envio_visto: { Args: { p_envio_id: string }; Returns: undefined }
       marcar_leido: { Args: { p_contacto_id: string }; Returns: undefined }

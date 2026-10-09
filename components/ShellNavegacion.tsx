@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Sun,
-  Users,
   Kanban,
   Sparkles,
   Flame,
@@ -18,6 +17,7 @@ import {
   ChevronRight,
   LogOut,
   Building2,
+  MessageSquare,
 } from 'lucide-react';
 import { iniciales } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
@@ -54,9 +54,9 @@ const GRUPOS_NAV: GrupoNav[] = [
       },
       {
         href: '/contactos',
-        etiqueta: 'Contactos',
-        icono: Users,
-        descripcion: 'Directorio y fichas de clientes',
+        etiqueta: 'Bandeja de entrada',
+        icono: MessageSquare,
+        descripcion: 'Chats de WhatsApp y contactos',
       },
       {
         href: '/tablero',
