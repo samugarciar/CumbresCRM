@@ -33,12 +33,37 @@ export function FiltrosTablero({ zonas }: { zonas: Zona[] }) {
     temporizador.current = setTimeout(() => aplicar({ q: texto }), 350);
   };
 
+  const embudo = params.get('embudo') || 'comercial';
   const zona = params.get('zona');
   const soloPendiente = params.get('pendiente') === '1';
   const hayFiltros = Boolean(params.get('q') || zona || params.get('pendiente'));
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/60 p-2 shadow-2xs backdrop-blur-xs">
+    <div className="flex flex-col gap-3">
+      {/* Selector de embudo: Comercial, Administrativa, Captación */}
+      <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 border border-border/50 w-fit shadow-2xs">
+        {[
+          { id: 'comercial', label: 'Comercial' },
+          { id: 'administrativa', label: 'Administrativa' },
+          { id: 'captacion', label: 'Captación' },
+        ].map((e) => (
+          <Button
+            key={e.id}
+            variant={embudo === e.id ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => aplicar({ embudo: e.id === 'comercial' ? null : e.id })}
+            className={`h-8 rounded-lg text-xs font-medium px-3.5 transition-all ${
+              embudo === e.id
+                ? 'bg-background text-foreground shadow-2xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {e.label}
+          </Button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/60 p-2 shadow-2xs backdrop-blur-xs">
       <div className="relative min-w-64 flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -110,5 +135,6 @@ export function FiltrosTablero({ zonas }: { zonas: Zona[] }) {
         )}
       </div>
     </div>
+  </div>
   );
 }

@@ -332,6 +332,7 @@ export type Database = {
           etiqueta: string
           lineal: boolean
           orden: number
+          usa_linea_de: string | null
         }
         Insert: {
           activo?: boolean
@@ -340,6 +341,7 @@ export type Database = {
           etiqueta: string
           lineal?: boolean
           orden: number
+          usa_linea_de?: string | null
         }
         Update: {
           activo?: boolean
@@ -348,8 +350,17 @@ export type Database = {
           etiqueta?: string
           lineal?: boolean
           orden?: number
+          usa_linea_de?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "embudos_usa_linea_de_fkey"
+            columns: ["usa_linea_de"]
+            isOneToOne: false
+            referencedRelation: "embudos"
+            referencedColumns: ["codigo"]
+          },
+        ]
       }
       envios: {
         Row: {
@@ -1324,6 +1335,7 @@ export type Database = {
           cerrada_at: string | null
           contacto_id: string | null
           created_at: string | null
+          embudo: string | null
           escalado_at: string | null
           estado: string | null
           estancada: boolean | null
@@ -1362,6 +1374,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_bot_callado"
             referencedColumns: ["contacto_id"]
+          },
+          {
+            foreignKeyName: "oportunidades_embudo_fkey"
+            columns: ["embudo"]
+            isOneToOne: false
+            referencedRelation: "embudos"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "oportunidades_etapa_del_embudo"
+            columns: ["embudo", "etapa"]
+            isOneToOne: false
+            referencedRelation: "etapas"
+            referencedColumns: ["embudo", "codigo"]
           },
           {
             foreignKeyName: "oportunidades_etapa_fkey"
@@ -1419,6 +1445,10 @@ export type Database = {
       }
     }
     Functions: {
+      abrir_caso_administrativo: {
+        Args: { p_contacto_id: string }
+        Returns: string
+      }
       abrir_oportunidad: {
         Args: { p_contacto_id: string; p_embudo?: string }
         Returns: string
@@ -1553,6 +1583,10 @@ export type Database = {
           p_wa_phone_number_id: string
           p_waba_id: string
         }
+        Returns: string
+      }
+      convertir_a_captacion: {
+        Args: { p_contacto_id: string }
         Returns: string
       }
       credencial_linea: {
@@ -1831,6 +1865,7 @@ export type Database = {
       tablero: {
         Args: {
           p_asesor?: string
+          p_embudo?: string
           p_limite?: number
           p_solo_pendiente?: boolean
           p_texto?: string

@@ -14,6 +14,7 @@ import { Recomendaciones, type Recomendable } from './Recomendaciones';
 import { UsarPlantilla, type PlantillaResumen } from './UsarPlantilla';
 import { TareaNueva } from '@/app/(app)/mi-dia/TareaNueva';
 import { lineaDeEnvio } from './lineaDeEnvio';
+import { CasosYEmbudos, type OportunidadContacto, type EtapaConfig } from './CasosYEmbudos';
 
 export default async function FichaContacto({
   params,
@@ -55,6 +56,8 @@ export default async function FichaContacto({
     { data: responsableFilas },
     { data: botVuelveAt },
     linea,
+    { data: oportunidades },
+    { data: etapas },
   ] = await Promise.all([
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
@@ -83,6 +86,16 @@ export default async function FichaContacto({
     crm.rpc('bot_vuelve_at', { p_contacto_id: id }),
     // Por qué línea se le escribe: la decide el embudo de sus oportunidades.
     lineaDeEnvio(id),
+    crm
+      .from('oportunidades')
+      .select('id, embudo, etapa, estado, updated_at')
+      .eq('contacto_id', id)
+      .eq('estado', 'abierta'),
+    crm
+      .from('etapas')
+      .select('codigo, etiqueta, embudo, orden')
+      .in('embudo', ['comercial', 'administrativa', 'captacion'])
+      .order('orden'),
   ]);
 
   // El resumen se lee ANTES de marcar como leído, para que el separador
@@ -187,6 +200,12 @@ export default async function FichaContacto({
             responsableEsMio={
               responsable?.asesor_id != null && responsable.asesor_id === user?.id
             }
+          />
+
+          <CasosYEmbudos
+            contactoId={contacto.id}
+            oportunidades={(oportunidades ?? []) as OportunidadContacto[]}
+            etapas={(etapas ?? []) as EtapaConfig[]}
           />
 
           <Recomendaciones
