@@ -367,3 +367,101 @@ export async function enviarMensaje(
 
   return { ok: true };
 }
+
+/**
+ * Cierra un caso administrativo y lo convierte en prospecto de captación.
+ */
+export async function convertirACaptacion(contactoId: string): Promise<Resultado> {
+  if (!z.string().uuid().safeParse(contactoId).success) {
+    return { ok: false, error: 'Petición inválida.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.schema('crm').rpc('convertir_a_captacion', {
+    p_contacto_id: contactoId,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message || 'No se pudo convertir a captación.' };
+  }
+
+  revalidatePath(`/contactos/${contactoId}`);
+  return { ok: true };
+}
+
+/**
+ * Abre un caso administrativo manualmente si el contacto no tiene uno abierto.
+ */
+export async function abrirCasoAdministrativo(contactoId: string): Promise<Resultado> {
+  if (!z.string().uuid().safeParse(contactoId).success) {
+    return { ok: false, error: 'Petición inválida.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.schema('crm').rpc('abrir_caso_administrativo', {
+    p_contacto_id: contactoId,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message || 'No se pudo abrir el caso administrativo.' };
+  }
+
+  revalidatePath(`/contactos/${contactoId}`);
+  return { ok: true };
+}
+
+/**
+ * Mueve una oportunidad (comercial, administrativa o captación) a otra etapa.
+ */
+export async function cambiarEtapaOportunidad(
+  oportunidadId: string,
+  nuevaEtapa: string,
+  contactoId: string,
+): Promise<Resultado> {
+  if (!z.string().uuid().safeParse(oportunidadId).success) {
+    return { ok: false, error: 'Petición inválida.' };
+  }
+  if (!z.string().regex(/^[a-z_]{1,40}$/).safeParse(nuevaEtapa).success) {
+    return { ok: false, error: 'Etapa inválida.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.schema('crm').rpc('mover_etapa', {
+    p_oportunidad_id: oportunidadId,
+    p_etapa: nuevaEtapa,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message || 'No se pudo cambiar de etapa.' };
+  }
+
+  revalidatePath(`/contactos/${contactoId}`);
+  return { ok: true };
+}
+
+/**
+ * Marca una conversación como atendida por el equipo (sin necesidad de enviar WhatsApp).
+ * Nivela el turno de respuesta y limpia los mensajes sin leer.
+ */
+export async function marcarAtendido(
+  contactoId: string,
+  nota: string = 'Conversación marcada como atendida',
+): Promise<Resultado> {
+  if (!z.string().uuid().safeParse(contactoId).success) {
+    return { ok: false, error: 'Contacto inválido.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.schema('crm').rpc('marcar_atendido', {
+    p_contacto_id: contactoId,
+    p_nota: nota,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message || 'No se pudo marcar como atendido.' };
+  }
+
+  revalidatePath('/contactos');
+  revalidatePath(`/contactos/${contactoId}`);
+  return { ok: true };
+}

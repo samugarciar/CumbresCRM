@@ -37,17 +37,20 @@ export interface EleccionLinea {
  * @param lineas Las líneas activas y conectadas de la inmobiliaria.
  * @param embudosDelContacto Los embudos donde la persona tiene una
  *   oportunidad abierta, la de actividad más reciente primero.
+ * @param usaLineaDe Mapa de embudos que no tienen línea propia y usan la de otro embudo.
  */
 export function elegirLinea(
   lineas: LineaEnvio[],
   embudosDelContacto: string[],
+  usaLineaDe: Record<string, string> = { captacion: 'administrativa' },
 ): EleccionLinea {
   const vistos = new Set<string>();
   const opciones: LineaEnvio[] = [];
   for (const embudo of embudosDelContacto) {
-    if (vistos.has(embudo)) continue;
-    vistos.add(embudo);
-    const linea = lineas.find((l) => l.embudo === embudo);
+    const embudoEfectivo = usaLineaDe[embudo] ?? embudo;
+    if (vistos.has(embudoEfectivo)) continue;
+    vistos.add(embudoEfectivo);
+    const linea = lineas.find((l) => l.embudo === embudoEfectivo);
     if (linea) opciones.push(linea);
   }
 

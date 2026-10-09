@@ -14,7 +14,14 @@ interface Busqueda {
   q?: string;
   zona?: string;
   pendiente?: string;
+  embudo?: string;
 }
+
+const NOMBRES_EMBUDO: Record<string, string> = {
+  comercial: 'Comercial',
+  administrativa: 'Administrativa',
+  captacion: 'Captación',
+};
 
 export default async function PaginaTablero({
   searchParams,
@@ -22,17 +29,23 @@ export default async function PaginaTablero({
   searchParams: Promise<Busqueda>;
 }) {
   const sp = await searchParams;
+  const embudoActual = sp.embudo || 'comercial';
   const supabase = await createClient();
   const crm = supabase.schema('crm');
 
   const [{ data: etapas }, { data: filas, error }, { data: zonas }] =
     await Promise.all([
-      crm.from('etapas').select('codigo, orden, etiqueta, dias_pudricion').order('orden'),
+      crm
+        .from('etapas')
+        .select('codigo, orden, etiqueta, dias_pudricion')
+        .eq('embudo', embudoActual)
+        .order('orden'),
       crm.rpc('tablero', {
         p_limite: POR_COLUMNA,
         p_texto: sp.q || undefined,
         p_zona: sp.zona || undefined,
         p_solo_pendiente: sp.pendiente === '1' ? true : undefined,
+        p_embudo: embudoActual,
       }),
       crm.rpc('zonas'),
     ]);
@@ -67,7 +80,9 @@ export default async function PaginaTablero({
   return (
     <div className="flex h-full w-full flex-col gap-4">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Tablero</h1>
+        <h1 className="text-xl font-semibold tracking-tight">
+          Tablero · {NOMBRES_EMBUDO[embudoActual] ?? 'Comercial'}
+        </h1>
         <p className="text-sm text-muted-foreground">
           {totalAbiertas > 0 ? (
             <>

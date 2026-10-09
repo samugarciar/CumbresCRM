@@ -15,7 +15,7 @@ export async function lineaDeEnvio(contactoId: string): Promise<EleccionLinea> {
   const supabase = await createClient();
   const crm = supabase.schema('crm');
 
-  const [{ data: lineas }, { data: oportunidades }] = await Promise.all([
+  const [{ data: lineas }, { data: oportunidades }, { data: embudos }] = await Promise.all([
     crm
       .from('lineas')
       .select('embudo, nombre, wa_phone_number_id, telefono_e164, token_invalido_at')
@@ -29,10 +29,22 @@ export async function lineaDeEnvio(contactoId: string): Promise<EleccionLinea> {
       .eq('contacto_id', contactoId)
       .eq('estado', 'abierta')
       .order('updated_at', { ascending: false }),
+    crm
+      .from('embudos')
+      .select('codigo, usa_linea_de')
+      .not('usa_linea_de', 'is', null),
   ]);
+
+  const usaLineaDe: Record<string, string> = { captacion: 'administrativa' };
+  for (const e of embudos ?? []) {
+    if (e.codigo && e.usa_linea_de) {
+      usaLineaDe[e.codigo] = e.usa_linea_de;
+    }
+  }
 
   return elegirLinea(
     (lineas ?? []) as LineaEnvio[],
     (oportunidades ?? []).map((o) => o.embudo),
+    usaLineaDe,
   );
 }

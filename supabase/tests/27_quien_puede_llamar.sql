@@ -32,15 +32,18 @@ CREATE TEMP TABLE lista_blanca (firma text PRIMARY KEY) ON COMMIT DROP;
 
 INSERT INTO lista_blanca (firma) VALUES
   -- Las pantallas: lo que la app llama con .rpc() y la sesión del usuario
+  ('crm.abrir_caso_administrativo(uuid)'),
   ('crm.asignar_lead(uuid, uuid)'),
-  ('crm.bandeja_contactos(text, text, boolean, timestamptz, uuid, int)'),
+  ('crm.bandeja_contactos(text, text, boolean, timestamptz, uuid, int, boolean)'),
   ('crm.bot_vuelve_at(uuid)'),
   ('crm.cambiar_bot(uuid, boolean)'),
   ('crm.cerrar_oportunidad(uuid, text, text, uuid, text)'),
   ('crm.coincidencias(smallint, int, int, uuid, smallint)'),
   ('crm.completar_tarea(uuid)'),
+  ('crm.convertir_a_captacion(uuid)'),
   ('crm.encolar_envio(uuid, text, uuid, uuid, text)'),
   ('crm.inmuebles_para(uuid, smallint, int, boolean)'),
+  ('crm.marcar_atendido(uuid, text)'),
   ('crm.marcar_leido(uuid)'),
   ('crm.marcar_opt_out(uuid, text)'),
   ('crm.mi_dia(int, uuid)'),
@@ -50,7 +53,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.render_plantilla(uuid, uuid, uuid, text)'),
   ('crm.responsable_de(uuid)'),
   ('crm.resumen_contacto(uuid)'),
-  ('crm.tablero(int, text, uuid, boolean, text)'),
+  ('crm.tablero(int, text, uuid, boolean, text, text)'),
   ('crm.variables_disponibles()'),
   ('crm.ventana_whatsapp(uuid, text)'),
   ('crm.zonas()'),
