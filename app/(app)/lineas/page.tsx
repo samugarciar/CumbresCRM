@@ -60,6 +60,11 @@ export default async function PaginaLineas() {
         embudos={(embudos ?? []) as Embudo[]}
         lineas={(lineas ?? []) as Linea[]}
         puedeEditar={perfil?.rol === 'admin'}
+        urlConectar={
+          process.env.PLATAFORMA_URL
+            ? `${process.env.PLATAFORMA_URL.replace(/\/+$/, '')}/whatsapp`
+            : null
+        }
       />
     </div>
   );

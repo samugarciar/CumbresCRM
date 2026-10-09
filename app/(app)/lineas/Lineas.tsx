@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Check, KeyRound, Loader2, Pencil, Phone, PhoneOff } from 'lucide-react';
+import { Check, KeyRound, Loader2, MessageCircle, Pencil, Phone, PhoneOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,10 +43,16 @@ export function Lineas({
   embudos,
   lineas,
   puedeEditar,
+  urlConectar,
 }: {
   embudos: Embudo[];
   lineas: Linea[];
   puedeEditar: boolean;
+  /**
+   * La página de la plataforma donde se conecta un número con la ventana
+   * de Meta (registro integrado, coexistencia). Sin `PLATAFORMA_URL`, null.
+   */
+  urlConectar: string | null;
 }) {
   const [editando, setEditando] = useState<string | null>(null);
 
@@ -60,6 +66,7 @@ export function Lineas({
               embudo={e}
               linea={linea}
               puedeEditar={puedeEditar}
+              urlConectar={urlConectar}
               abierto={editando === e.codigo}
               abrir={() => setEditando(e.codigo)}
               cerrar={() => setEditando(null)}
@@ -75,6 +82,7 @@ function Fila({
   embudo,
   linea,
   puedeEditar,
+  urlConectar,
   abierto,
   abrir,
   cerrar,
@@ -82,6 +90,7 @@ function Fila({
   embudo: Embudo;
   linea: Linea | null;
   puedeEditar: boolean;
+  urlConectar: string | null;
   abierto: boolean;
   abrir: () => void;
   cerrar: () => void;
@@ -172,10 +181,31 @@ function Fila({
         </div>
 
         {puedeEditar && (
-          <Button size="sm" variant={conectada ? 'ghost' : 'default'} onClick={abrir}>
-            <Pencil className="size-3.5" />
-            {conectada ? 'Cambiar' : 'Conectar'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* El camino de verdad: la ventana de Meta, en la plataforma, que
+                es quien guarda el token. El formulario de al lado queda para
+                el número de prueba de Meta, que no pasa por esa ventana. */}
+            {urlConectar && (
+              <Button size="sm" variant={conectada && !tokenCaido ? 'ghost' : 'default'} asChild>
+                <a
+                  href={`${urlConectar}?embudo=${encodeURIComponent(embudo.codigo)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle className="size-3.5" />
+                  {conectada ? 'Reconectar con WhatsApp' : 'Conectar con WhatsApp'}
+                </a>
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={conectada || urlConectar ? 'ghost' : 'default'}
+              onClick={abrir}
+            >
+              <Pencil className="size-3.5" />
+              {urlConectar ? (conectada ? 'Cambiar a mano' : 'A mano') : conectada ? 'Cambiar' : 'Conectar'}
+            </Button>
+          </div>
         )}
       </div>
     );
