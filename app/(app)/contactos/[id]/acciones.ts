@@ -465,3 +465,34 @@ export async function marcarAtendido(
   revalidatePath(`/contactos/${contactoId}`);
   return { ok: true };
 }
+
+/**
+ * Resuelve o cierra exitosamente un caso administrativo o captación.
+ */
+export async function resolverCaso(
+  oportunidadId: string,
+  contactoId: string,
+  nota: string = 'Caso resuelto con éxito',
+): Promise<Resultado> {
+  if (!z.string().uuid().safeParse(oportunidadId).success) {
+    return { ok: false, error: 'Oportunidad inválida.' };
+  }
+  if (!z.string().uuid().safeParse(contactoId).success) {
+    return { ok: false, error: 'Contacto inválido.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.schema('crm').rpc('cerrar_oportunidad', {
+    p_oportunidad_id: oportunidadId,
+    p_estado: 'ganada',
+    p_nota: nota,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message || 'No se pudo resolver el caso.' };
+  }
+
+  revalidatePath('/contactos');
+  revalidatePath(`/contactos/${contactoId}`);
+  return { ok: true };
+}

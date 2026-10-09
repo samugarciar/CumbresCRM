@@ -1477,6 +1477,7 @@ export type Database = {
       }
       bandeja_contactos: {
         Args: {
+          p_canal?: string
           p_cursor_at?: string
           p_cursor_id?: string
           p_limite?: number
@@ -1487,8 +1488,11 @@ export type Database = {
         }
         Returns: {
           asesor_id: string
+          canal: string
+          embudos_activos: string[]
           esperando_respuesta: boolean
           id: string
+          linea_nombre: string
           n_actividades: number
           nombre: string
           orden_at: string
@@ -1589,6 +1593,21 @@ export type Database = {
           p_waba_id: string
         }
         Returns: string
+      }
+      conteo_bandeja: {
+        Args: never
+        Returns: {
+          admin_captacion_esperando: number
+          admin_captacion_total: number
+          admin_esperando: number
+          admin_total: number
+          captacion_esperando: number
+          captacion_total: number
+          comercial_esperando: number
+          comercial_total: number
+          total: number
+          total_esperando: number
+        }[]
       }
       convertir_a_captacion: {
         Args: { p_contacto_id: string }
