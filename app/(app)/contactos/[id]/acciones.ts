@@ -9,6 +9,7 @@ import { lineaDeEnvio } from './lineaDeEnvio';
 export interface Resultado {
   ok: boolean;
   error?: string;
+  oportunidadId?: string;
 }
 
 // Se valida en el servidor aunque el formulario ya valide: el cliente es
@@ -496,3 +497,30 @@ export async function resolverCaso(
   revalidatePath(`/contactos/${contactoId}`);
   return { ok: true };
 }
+
+/**
+ * Inicia la relación comercial/administrativa con un propietario o reclasifica una captación.
+ */
+export async function convertirAAdministrativo(
+  contactoId: string,
+  esGanada: boolean = true,
+): Promise<Resultado> {
+  if (!z.string().uuid().safeParse(contactoId).success) {
+    return { ok: false, error: 'Contacto inválido.' };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.schema('crm').rpc('convertir_a_administrativo', {
+    p_contacto_id: contactoId,
+    p_es_ganada: esGanada,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message || 'No se pudo vincular a la línea administrativa.' };
+  }
+
+  revalidatePath('/contactos');
+  revalidatePath(`/contactos/${contactoId}`);
+  return { ok: true, oportunidadId: data ?? undefined };
+}
+

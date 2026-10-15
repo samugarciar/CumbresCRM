@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   convertirACaptacion,
+  convertirAAdministrativo,
   abrirCasoAdministrativo,
   cambiarEtapaOportunidad,
   resolverCaso,
@@ -103,11 +104,6 @@ const INFO_ETAPAS_CAPTACION: Record<string, { desc: string; icon: typeof Buildin
     icon: FileText,
     color: 'text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
   },
-  por_aprobar: {
-    desc: 'Propuesta de canon y contrato de corretaje en comité para publicación.',
-    icon: FileCheck,
-    color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
-  },
   negociando: {
     desc: 'Definiendo comisión, canon y condiciones comerciales finales.',
     icon: Handshake,
@@ -128,6 +124,7 @@ export function CasosYEmbudos({ contactoId, oportunidades, etapas }: Props) {
   );
 
   const captacionAbierta = abiertas.find((o) => o.embudo === 'captacion');
+  const adminAbierta = abiertas.find((o) => o.embudo === 'administrativa');
 
   // Oportunidad activa actual
   const opActiva =
@@ -139,6 +136,18 @@ export function CasosYEmbudos({ contactoId, oportunidades, etapas }: Props) {
       const res = await convertirACaptacion(contactoId);
       if (!res.ok) {
         setError(res.error ?? 'No se pudo convertir a captación.');
+      }
+    });
+  };
+
+  const handleConvertirAdministrativo = (esGanada: boolean = true) => {
+    setError(null);
+    iniciar(async () => {
+      const res = await convertirAAdministrativo(contactoId, esGanada);
+      if (!res.ok) {
+        setError(res.error ?? 'No se pudo vincular a la línea administrativa.');
+      } else if (res.oportunidadId) {
+        setTabSeleccionada(res.oportunidadId);
       }
     });
   };
@@ -365,6 +374,32 @@ export function CasosYEmbudos({ contactoId, oportunidades, etapas }: Props) {
               <Sparkles className="size-3.5 text-amber-600 dark:text-amber-400" />
             )}
             Reclasificar como Captación
+          </Button>
+        </div>
+      )}
+
+      {/* Pasar a Línea Administrativa (ÚNICAMENTE si es captación y NO tiene caso administrativo abierto ya) */}
+      {esCaptacion && !adminAbierta && (
+        <div className="mt-2 flex flex-col gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-emerald-950 dark:text-emerald-200">
+          <div>
+            <p className="text-xs font-semibold">¿Se inició relación comercial con el propietario?</p>
+            <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 mt-0.5">
+              Cierra la captación con éxito y abre el caso administrativo para gestionar el contrato y la administración del inmueble.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleConvertirAdministrativo(true)}
+            disabled={pendiente}
+            className="h-8 gap-1.5 text-xs font-semibold bg-background hover:bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 border-emerald-500/40 rounded-lg w-full"
+          >
+            {pendiente ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Handshake className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            )}
+            Pasar a Administrativa (Iniciar relación comercial)
           </Button>
         </div>
       )}

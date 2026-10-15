@@ -255,13 +255,13 @@ BEGIN
   INSERT INTO crm.actividades (inmobiliaria_id, tipo, origen, contacto_id, cuerpo, ocurrido_at)
   VALUES (v_inmo_id, 'nota', 'humano', v_c_cap_verif, 'Certificado de Tradición revisado (matrícula 001-123456). Inmueble libre de embargos y al día en predial.', now() - interval '1 day');
 
-  -- CAP 3: Por aprobar
+  -- CAP 3: Inmueble verificado (Fernando Gaviria)
   INSERT INTO crm.contactos (id, inmobiliaria_id, nombre, telefono_e164, tipo, ultima_actividad_at)
   VALUES (v_c_cap_aprob, v_inmo_id, 'Fernando Gaviria', '+573109988779', 'propietario', now() - interval '2 days');
   INSERT INTO crm.oportunidades (inmobiliaria_id, contacto_id, embudo, etapa, estado)
-  VALUES (v_inmo_id, v_c_cap_aprob, 'captacion', 'por_aprobar', 'abierta');
+  VALUES (v_inmo_id, v_c_cap_aprob, 'captacion', 'inmueble_verificado', 'abierta');
   INSERT INTO crm.actividades (inmobiliaria_id, tipo, origen, contacto_id, cuerpo, ocurrido_at)
-  VALUES (v_inmo_id, 'nota', 'humano', v_c_cap_aprob, 'Propuesta de canon $3.200.000 enviada a comité comercial para aprobación de publicación.', now() - interval '2 days');
+  VALUES (v_inmo_id, 'nota', 'humano', v_c_cap_aprob, 'Estudio de títulos y tradición aprobado. Listo para iniciar negociación con el propietario.', now() - interval '2 days');
 
   -- CAP 4: Propietario contactado
   INSERT INTO crm.contactos (id, inmobiliaria_id, nombre, telefono_e164, tipo, ultima_actividad_at)
