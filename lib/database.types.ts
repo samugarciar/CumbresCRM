@@ -1609,6 +1609,10 @@ export type Database = {
           total_esperando: number
         }[]
       }
+      convertir_a_administrativo: {
+        Args: { p_contacto_id: string; p_es_ganada?: boolean }
+        Returns: string
+      }
       convertir_a_captacion: {
         Args: { p_contacto_id: string }
         Returns: string

@@ -41,6 +41,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.coincidencias(smallint, int, int, uuid, smallint)'),
   ('crm.completar_tarea(uuid)'),
   ('crm.conteo_bandeja()'),
+  ('crm.convertir_a_administrativo(uuid, boolean)'),
   ('crm.convertir_a_captacion(uuid)'),
   ('crm.encolar_envio(uuid, text, uuid, uuid, text)'),
   ('crm.inmuebles_para(uuid, smallint, int, boolean)'),
