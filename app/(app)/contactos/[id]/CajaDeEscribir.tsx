@@ -93,13 +93,23 @@ export function CajaDeEscribir({
   const [slashIndex, setSlashIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Modo reactivación (fuera de ventana)
+  // Modo reactivación (fuera de ventana). Solo las aprobadas de la línea
+  // elegida: una plantilla vive en la cuenta de WhatsApp de una línea y
+  // por otra no sale. Sin línea, las del número por defecto.
+  const lineaElegida = elegida?.wa_phone_number_id ?? null;
   const aprobadas = plantillas.filter(
-    (p) => p.tipo !== 'chat' && p.estado_meta === 'aprobada'
+    (p) =>
+      p.tipo !== 'chat' &&
+      p.estado_meta === 'aprobada' &&
+      (p.wa_phone_number_id ?? null) === lineaElegida
   );
-  const [plantillaReactivacionId, setPlantillaReactivacionId] = useState<string | null>(
+  const [plantillaElegidaId, setPlantillaReactivacionId] = useState<string | null>(
     aprobadas[0]?.id ?? null
   );
+  // Al cambiar de línea, la que estaba elegida puede no ser de la nueva.
+  const plantillaReactivacionId = aprobadas.some((p) => p.id === plantillaElegidaId)
+    ? plantillaElegidaId
+    : (aprobadas[0]?.id ?? null);
   const [textoReactivacion, setTextoReactivacion] = useState('');
   const [cargandoReactivacion, iniciarRenderReactivacion] = useTransition();
 

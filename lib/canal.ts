@@ -15,10 +15,20 @@ import 'server-only';
  * DESDE QUÉ LÍNEA (1 oct 2026, antes del paso 5)
  * Con una línea por embudo, el CRM dice por cuál quiere mandar: `desde`,
  * con el `phone_number_id` de Meta —la misma llave que usa
- * crm.credencial_linea()— y el embudo. Es OPCIONAL y la plataforma
- * todavía no lo lee: hoy manda por su número de siempre. El contrato de
- * lo que tendrá que hacer con él está en la nota 9 del vault.
+ * crm.credencial_linea()— y el embudo. La plataforma lo lee desde el 8 oct:
+ * con `desde`, manda por esa línea o por ninguna. Sin él, por su número
+ * por defecto. Contrato en la nota 9 del vault.
+ *
+ * LAS PLANTILLAS (contrato C2, 9 oct)
+ * También las pide el CRM y las tramita la plataforma: el token de Meta de
+ * cada línea vive en Vault y no sale de ahí. El CRM no guarda ningún token
+ * de Meta.
  */
+
+/** La URL de una ruta de la plataforma, aunque PLATAFORMA_URL traiga «/» al final. */
+function urlPlataforma(ruta: string): string {
+  return `${(process.env.PLATAFORMA_URL ?? '').replace(/\/+$/, '')}${ruta}`;
+}
 
 export interface ResultadoCanal {
   ok: boolean;
@@ -59,7 +69,7 @@ export async function enviarPorCanal(opciones: {
   }
 
   try {
-    const r = await fetch(`${process.env.PLATAFORMA_URL}/api/whatsapp/enviar`, {
+    const r = await fetch(urlPlataforma('/api/whatsapp/enviar'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -95,6 +105,126 @@ export async function enviarPorCanal(opciones: {
     // Fallo de RED: no se sabe si salió. Quien llame NO debe marcarlo
     // fallido ni invitar a reenviar — el cliente podría recibirlo dos
     // veces. La fila se queda 'pendiente' y el acuse de Meta la resuelve.
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? `No se pudo contactar con la plataforma: ${error.message}`
+          : 'No se pudo contactar con la plataforma',
+    };
+  }
+}
+
+// ---------------------------------------------------------------------
+// Contrato C2 · Plantillas de Meta, por línea
+// ---------------------------------------------------------------------
+
+/** Una plantilla tal como la tiene Meta en la WABA de una línea. */
+export interface PlantillaMeta {
+  id: string;
+  name: string;
+  status: string;
+  category: string;
+  language: string;
+  components?: { type: string; text?: string }[];
+  rejected_reason?: string;
+}
+
+/**
+ * La plataforma pide a Meta una sola página de 100. Si vienen 100 puede
+ * que falten: entonces la sincronización no retira nada (ver
+ * crm.sincronizar_plantillas, p_completa).
+ */
+const PAGINA_DE_PLANTILLAS = 100;
+
+function sinCanal(): { ok: false; sinCanal: true; error: string } {
+  return {
+    ok: false,
+    sinCanal: true,
+    error: 'El CRM todavía no está conectado con la plataforma: faltan PLATAFORMA_URL y CRM_ENVIO_TOKEN.',
+  };
+}
+
+/** Las plantillas que hay en Meta para esta línea. */
+export async function plantillasDeLinea(opciones: {
+  inmobiliariaId: string;
+  waPhoneNumberId: string;
+}): Promise<{
+  ok: boolean;
+  plantillas?: PlantillaMeta[];
+  completa?: boolean;
+  error?: string;
+  sinCanal?: boolean;
+}> {
+  if (!canalConfigurado()) return sinCanal();
+
+  const consulta = new URLSearchParams({
+    inmobiliaria_id: opciones.inmobiliariaId,
+    wa_phone_number_id: opciones.waPhoneNumberId,
+  });
+
+  try {
+    const r = await fetch(urlPlataforma(`/api/whatsapp/plantillas?${consulta}`), {
+      headers: { 'x-crm-token': process.env.CRM_ENVIO_TOKEN! },
+      cache: 'no-store',
+    });
+    const datos = await r.json().catch(() => ({}));
+    if (!r.ok || !datos?.ok) {
+      return { ok: false, error: datos?.error ?? `La plataforma respondió ${r.status}` };
+    }
+    const plantillas = (Array.isArray(datos.datos) ? datos.datos : []) as PlantillaMeta[];
+    return { ok: true, plantillas, completa: plantillas.length < PAGINA_DE_PLANTILLAS };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? `No se pudo contactar con la plataforma: ${error.message}`
+          : 'No se pudo contactar con la plataforma',
+    };
+  }
+}
+
+/**
+ * Crea la plantilla en la WABA de la línea y la manda a revisión de Meta.
+ * Los ejemplos van por nombre de variable: Meta exige uno por cada una.
+ */
+export async function crearPlantillaEnMeta(opciones: {
+  inmobiliariaId: string;
+  waPhoneNumberId: string;
+  nombreMeta: string;
+  categoria: 'utilidad' | 'marketing';
+  idioma: string;
+  cuerpo: string;
+  ejemplos: Record<string, string>;
+}): Promise<{ ok: boolean; idMeta?: string; status?: string; error?: string; sinCanal?: boolean }> {
+  if (!canalConfigurado()) return sinCanal();
+
+  try {
+    const r = await fetch(urlPlataforma('/api/whatsapp/plantillas'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-crm-token': process.env.CRM_ENVIO_TOKEN!,
+      },
+      body: JSON.stringify({
+        inmobiliaria_id: opciones.inmobiliariaId,
+        wa_phone_number_id: opciones.waPhoneNumberId,
+        nombre_meta: opciones.nombreMeta,
+        categoria: opciones.categoria,
+        idioma: opciones.idioma,
+        cuerpo: opciones.cuerpo,
+        ejemplos: opciones.ejemplos,
+      }),
+    });
+    const datos = await r.json().catch(() => ({}));
+    if (!r.ok || !datos?.ok) {
+      return { ok: false, error: datos?.error ?? `La plataforma respondió ${r.status}` };
+    }
+    return { ok: true, idMeta: datos.id_meta, status: datos.status };
+  } catch (error) {
+    // Aquí sí se puede reintentar: crear la misma plantilla dos veces lo
+    // rechaza Meta por nombre repetido, no le llega nada a ningún cliente.
     return {
       ok: false,
       error:

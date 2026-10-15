@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { previsualizar } from '@/lib/plantillas';
 import {
   guardarPlantilla,
   archivarPlantilla,
@@ -47,6 +48,19 @@ export interface Plantilla {
   tipo?: string;
   idioma?: string;
   motivo_rechazo_meta?: string | null;
+  wa_phone_number_id?: string | null;
+}
+
+/** Una línea conectada: las plantillas de WhatsApp viven en su WABA. */
+export interface LineaPlantilla {
+  wa_phone_number_id: string;
+  nombre: string;
+  embudo: string;
+}
+
+/** Ya en Meta: lo que Meta revisó no se toca desde aquí. */
+function estaEnMeta(p: Plantilla | null): boolean {
+  return Boolean(p && p.tipo !== 'chat' && ['enviada', 'aprobada'].includes(p.estado_meta));
 }
 
 const ESTADOS_META: Record<
@@ -87,10 +101,12 @@ const ESTADOS_META: Record<
 export function GestorPlantillas({
   plantillas,
   variables,
+  lineas,
   puedeEditar,
 }: {
   plantillas: Plantilla[];
   variables: string[];
+  lineas: LineaPlantilla[];
   puedeEditar: boolean;
 }) {
   const [tabActiva, setTabActiva] = useState<'whatsapp' | 'chat'>('whatsapp');
@@ -100,12 +116,18 @@ export function GestorPlantillas({
   const [cuerpo, setCuerpo] = useState('');
   const [categoria, setCategoria] = useState('utilidad');
   const [idioma, setIdioma] = useState('es');
+  const [linea, setLinea] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [mensajeSync, setMensajeSync] = useState<string | null>(null);
   const [pendiente, startTransition] = useTransition();
 
   const plantillasWhatsApp = plantillas.filter((p) => p.tipo !== 'chat');
   const plantillasChat = plantillas.filter((p) => p.tipo === 'chat');
+  const nombreDeLinea = (id?: string | null) =>
+    lineas.find((l) => l.wa_phone_number_id === id)?.nombre ?? null;
+
+  // Lo que Meta ya revisó no se edita: solo el título.
+  const bloqueada = typeof editando === 'object' && estaEnMeta(editando);
 
   function abrir(p: Plantilla | 'nueva-whatsapp' | 'nueva-chat') {
     setEditando(p);
@@ -116,12 +138,19 @@ export function GestorPlantillas({
       setCuerpo('');
       setCategoria(p === 'nueva-whatsapp' ? 'utilidad' : 'general');
       setIdioma('es');
+      setLinea(lineas[0]?.wa_phone_number_id ?? '');
     } else {
       setNombre(p.nombre);
       setNombreMeta(p.nombre_meta ?? '');
       setCuerpo(p.cuerpo);
       setCategoria(p.categoria);
       setIdioma(p.idioma ?? 'es');
+      // Un borrador sin línea propone la primera; una que ya está en Meta
+      // se queda como está, aunque no tenga línea.
+      setLinea(
+        p.wa_phone_number_id ??
+          (p.tipo !== 'chat' && !estaEnMeta(p) ? lineas[0]?.wa_phone_number_id ?? '' : '')
+      );
     }
   }
 
@@ -155,7 +184,8 @@ export function GestorPlantillas({
         categoria,
         tipoPlantilla,
         tipoPlantilla === 'whatsapp' ? nombreMeta : null,
-        idioma
+        idioma,
+        tipoPlantilla === 'whatsapp' ? linea || null : null
       );
 
       if (!r.ok) {
@@ -163,15 +193,13 @@ export function GestorPlantillas({
         return;
       }
 
-      // Si además pidió enviar a revisión a Meta
-      if (enviarDirectoAMeta && tipoPlantilla === 'whatsapp') {
-        const idAEnviar = typeof editando === 'object' && editando ? editando.id : null;
-        if (idAEnviar) {
-          const rMeta = await enviarAMeta(idAEnviar);
-          if (!rMeta.ok) {
-            setError(`Guardada como borrador, pero Meta la rechazó: ${rMeta.error}`);
-            return;
-          }
+      // Si además pidió mandarla a revisión. Una nueva no tenía id hasta
+      // ahora: el que vale es el que devolvió el guardado.
+      if (enviarDirectoAMeta && tipoPlantilla === 'whatsapp' && r.id) {
+        const rMeta = await enviarAMeta(r.id, linea || null);
+        if (!rMeta.ok) {
+          setError(`Quedó guardada como borrador, pero no se pudo mandar a Meta: ${rMeta.error}`);
+          return;
         }
       }
 
@@ -179,10 +207,20 @@ export function GestorPlantillas({
     });
   }
 
-  function handleEnviarAMeta(id: string) {
+  function handleEnviarAMeta(p: Plantilla) {
     setError(null);
+    // Sin línea y con varias conectadas, hay que elegir antes de mandarla.
+    if (!p.wa_phone_number_id && lineas.length !== 1) {
+      abrir(p);
+      setError(
+        lineas.length === 0
+          ? 'Para mandarla a Meta hace falta una línea conectada.'
+          : 'Elige por qué línea va a salir y pulsa «Mandar a Meta».'
+      );
+      return;
+    }
     startTransition(async () => {
-      const r = await enviarAMeta(id);
+      const r = await enviarAMeta(p.id, p.wa_phone_number_id ?? lineas[0]?.wa_phone_number_id ?? null);
       if (!r.ok) {
         setError(r.error ?? 'No se pudo enviar a revisión.');
       }
@@ -207,19 +245,6 @@ export function GestorPlantillas({
     startTransition(async () => {
       await archivarPlantilla(id);
     });
-  }
-
-  // Previsualización de texto reemplazando variables dinámicas por datos simulados
-  function previsualizar(c: string) {
-    return c
-      .replace(/\{\{\s*nombre\s*\}\}/g, 'María Restrepo')
-      .replace(/\{\{\s*asesor\s*\}\}/g, 'Alejandro Rojas')
-      .replace(/\{\{\s*inmueble\s*\}\}/g, 'Apto Poblado 401')
-      .replace(/\{\{\s*precio\s*\}\}/g, '$2.800.000')
-      .replace(/\{\{\s*habitaciones\s*\}\}/g, '3')
-      .replace(/\{\{\s*banos\s*\}\}/g, '2')
-      .replace(/\{\{\s*barrio\s*\}\}/g, 'El Poblado')
-      .replace(/\{\{\s*ciudad\s*\}\}/g, 'Medellín');
   }
 
   return (
@@ -270,8 +295,12 @@ export function GestorPlantillas({
                   variant="outline"
                   className="h-9 rounded-xl text-xs gap-1.5"
                   onClick={sincronizar}
-                  disabled={pendiente}
-                  title="Consulta la WABA de Meta y actualiza el estado de las plantillas"
+                  disabled={pendiente || lineas.length === 0}
+                  title={
+                    lineas.length === 0
+                      ? 'Las plantillas viven en la cuenta de WhatsApp de cada línea: primero hay que conectar una'
+                      : 'Consulta en Meta las plantillas de cada línea y actualiza su estado'
+                  }
                 >
                   <RefreshCw className={`size-3.5 ${pendiente ? 'animate-spin' : ''}`} />
                   Sincronizar con Meta
@@ -329,6 +358,8 @@ export function GestorPlantillas({
               <p className="mt-0.5 leading-relaxed">
                 Estas plantillas son evaluadas por la IA y revisores de Meta. Son obligatorias para iniciar conversaciones,
                 para reactivación y para contactar prospectos cuando pasaron más de 24 horas desde su último mensaje.
+                Cada una vive en la cuenta de WhatsApp de <span className="font-semibold">una línea</span> y solo sale
+                por esa línea.
               </p>
             </div>
           </div>
@@ -366,6 +397,14 @@ export function GestorPlantillas({
                             )}
                             <Badge variant="outline" className="capitalize text-[10px] rounded-md">
                               {p.categoria}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] rounded-md"
+                              title="La cuenta de WhatsApp donde vive: solo sale por esta línea"
+                            >
+                              {nombreDeLinea(p.wa_phone_number_id) ??
+                                (p.wa_phone_number_id ? 'Línea desconectada' : 'Sin línea')}
                             </Badge>
                           </div>
                         </div>
@@ -410,7 +449,7 @@ export function GestorPlantillas({
                             size="xs"
                             variant="outline"
                             className="h-7 text-xs gap-1 rounded-lg text-primary border-primary/40 hover:bg-primary/10"
-                            onClick={() => handleEnviarAMeta(p.id)}
+                            onClick={() => handleEnviarAMeta(p)}
                             disabled={pendiente}
                           >
                             <Send className="size-3" />
@@ -548,6 +587,16 @@ export function GestorPlantillas({
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-2">
+            {bloqueada && (
+              <div className="flex items-start gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5 text-xs text-blue-900 dark:text-blue-300">
+                <Info className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  Esta plantilla ya está en Meta. Solo se puede cambiar el título: el texto, la categoría y la línea
+                  son los que Meta revisó. Para cambiar el texto, crea una nueva.
+                </span>
+              </div>
+            )}
+
             {/* Nombre descriptivo */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="nombre-plantilla" className="text-xs font-semibold">
@@ -582,9 +631,43 @@ export function GestorPlantillas({
                   value={nombreMeta}
                   onChange={(ev) => setNombreMeta(ev.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
                   placeholder="reactivacion_clientes_dormidos"
-                  disabled={pendiente}
+                  disabled={pendiente || bloqueada}
                   className="rounded-xl h-9 text-xs font-mono"
                 />
+              </div>
+            )}
+
+            {/* Línea: la cuenta de WhatsApp donde va a vivir (solo WhatsApp) */}
+            {(editando === 'nueva-whatsapp' ||
+              (typeof editando === 'object' && editando?.tipo !== 'chat')) && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="linea-plantilla" className="text-xs font-semibold">
+                  Línea
+                </Label>
+                {lineas.length === 0 ? (
+                  <p className="rounded-xl border border-dashed p-2.5 text-[11px] text-muted-foreground">
+                    Todavía no hay líneas conectadas. Puedes guardarla como borrador y elegir la línea cuando se
+                    conecte una.
+                  </p>
+                ) : (
+                  <select
+                    id="linea-plantilla"
+                    value={linea}
+                    onChange={(ev) => setLinea(ev.target.value)}
+                    disabled={pendiente || bloqueada}
+                    className="h-9 rounded-xl border border-input bg-background px-3 text-xs"
+                  >
+                    {linea === '' && <option value="">Sin línea</option>}
+                    {lineas.map((l) => (
+                      <option key={l.wa_phone_number_id} value={l.wa_phone_number_id}>
+                        {l.nombre}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <span className="text-[11px] text-muted-foreground">
+                  Meta la guarda en la cuenta de WhatsApp de esa línea: por otra no sale.
+                </span>
               </div>
             )}
 
@@ -612,6 +695,7 @@ export function GestorPlantillas({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
+                    disabled={bloqueada}
                     onClick={() => setCategoria('utilidad')}
                     className={`flex flex-col items-start rounded-xl border p-2.5 text-left transition-all ${
                       categoria === 'utilidad'
@@ -627,6 +711,7 @@ export function GestorPlantillas({
 
                   <button
                     type="button"
+                    disabled={bloqueada}
                     onClick={() => setCategoria('marketing')}
                     className={`flex flex-col items-start rounded-xl border p-2.5 text-left transition-all ${
                       categoria === 'marketing'
@@ -654,7 +739,7 @@ export function GestorPlantillas({
                 onChange={(ev) => setCuerpo(ev.target.value)}
                 rows={5}
                 placeholder="Hola {{nombre}}, le escribe {{asesor}} de Inmobiliaria Cumbres…"
-                disabled={pendiente}
+                disabled={pendiente || bloqueada}
                 className="rounded-xl text-xs leading-relaxed"
               />
 
@@ -664,6 +749,7 @@ export function GestorPlantillas({
                   <button
                     key={v}
                     type="button"
+                    disabled={bloqueada}
                     onClick={() => setCuerpo((prev) => `${prev} {{${v}}}`)}
                     className="rounded bg-muted/80 px-1.5 py-0.5 font-mono text-[10px] hover:bg-primary/20 hover:text-primary transition-colors"
                     title="Clic para insertar"
@@ -697,7 +783,16 @@ export function GestorPlantillas({
             </Button>
 
             {/* Si es WhatsApp, opción de guardar o guardar y enviar a Meta */}
-            {(editando === 'nueva-whatsapp' ||
+            {bloqueada ? (
+              <Button
+                className="rounded-xl"
+                onClick={() => guardar(false)}
+                disabled={pendiente || !nombre.trim()}
+              >
+                {pendiente && <Loader2 className="size-3.5 animate-spin mr-1" />}
+                Guardar título
+              </Button>
+            ) : (editando === 'nueva-whatsapp' ||
               (typeof editando === 'object' && editando?.tipo !== 'chat')) ? (
               <div className="flex items-center gap-2">
                 <Button
@@ -711,7 +806,8 @@ export function GestorPlantillas({
                 <Button
                   className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
                   onClick={() => guardar(true)}
-                  disabled={pendiente || !nombre.trim() || !cuerpo.trim()}
+                  disabled={pendiente || !nombre.trim() || !cuerpo.trim() || !linea}
+                  title={linea ? undefined : 'Hace falta una línea conectada para mandarla a Meta'}
                 >
                   {pendiente ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
                   Mandar a Meta

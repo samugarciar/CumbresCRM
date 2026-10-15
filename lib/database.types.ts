@@ -901,6 +901,7 @@ export type Database = {
           nombre_meta: string | null
           tipo: string
           updated_at: string
+          wa_phone_number_id: string | null
         }
         Insert: {
           activa?: boolean
@@ -917,6 +918,7 @@ export type Database = {
           nombre_meta?: string | null
           tipo?: string
           updated_at?: string
+          wa_phone_number_id?: string | null
         }
         Update: {
           activa?: boolean
@@ -933,6 +935,7 @@ export type Database = {
           nombre_meta?: string | null
           tipo?: string
           updated_at?: string
+          wa_phone_number_id?: string | null
         }
         Relationships: [
           {
@@ -1645,6 +1648,7 @@ export type Database = {
       }
       frescura: { Args: { p_ultima: string }; Returns: number }
       frescura_relevo: { Args: never; Returns: string }
+      hueco_variable: { Args: { p_variable: string }; Returns: string }
       identidades_de_conversacion: {
         Args: {
           p_kommo_contact: string
@@ -1847,6 +1851,10 @@ export type Database = {
         Returns: boolean
       }
       reintentar_eventos: { Args: { p_limite?: number }; Returns: Json }
+      rellenar_cuerpo: {
+        Args: { p_cuerpo: string; p_valores: Json }
+        Returns: string
+      }
       render_plantilla: {
         Args: {
           p_asesor?: string
@@ -1894,6 +1902,14 @@ export type Database = {
       retirar_token: { Args: { p_texto: string }; Returns: string }
       sembrar_plantillas: { Args: never; Returns: number }
       sincronizar_escalamientos: { Args: never; Returns: number }
+      sincronizar_plantillas: {
+        Args: {
+          p_completa?: boolean
+          p_remotas: Json
+          p_wa_phone_number_id: string
+        }
+        Returns: Json
+      }
       tablero: {
         Args: {
           p_asesor?: string
@@ -1930,6 +1946,15 @@ export type Database = {
           etapa: string
           etiqueta: string
         }[]
+      }
+      valores_plantilla: {
+        Args: {
+          p_asesor?: string
+          p_contacto_id?: string
+          p_inmueble_id?: string
+          p_plantilla_id: string
+        }
+        Returns: Json
       }
       variables_desconocidas: { Args: { p_cuerpo: string }; Returns: string[] }
       variables_disponibles: { Args: never; Returns: string[] }

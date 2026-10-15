@@ -55,7 +55,9 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.render_plantilla(uuid, uuid, uuid, text)'),
   ('crm.responsable_de(uuid)'),
   ('crm.resumen_contacto(uuid)'),
+  ('crm.sincronizar_plantillas(text, jsonb, boolean)'),
   ('crm.tablero(int, text, uuid, boolean, text, text)'),
+  ('crm.valores_plantilla(uuid, uuid, uuid, text)'),
   ('crm.variables_disponibles()'),
   ('crm.ventana_whatsapp(uuid, text)'),
   ('crm.zonas()'),
@@ -82,6 +84,8 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.calidad_nombre(text)'),
   ('crm.mejor_nombre(text, text)'),
   ('crm.identidades_de_conversacion(text, text, text)'),
+  ('crm.hueco_variable(text)'),
+  ('crm.rellenar_cuerpo(text, jsonb)'),
 
   -- SECURITY INVOKER sin pantalla todavía: manda la RLS
   ('crm.marcar_envio_visto(uuid)'),

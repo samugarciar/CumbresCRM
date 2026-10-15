@@ -31,6 +31,8 @@ export interface PlantillaResumen {
   categoria: string;
   tipo?: string;
   estado_meta?: string;
+  /** La línea en cuya cuenta de WhatsApp vive. NULL = número por defecto. */
+  wa_phone_number_id?: string | null;
 }
 
 /**
