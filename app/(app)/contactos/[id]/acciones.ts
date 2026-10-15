@@ -301,21 +301,65 @@ export async function enviarMensaje(
     };
   }
 
-  // Si viene plantillaId, buscamos si tiene nombre_meta e idioma
-  let infoPlantilla: { nombre_meta: string; idioma: string } | undefined = undefined;
+  // Una plantilla de WhatsApp viaja a Meta por su nombre y con los valores
+  // de sus variables con nombre. El texto que queda en la conversación es
+  // el que Meta va a enseñar: se rellena aquí, con esos mismos valores, y
+  // no con lo que mande el navegador, que el asesor pudo haber editado.
+  let infoPlantilla:
+    | { nombre_meta: string; idioma: string; variables: Record<string, string> }
+    | undefined = undefined;
+  let textoFinal = validado.data.texto;
   if (validado.data.plantillaId) {
-    const { data: pData } = await supabase
-      .schema('crm')
+    const crm = supabase.schema('crm');
+    const { data: pData } = await crm
       .from('plantillas')
-      .select('nombre_meta, idioma')
+      .select('tipo, nombre_meta, idioma')
       .eq('id', validado.data.plantillaId)
+      .eq('activa', true)
       .maybeSingle();
 
-    if (pData?.nombre_meta) {
+    if (pData?.tipo === 'whatsapp') {
+      if (!pData.nombre_meta) {
+        return { ok: false, error: 'Esa plantilla no tiene su nombre en Meta: así no se puede enviar.' };
+      }
+
+      // Quien envía, para {{asesor}}: el mismo nombre que enseña la ficha.
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { data: perfil } = user
+        ? await supabase.from('usuarios').select('nombre_completo').eq('id', user.id).single()
+        : { data: null };
+      const parametros = {
+        p_plantilla_id: validado.data.plantillaId,
+        p_contacto_id: validado.data.contactoId,
+        p_asesor: perfil?.nombre_completo ?? undefined,
+      };
+
+      const [{ data: valores }, { data: renderizado }] = await Promise.all([
+        crm.rpc('valores_plantilla', parametros),
+        crm.rpc('render_plantilla', parametros),
+      ]);
+
+      const porVariable = (valores ?? {}) as Record<string, string | null>;
+      const faltan = Object.entries(porVariable)
+        .filter(([, valor]) => !valor?.trim())
+        .map(([variable]) => variable);
+      if (faltan.length) {
+        // Meta no entrega una plantilla con un parámetro vacío, y mandarla
+        // con «[sin precio]» sería peor: le llegaría así al cliente.
+        return {
+          ok: false,
+          error: `A esta plantilla le faltan datos de esta persona: ${faltan.join(', ')}.`,
+        };
+      }
+
       infoPlantilla = {
         nombre_meta: pData.nombre_meta,
         idioma: pData.idioma || 'es',
+        variables: porVariable as Record<string, string>,
       };
+      if (typeof renderizado === 'string' && renderizado.trim()) textoFinal = renderizado;
     }
   }
 
@@ -324,7 +368,7 @@ export async function enviarMensaje(
     .schema('crm')
     .rpc('encolar_envio', {
       p_contacto_id: validado.data.contactoId,
-      p_cuerpo: validado.data.texto,
+      p_cuerpo: textoFinal,
       p_plantilla_id: validado.data.plantillaId ?? undefined,
       // Con línea, la base mira la ventana de ESA línea: en WhatsApp la
       // ventana es de un número con una persona, no de la persona.
@@ -334,13 +378,17 @@ export async function enviarMensaje(
   if (errorCola || !envioId) {
     // 23514 es la violación del CHECK: fuera de la ventana de 24 h.
     const fueraDeVentana = errorCola?.code === '23514';
+    // 22023: la plantilla es de otra línea, o la línea no está activa.
+    const otraLinea = errorCola?.code === '22023';
     return {
       ok: false,
       error: fueraDeVentana
         ? linea
           ? `Pasaron más de 24 horas desde su último mensaje a la línea ${linea.nombre}: por ahí solo le llega una plantilla aprobada.`
           : 'Pasaron más de 24 horas desde su último mensaje: solo le llega una plantilla aprobada.'
-        : 'No se pudo preparar el envío.',
+        : otraLinea
+          ? (errorCola?.message ?? 'Esa plantilla no es de esta línea.')
+          : 'No se pudo preparar el envío.',
     };
   }
 
@@ -348,7 +396,7 @@ export async function enviarMensaje(
   const r = await enviarPorCanal({
     inmobiliariaId: contacto.inmobiliaria_id,
     telefono: contacto.telefono_e164,
-    texto: validado.data.texto,
+    texto: textoFinal,
     envioId: envioId as string,
     // Sin línea conectada no se manda el campo: la plataforma usa su número.
     desde: linea

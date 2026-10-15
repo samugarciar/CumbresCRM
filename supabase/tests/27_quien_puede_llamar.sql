@@ -33,18 +33,23 @@ CREATE TEMP TABLE lista_blanca (firma text PRIMARY KEY) ON COMMIT DROP;
 INSERT INTO lista_blanca (firma) VALUES
   -- Las pantallas: lo que la app llama con .rpc() y la sesión del usuario
   ('crm.abrir_caso_administrativo(uuid)'),
+  ('crm.ajustar_envio_masivo(uuid, int, int, int, int, jsonb)'),
   ('crm.asignar_lead(uuid, uuid)'),
   ('crm.bandeja_contactos(text, text, boolean, timestamptz, uuid, int, boolean, text)'),
   ('crm.bot_vuelve_at(uuid)'),
   ('crm.cambiar_bot(uuid, boolean)'),
+  ('crm.cambiar_estado_envio_masivo(uuid, text)'),
   ('crm.cerrar_oportunidad(uuid, text, text, uuid, text)'),
   ('crm.coincidencias(smallint, int, int, uuid, smallint)'),
   ('crm.completar_tarea(uuid)'),
   ('crm.conteo_bandeja()'),
   ('crm.convertir_a_administrativo(uuid, boolean)'),
   ('crm.convertir_a_captacion(uuid)'),
+  ('crm.crear_envio_masivo(text, text, text[], jsonb, text, text, uuid, jsonb, boolean)'),
+  ('crm.en_horario_envio(jsonb, timestamptz)'),
   ('crm.encolar_envio(uuid, text, uuid, uuid, text)'),
   ('crm.inmuebles_para(uuid, smallint, int, boolean)'),
+  ('crm.lanzar_envio_masivo(uuid, int)'),
   ('crm.marcar_atendido(uuid, text)'),
   ('crm.marcar_leido(uuid)'),
   ('crm.marcar_opt_out(uuid, text)'),
@@ -54,8 +59,12 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.reactivables_total(int)'),
   ('crm.render_plantilla(uuid, uuid, uuid, text)'),
   ('crm.responsable_de(uuid)'),
+  ('crm.resultados_envio_masivo(uuid)'),
   ('crm.resumen_contacto(uuid)'),
+  ('crm.resumen_envio_masivo(uuid)'),
+  ('crm.sincronizar_plantillas(text, jsonb, boolean)'),
   ('crm.tablero(int, text, uuid, boolean, text, text)'),
+  ('crm.valores_plantilla(uuid, uuid, uuid, text)'),
   ('crm.variables_disponibles()'),
   ('crm.ventana_whatsapp(uuid, text)'),
   ('crm.zonas()'),
@@ -65,6 +74,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.bot_atendido_desde(uuid, timestamptz)'),
   ('crm.frescura(timestamptz)'),
   ('crm.igual_zona(text, text)'),
+  ('crm.motivo_exclusion_contacto(uuid, int, uuid)'),  -- crear y lanzar un envío masivo
   ('crm.normaliza_zonas(text[])'),
   ('crm.puede_escribir_libre(uuid, text)'),
   ('crm.publico_marketing(int, int)'),
@@ -77,11 +87,14 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.variables_desconocidas(text)'),       -- el CHECK de crm.plantillas
   ('crm.normalizar_telefono(text)'),          -- la vista crm.v_citas
   ('crm.estado_sincronizacion(crm.lineas)'),  -- columna calculada de crm.lineas
+  ('crm.horario_valido(jsonb)'),              -- el CHECK de crm.envios_masivos
 
   -- Puras: entra texto, sale texto, no leen ninguna tabla
   ('crm.calidad_nombre(text)'),
   ('crm.mejor_nombre(text, text)'),
   ('crm.identidades_de_conversacion(text, text, text)'),
+  ('crm.hueco_variable(text)'),
+  ('crm.rellenar_cuerpo(text, jsonb)'),
 
   -- SECURITY INVOKER sin pantalla todavía: manda la RLS
   ('crm.marcar_envio_visto(uuid)'),

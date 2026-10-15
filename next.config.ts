@@ -12,6 +12,17 @@ const nextConfig: NextConfig = {
   // No anunciar con qué está hecho: a nadie de fuera le sirve saberlo.
   poweredByHeader: false,
 
+  // Un envío masivo sube las filas del archivo de cartera en una Server
+  // Action (hasta 5.000 filas). El tope por defecto es 1 MB; Vercel no deja
+  // pasar más de 4,5 MB por petición, así que más no serviría. Ver
+  // node_modules/next/dist/docs/01-app/03-api-reference/05-config/
+  // 01-next-config-js/serverActions.md
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '4mb',
+    },
+  },
+
   // Un CRM con datos de clientes no se mete en un iframe ajeno ni sale en
   // un buscador. Ver node_modules/next/dist/docs/01-app/03-api-reference/
   // 05-config/01-next-config-js/headers.md

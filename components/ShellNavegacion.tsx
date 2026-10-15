@@ -18,6 +18,7 @@ import {
   LogOut,
   Building2,
   MessageSquare,
+  Send,
 } from 'lucide-react';
 import { iniciales } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
@@ -91,6 +92,12 @@ const GRUPOS_NAV: GrupoNav[] = [
         etiqueta: 'Bot callado',
         icono: BotOff,
         descripcion: 'Conversaciones con bot silenciado',
+      },
+      {
+        href: '/envios-masivos',
+        etiqueta: 'Envíos masivos',
+        icono: Send,
+        descripcion: 'Recordatorios por archivo, por lotes',
       },
       {
         href: '/plantillas',
