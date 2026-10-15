@@ -371,6 +371,7 @@ export type Database = {
           entregado_at: string | null
           enviado_at: string | null
           enviado_por: string | null
+          envio_masivo_id: string | null
           error: string | null
           error_codigo: number | null
           estado: string
@@ -380,6 +381,9 @@ export type Database = {
           inmueble_id: string | null
           leido_at: string | null
           plantilla_id: string | null
+          solicitud_http: number | null
+          tomado_at: string | null
+          variables: Json | null
           visto_at: string | null
           wa_message_id: string | null
           wa_phone_number_id: string | null
@@ -392,6 +396,7 @@ export type Database = {
           entregado_at?: string | null
           enviado_at?: string | null
           enviado_por?: string | null
+          envio_masivo_id?: string | null
           error?: string | null
           error_codigo?: number | null
           estado?: string
@@ -401,6 +406,9 @@ export type Database = {
           inmueble_id?: string | null
           leido_at?: string | null
           plantilla_id?: string | null
+          solicitud_http?: number | null
+          tomado_at?: string | null
+          variables?: Json | null
           visto_at?: string | null
           wa_message_id?: string | null
           wa_phone_number_id?: string | null
@@ -413,6 +421,7 @@ export type Database = {
           entregado_at?: string | null
           enviado_at?: string | null
           enviado_por?: string | null
+          envio_masivo_id?: string | null
           error?: string | null
           error_codigo?: number | null
           estado?: string
@@ -422,6 +431,9 @@ export type Database = {
           inmueble_id?: string | null
           leido_at?: string | null
           plantilla_id?: string | null
+          solicitud_http?: number | null
+          tomado_at?: string | null
+          variables?: Json | null
           visto_at?: string | null
           wa_message_id?: string | null
           wa_phone_number_id?: string | null
@@ -449,6 +461,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "envios_envio_masivo_id_fkey"
+            columns: ["envio_masivo_id"]
+            isOneToOne: false
+            referencedRelation: "envios_masivos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "envios_inmueble_id_fkey"
             columns: ["inmueble_id"]
             isOneToOne: false
@@ -460,6 +479,201 @@ export type Database = {
             columns: ["plantilla_id"]
             isOneToOne: false
             referencedRelation: "plantillas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      envios_masivos: {
+        Row: {
+          abrir_caso: boolean
+          archivo_nombre: string | null
+          columna_nombre: string | null
+          columna_telefono: string
+          columnas: string[]
+          creado_por: string | null
+          created_at: string
+          datos_borrados_at: string | null
+          estado: string
+          frecuencia_dias: number
+          horario: Json
+          id: string
+          inmobiliaria_id: string
+          lanzado_at: string | null
+          lanzado_por: string | null
+          minutos_entre_lotes: number
+          nombre: string
+          plantilla_id: string
+          proximo_lote_at: string | null
+          tamano_lote: number
+          terminado_at: string | null
+          tope_diario: number
+          ultimo_aviso: string | null
+          updated_at: string
+          variables: Json
+          wa_phone_number_id: string
+        }
+        Insert: {
+          abrir_caso?: boolean
+          archivo_nombre?: string | null
+          columna_nombre?: string | null
+          columna_telefono: string
+          columnas: string[]
+          creado_por?: string | null
+          created_at?: string
+          datos_borrados_at?: string | null
+          estado?: string
+          frecuencia_dias?: number
+          horario?: Json
+          id?: string
+          inmobiliaria_id: string
+          lanzado_at?: string | null
+          lanzado_por?: string | null
+          minutos_entre_lotes?: number
+          nombre: string
+          plantilla_id: string
+          proximo_lote_at?: string | null
+          tamano_lote?: number
+          terminado_at?: string | null
+          tope_diario?: number
+          ultimo_aviso?: string | null
+          updated_at?: string
+          variables?: Json
+          wa_phone_number_id: string
+        }
+        Update: {
+          abrir_caso?: boolean
+          archivo_nombre?: string | null
+          columna_nombre?: string | null
+          columna_telefono?: string
+          columnas?: string[]
+          creado_por?: string | null
+          created_at?: string
+          datos_borrados_at?: string | null
+          estado?: string
+          frecuencia_dias?: number
+          horario?: Json
+          id?: string
+          inmobiliaria_id?: string
+          lanzado_at?: string | null
+          lanzado_por?: string | null
+          minutos_entre_lotes?: number
+          nombre?: string
+          plantilla_id?: string
+          proximo_lote_at?: string | null
+          tamano_lote?: number
+          terminado_at?: string | null
+          tope_diario?: number
+          ultimo_aviso?: string | null
+          updated_at?: string
+          variables?: Json
+          wa_phone_number_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "envios_masivos_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_masivos_lanzado_por_fkey"
+            columns: ["lanzado_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_masivos_plantilla_id_fkey"
+            columns: ["plantilla_id"]
+            isOneToOne: false
+            referencedRelation: "plantillas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      envios_masivos_destinatarios: {
+        Row: {
+          contacto_id: string | null
+          created_at: string
+          cuerpo: string | null
+          datos: Json | null
+          detalle: string | null
+          envio_id: string | null
+          envio_masivo_id: string
+          estado: string
+          fila: number
+          id: string
+          inmobiliaria_id: string
+          motivo: string | null
+          nombre: string | null
+          telefono_crudo: string | null
+          telefono_e164: string | null
+          valores: Json
+        }
+        Insert: {
+          contacto_id?: string | null
+          created_at?: string
+          cuerpo?: string | null
+          datos?: Json | null
+          detalle?: string | null
+          envio_id?: string | null
+          envio_masivo_id: string
+          estado?: string
+          fila: number
+          id?: string
+          inmobiliaria_id: string
+          motivo?: string | null
+          nombre?: string | null
+          telefono_crudo?: string | null
+          telefono_e164?: string | null
+          valores?: Json
+        }
+        Update: {
+          contacto_id?: string | null
+          created_at?: string
+          cuerpo?: string | null
+          datos?: Json | null
+          detalle?: string | null
+          envio_id?: string | null
+          envio_masivo_id?: string
+          estado?: string
+          fila?: number
+          id?: string
+          inmobiliaria_id?: string
+          motivo?: string | null
+          nombre?: string | null
+          telefono_crudo?: string | null
+          telefono_e164?: string | null
+          valores?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "envios_masivos_destinatarios_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "contactos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_masivos_destinatarios_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "v_bot_callado"
+            referencedColumns: ["contacto_id"]
+          },
+          {
+            foreignKeyName: "envios_masivos_destinatarios_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "envios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_masivos_destinatarios_envio_masivo_id_fkey"
+            columns: ["envio_masivo_id"]
+            isOneToOne: false
+            referencedRelation: "envios_masivos"
             referencedColumns: ["id"]
           },
         ]
@@ -538,6 +752,21 @@ export type Database = {
           procesado_at?: string | null
           tabla_origen?: string
           tipo?: string
+        }
+        Relationships: []
+      }
+      festivos: {
+        Row: {
+          fecha: string
+          nombre: string
+        }
+        Insert: {
+          fecha: string
+          nombre: string
+        }
+        Update: {
+          fecha?: string
+          nombre?: string
         }
         Relationships: []
       }
@@ -1456,6 +1685,18 @@ export type Database = {
         Args: { p_contacto_id: string; p_embudo?: string }
         Returns: string
       }
+      ajustar_envio_masivo: {
+        Args: {
+          p_frecuencia_dias: number
+          p_horario: Json
+          p_id: string
+          p_minutos_entre_lotes: number
+          p_tamano_lote: number
+          p_tope_diario: number
+        }
+        Returns: undefined
+      }
+      anotar_respuestas_plataforma: { Args: never; Returns: number }
       asignar_lead: {
         Args: { p_asesor_id?: string; p_contacto_id: string }
         Returns: boolean
@@ -1523,6 +1764,10 @@ export type Database = {
       cambiar_bot: {
         Args: { p_activo: boolean; p_contacto_id: string }
         Returns: boolean
+      }
+      cambiar_estado_envio_masivo: {
+        Args: { p_accion: string; p_id: string }
+        Returns: string
       }
       cerrar_fantasmas: { Args: { p_dias?: number }; Returns: number }
       cerrar_oportunidad: {
@@ -1620,6 +1865,20 @@ export type Database = {
         Args: { p_contacto_id: string }
         Returns: string
       }
+      crear_envio_masivo: {
+        Args: {
+          p_abrir_caso: boolean
+          p_archivo_nombre: string
+          p_columna_nombre: string
+          p_columna_telefono: string
+          p_columnas: string[]
+          p_filas: Json
+          p_nombre: string
+          p_plantilla_id: string
+          p_variables: Json
+        }
+        Returns: string
+      }
       credencial_linea: {
         Args: { p_wa_phone_number_id: string }
         Returns: {
@@ -1630,6 +1889,11 @@ export type Database = {
           token: string
           waba_id: string
         }[]
+      }
+      despachar_envios_masivos: { Args: { p_ahora?: string }; Returns: number }
+      en_horario_envio: {
+        Args: { p_horario: Json; p_momento?: string }
+        Returns: boolean
       }
       encolar_envio: {
         Args: {
@@ -1648,6 +1912,7 @@ export type Database = {
       }
       frescura: { Args: { p_ultima: string }; Returns: number }
       frescura_relevo: { Args: never; Returns: string }
+      horario_valido: { Args: { p_horario: Json }; Returns: boolean }
       hueco_variable: { Args: { p_variable: string }; Returns: string }
       identidades_de_conversacion: {
         Args: {
@@ -1676,6 +1941,11 @@ export type Database = {
           tipo_inmueble: string
           titulo: string
         }[]
+      }
+      json_seguro: { Args: { p_texto: string }; Returns: Json }
+      lanzar_envio_masivo: {
+        Args: { p_confirmacion: number; p_id: string }
+        Returns: number
       }
       linea_por_numero: {
         Args: { p_wa_phone_number_id: string }
@@ -1715,6 +1985,14 @@ export type Database = {
           titulo: string
         }[]
       }
+      motivo_exclusion_contacto: {
+        Args: {
+          p_contacto_id: string
+          p_envio_masivo_id: string
+          p_frecuencia_dias: number
+        }
+        Returns: string
+      }
       mover_etapa: {
         Args: { p_etapa: string; p_motivo?: string; p_oportunidad_id: string }
         Returns: undefined
@@ -1722,6 +2000,10 @@ export type Database = {
       normaliza_zonas: { Args: { p: string[] }; Returns: string[] }
       normalizar_telefono: { Args: { p_tel: string }; Returns: string }
       orden_por_evidencia: { Args: { p_contacto_id: string }; Returns: number }
+      pedir_envio_a_plataforma: {
+        Args: { p_cuerpo: Json; p_token: string; p_url: string }
+        Returns: number
+      }
       publico_marketing: {
         Args: { p_dias_silencio?: number; p_limite?: number }
         Returns: {
@@ -1756,6 +2038,10 @@ export type Database = {
       }
       puntaje_match: {
         Args: { p_inmueble_id: string; p_requerimiento_id: string }
+        Returns: number
+      }
+      purgar_envios_masivos: {
+        Args: { p_ahora?: string; p_dias?: number }
         Returns: number
       }
       reabrir_oportunidad: {
@@ -1882,6 +2168,27 @@ export type Database = {
           nombre: string
         }[]
       }
+      resultados_envio_masivo: {
+        Args: { p_id: string }
+        Returns: {
+          baja: boolean
+          contacto_id: string
+          datos: Json
+          detalle: string
+          entregado_at: string
+          enviado_at: string
+          error: string
+          error_codigo: number
+          fallido_at: string
+          fila: number
+          leido_at: string
+          motivo: string
+          nombre: string
+          respondio_at: string
+          resultado: string
+          telefono: string
+        }[]
+      }
       resumen_contacto: {
         Args: { p_contacto_id: string }
         Returns: {
@@ -1899,6 +2206,7 @@ export type Database = {
           visto_hasta: string
         }[]
       }
+      resumen_envio_masivo: { Args: { p_id: string }; Returns: Json }
       retirar_token: { Args: { p_texto: string }; Returns: string }
       sembrar_plantillas: { Args: never; Returns: number }
       sincronizar_escalamientos: { Args: never; Returns: number }

@@ -22,6 +22,11 @@ export const EJEMPLOS_VARIABLES: Record<string, string> = {
   ciudad: 'Medellín',
   precio: '$2.800.000',
   habitaciones: '3',
+  // De cartera: los llena el archivo de un envío masivo
+  monto: '$1.250.000',
+  fecha_limite: '5 de noviembre',
+  dias_mora: '12',
+  referencia: 'CTO-2026-0147',
 };
 
 const VARIABLE = /\{\{\s*([a-z_]+)\s*\}\}/g;
