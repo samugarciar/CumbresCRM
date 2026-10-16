@@ -2,9 +2,11 @@ import Link from 'next/link';
 import { BotOff, MessageCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { iniciales, telefonoLegible, tiempoRelativo } from '@/lib/formato';
+import { EncenderBot } from './EncenderBot';
 
 interface Callado {
-  contacto_id: string;
+  /** NULL en el freno de quien no está en el CRM (la 324 por Kommo). */
+  contacto_id: string | null;
   nombre: string | null;
   telefono_e164: string | null;
   motivo: 'escalamiento' | 'manual' | 'relevo' | null;
@@ -34,6 +36,11 @@ const MOTIVO: Record<string, string> = {
  * Lo que no dice es «sin responder»: las asesoras contestan en Kommo y el
  * CRM no lo ve. Dice cuándo escribió la persona, y si fue después de que
  * el bot se callara. El juicio lo pone quien mira.
+ *
+ * Desde que el CRM solo recibe las líneas oficiales (16 oct), la 324 por
+ * Kommo ya no tiene contactos aquí, pero el bot de esa gente se sigue
+ * frenando en crm.frenos_bot. Esas filas no tienen ficha: se encienden
+ * desde la propia lista, por teléfono.
  */
 export default async function PaginaBotCallado() {
   const supabase = await createClient();
@@ -81,7 +88,7 @@ export default async function PaginaBotCallado() {
         <>
           <Seccion
             titulo="No vuelven solas"
-            explicacion="El bot no va a volver por su cuenta. Alguien tiene que atenderlas o encenderlo desde la ficha."
+            explicacion="El bot no va a volver por su cuenta. Alguien tiene que atenderlas o encenderlo desde la ficha; las de Kommo, que no tienen ficha, desde aquí."
             filas={noVuelven}
             ahora={ahora}
             vacio="Ninguna: todos los silencios de ahora terminan solos."
@@ -126,7 +133,7 @@ function Seccion({
       ) : (
         <ul className="divide-y rounded-lg border bg-card">
           {filas.map((f) => (
-            <Fila key={f.contacto_id} f={f} ahora={ahora} />
+            <Fila key={f.contacto_id ?? `freno-${f.telefono_e164}`} f={f} ahora={ahora} />
           ))}
         </ul>
       )}
@@ -150,12 +157,21 @@ function Fila({ f, ahora }: { f: Callado; ahora: number }) {
         </span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Link href={`/contactos/${f.contacto_id}`} className="font-medium hover:text-primary">
-              {f.nombre || 'Sin nombre'}
-            </Link>
+            {f.contacto_id ? (
+              <Link href={`/contactos/${f.contacto_id}`} className="font-medium hover:text-primary">
+                {f.nombre || 'Sin nombre'}
+              </Link>
+            ) : (
+              <span className="font-medium">{f.nombre || 'Sin nombre'}</span>
+            )}
             <span className="rounded-4xl bg-muted px-2 py-0.5 text-xs text-muted-foreground">
               {f.motivo ? MOTIVO[f.motivo] : 'Sin motivo anotado'}
             </span>
+            {!f.contacto_id && (
+              <span className="rounded-4xl border px-2 py-0.5 text-xs text-muted-foreground">
+                Por Kommo
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             {f.telefono_e164 && <span className="tabular">{telefonoLegible(f.telefono_e164)} · </span>}
@@ -179,6 +195,7 @@ function Fila({ f, ahora }: { f: Callado; ahora: number }) {
         ) : (
           <span className="text-muted-foreground">No ha escrito</span>
         )}
+        {!f.contacto_id && f.telefono_e164 && <EncenderBot telefono={f.telefono_e164} />}
       </div>
     </li>
   );
