@@ -47,6 +47,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.convertir_a_captacion(uuid)'),
   ('crm.crear_envio_masivo(text, text, text[], jsonb, text, text, uuid, jsonb, boolean)'),
   ('crm.en_horario_envio(jsonb, timestamptz)'),
+  ('crm.encender_bot_freno(text)'),             -- «Bots callados», el freno de quien no está en el CRM
   ('crm.encolar_envio(uuid, text, uuid, uuid, text)'),
   ('crm.inmuebles_para(uuid, smallint, int, boolean)'),
   ('crm.lanzar_envio_masivo(uuid, int)'),

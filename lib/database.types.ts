@@ -71,13 +71,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "actividades_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
-          },
-          {
             foreignKeyName: "actividades_creado_por_fkey"
             columns: ["creado_por"]
             isOneToOne: false
@@ -238,13 +231,6 @@ export type Database = {
             referencedRelation: "contactos"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "contactos_merged_into_id_fkey"
-            columns: ["merged_into_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
-          },
         ]
       }
       contactos_importados: {
@@ -300,13 +286,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contactos_importados_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
           },
           {
             foreignKeyName: "contactos_importados_linea_id_fkey"
@@ -445,13 +424,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "envios_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
           },
           {
             foreignKeyName: "envios_enviado_por_fkey"
@@ -656,13 +628,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "envios_masivos_destinatarios_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
-          },
-          {
             foreignKeyName: "envios_masivos_destinatarios_envio_id_fkey"
             columns: ["envio_id"]
             isOneToOne: false
@@ -770,6 +735,62 @@ export type Database = {
         }
         Relationships: []
       }
+      frenos_bot: {
+        Row: {
+          atendido_at: string | null
+          bot_activo: boolean
+          bot_caduca: boolean
+          bot_cambiado_at: string
+          bot_cambiado_por: string | null
+          bot_motivo: string | null
+          conversacion_id: string | null
+          created_at: string
+          escalado_at: string | null
+          inmobiliaria_id: string
+          nombre: string | null
+          telefono_e164: string
+          ultimo_entrante_at: string | null
+        }
+        Insert: {
+          atendido_at?: string | null
+          bot_activo?: boolean
+          bot_caduca?: boolean
+          bot_cambiado_at?: string
+          bot_cambiado_por?: string | null
+          bot_motivo?: string | null
+          conversacion_id?: string | null
+          created_at?: string
+          escalado_at?: string | null
+          inmobiliaria_id: string
+          nombre?: string | null
+          telefono_e164: string
+          ultimo_entrante_at?: string | null
+        }
+        Update: {
+          atendido_at?: string | null
+          bot_activo?: boolean
+          bot_caduca?: boolean
+          bot_cambiado_at?: string
+          bot_cambiado_por?: string | null
+          bot_motivo?: string | null
+          conversacion_id?: string | null
+          created_at?: string
+          escalado_at?: string | null
+          inmobiliaria_id?: string
+          nombre?: string | null
+          telefono_e164?: string
+          ultimo_entrante_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "frenos_bot_bot_cambiado_por_fkey"
+            columns: ["bot_cambiado_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       identidades: {
         Row: {
           contacto_id: string
@@ -805,13 +826,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "identidades_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
           },
         ]
       }
@@ -891,13 +905,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lecturas_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
           },
           {
             foreignKeyName: "lecturas_usuario_id_fkey"
@@ -1078,13 +1085,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "oportunidades_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
-          },
-          {
             foreignKeyName: "oportunidades_embudo_fkey"
             columns: ["embudo"]
             isOneToOne: false
@@ -1176,6 +1176,27 @@ export type Database = {
           },
         ]
       }
+      preferencias: {
+        Row: {
+          inmobiliaria_id: string
+          solo_lineas_desde: string | null
+          solo_lineas_oficiales: boolean
+          updated_at: string
+        }
+        Insert: {
+          inmobiliaria_id: string
+          solo_lineas_desde?: string | null
+          solo_lineas_oficiales?: boolean
+          updated_at?: string
+        }
+        Update: {
+          inmobiliaria_id?: string
+          solo_lineas_desde?: string | null
+          solo_lineas_oficiales?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       requerimientos: {
         Row: {
           activo: boolean
@@ -1233,13 +1254,6 @@ export type Database = {
             referencedRelation: "contactos"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "requerimientos_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
-          },
         ]
       }
       tareas: {
@@ -1290,13 +1304,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contactos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tareas_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
           },
           {
             foreignKeyName: "tareas_creado_por_fkey"
@@ -1426,15 +1433,7 @@ export type Database = {
           ultimo_entrante_at: string | null
           vuelve_at: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "contactos_bot_cambiado_por_fkey"
-            columns: ["callado_por"]
-            isOneToOne: false
-            referencedRelation: "v_asesores"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       v_citas: {
         Row: {
@@ -1601,13 +1600,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "oportunidades_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
-          },
-          {
             foreignKeyName: "oportunidades_embudo_fkey"
             columns: ["embudo"]
             isOneToOne: false
@@ -1660,13 +1652,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "actividades_contacto_id_fkey"
-            columns: ["contacto_id"]
-            isOneToOne: false
-            referencedRelation: "v_bot_callado"
-            referencedColumns: ["contacto_id"]
-          },
-          {
             foreignKeyName: "actividades_inmueble_id_fkey"
             columns: ["inmueble_id"]
             isOneToOne: false
@@ -1697,6 +1682,7 @@ export type Database = {
         Returns: undefined
       }
       anotar_respuestas_plataforma: { Args: never; Returns: number }
+      archivar_era_kommo: { Args: { p_inmobiliaria_id: string }; Returns: Json }
       asignar_lead: {
         Args: { p_asesor_id?: string; p_contacto_id: string }
         Returns: boolean
@@ -1895,6 +1881,7 @@ export type Database = {
         Args: { p_horario: Json; p_momento?: string }
         Returns: boolean
       }
+      encender_bot_freno: { Args: { p_telefono: string }; Returns: boolean }
       encolar_envio: {
         Args: {
           p_contacto_id: string
@@ -2218,6 +2205,10 @@ export type Database = {
         }
         Returns: Json
       }
+      solo_lineas_oficiales: {
+        Args: { p_inmobiliaria_id: string }
+        Returns: boolean
+      }
       tablero: {
         Args: {
           p_asesor?: string
@@ -2272,6 +2263,10 @@ export type Database = {
       ventana_whatsapp: {
         Args: { p_contacto_id: string; p_wa_phone_number_id?: string }
         Returns: string
+      }
+      ya_esta_en_el_crm: {
+        Args: { p_identidades: Json; p_inmobiliaria_id: string }
+        Returns: boolean
       }
       zonas: {
         Args: never
