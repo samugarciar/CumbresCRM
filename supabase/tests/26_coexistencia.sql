@@ -318,7 +318,7 @@ VALUES
   ('c0260004-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111',
    'Hace siete horas', '+573005550004', false, 'relevo', now() - interval '7 hours'),
   ('c0260005-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111',
-   'Hace media hora', '+573005550005', false, 'relevo', now() - interval '30 minutes');
+   'Hace veinte minutos', '+573005550005', false, 'relevo', now() - interval '20 minutes');
 
 -- --- Solo en la línea donde el bot habla ------------------------------
 SELECT ok(
@@ -346,7 +346,7 @@ SELECT ok(
 -- Meta manda el teléfono sin el +: la función normaliza igual que el
 -- resto del CRM.
 SELECT ok(
-  crm.registrar_relevo('100000000000001', '573005550001', now() - interval '30 minutes'),
+  crm.registrar_relevo('100000000000001', '573005550001', now() - interval '20 minutes'),
   'Alguien del equipo le escribe a Sara desde el celular'
 );
 
@@ -371,7 +371,7 @@ SELECT is(
 -- --- La ventana corre con el último mensaje ---------------------------
 SELECT ok(
   crm.registrar_relevo('100000000000001', '573005550001', now() - interval '10 minutes'),
-  'Otro mensaje del equipo, veinte minutos después'
+  'Otro mensaje del equipo, diez minutos después'
 );
 
 SELECT is(
@@ -389,8 +389,8 @@ SELECT is(
 
 SELECT is(
   crm.bot_vuelve_at('c0260001-0000-0000-0000-000000000001'),
-  now() - interval '10 minutes' + interval '1 hour',
-  'La ficha sabe cuándo vuelve el bot si nadie más escribe: 1 hora después del último mensaje del equipo'
+  now() - interval '10 minutes' + interval '30 minutes',
+  'La ficha sabe cuándo vuelve el bot si nadie más escribe: 30 minutos después del último mensaje del equipo'
 );
 
 -- --- Los otros silencios mandan --------------------------------------
@@ -423,20 +423,20 @@ SELECT ok(
 SELECT is(
   crm.reactivar_relevos(),
   1,
-  'Vuelve exactamente uno: el que lleva siete horas sin mensajes del equipo (el escalado recién atendido acaba de empezar su hora)'
+  'Vuelve exactamente uno: el que lleva siete horas sin mensajes del equipo (el escalado recién atendido acaba de empezar su media hora)'
 );
 
 SELECT ok(
   crm.bot_puede_responder('11111111-1111-1111-1111-111111111111', '+573005550004')
   AND NOT crm.bot_puede_responder('11111111-1111-1111-1111-111111111111', '+573005550005')
   AND NOT crm.bot_puede_responder('11111111-1111-1111-1111-111111111111', '+573005550002'),
-  'El de hace siete horas ya tiene bot; el de hace media hora sigue en manos del equipo; el manual, callado'
+  'El de hace siete horas ya tiene bot; el de hace veinte minutos sigue en manos del equipo; el manual, callado'
 );
 
 SELECT is(
   (SELECT cuerpo FROM crm.actividades
     WHERE contacto_id = 'c0260004-0000-0000-0000-000000000004' AND tipo = 'sistema'),
-  'El bot vuelve a responderle: pasó 1 hora sin que nadie del equipo le escribiera.',
+  'El bot vuelve a responderle: pasaron 30 minutos sin que nadie del equipo le escribiera.',
   'Que vuelva queda escrito, con la cifra sacada de la perilla y no escrita a mano'
 );
 

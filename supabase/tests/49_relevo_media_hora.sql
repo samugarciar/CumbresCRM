@@ -1,8 +1,8 @@
 -- =====================================================================
--- Relevo de 1 hora, separado del escalamiento (20261026100002).
+-- Relevo de 30 minutos, separado del escalamiento (20261026100002).
 --
 -- Decisión de Samuel: cuando alguien del equipo le escribe al cliente,
--- el bot se calla, pero vuelve solo si el asesor no escribe en 1 hora.
+-- el bot se calla, pero vuelve solo si el asesor no escribe en 30 minutos.
 -- El escalamiento sigue en 6 h. Y quien pidió una persona y la tuvo
 -- también recupera el bot si el asesor no vuelve a escribir.
 -- =====================================================================
@@ -21,9 +21,9 @@ INSERT INTO crm.contactos
   (id, inmobiliaria_id, nombre, telefono_e164, bot_activo, bot_motivo, bot_cambiado_at, bot_caduca)
 VALUES
   ('c0490001-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
-   'Hace 61 minutos', '+573004900001', false, 'relevo', now() - interval '61 minutes', true),
+   'Hace 31 minutos', '+573004900001', false, 'relevo', now() - interval '31 minutes', true),
   ('c0490002-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111',
-   'Hace 59 minutos', '+573004900002', false, 'relevo', now() - interval '59 minutes', true),
+   'Hace 29 minutos', '+573004900002', false, 'relevo', now() - interval '29 minutes', true),
   ('c0490003-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111',
    'Pidió una persona', '+573004900003', false, 'escalamiento', now() - interval '40 minutes', true),
   ('c0490004-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111',
@@ -34,32 +34,32 @@ VALUES
    'Escalado esperando', '+573004900006', false, 'escalamiento', now() - interval '2 hours', true);
 
 -- --- Las perillas ---------------------------------------------------------
-SELECT is(crm.ventana_relevo(), interval '1 hour',
-  'El relevo dura 1 hora');
+SELECT is(crm.ventana_relevo(), interval '30 minutes',
+  'El relevo dura 30 minutos');
 
 SELECT is(crm.ventana_silencio_escalamiento(), interval '6 hours',
   'Y el escalamiento sigue en 6 horas: es otra perilla');
 
 -- --- La vuelta, en el borde ------------------------------------------------
 SELECT is(crm.reactivar_relevos(), 1,
-  'Vuelve uno solo: el de hace 61 minutos');
+  'Vuelve uno solo: el de hace 31 minutos');
 
 SELECT ok(
   (SELECT bot_activo FROM crm.contactos WHERE id = 'c0490001-0000-0000-0000-000000000001')
   AND NOT (SELECT bot_activo FROM crm.contactos WHERE id = 'c0490002-0000-0000-0000-000000000002'),
-  'A los 61 minutos el bot vuelve; a los 59, todavía no'
+  'A los 31 minutos el bot vuelve; a los 29, todavía no'
 );
 
 SELECT is(
   (SELECT cuerpo FROM crm.actividades
     WHERE contacto_id = 'c0490001-0000-0000-0000-000000000001' AND tipo = 'sistema'),
-  'El bot vuelve a responderle: pasó 1 hora sin que nadie del equipo le escribiera.',
-  'El aviso dice «1 hora», sacado de la perilla y en singular'
+  'El bot vuelve a responderle: pasaron 30 minutos sin que nadie del equipo le escribiera.',
+  'El aviso dice «30 minutos», sacado de la perilla y en plural'
 );
 
-SELECT is(crm.duracion_legible(interval '30 minutes') || ' / ' || crm.duracion_legible(interval '6 hours'),
-  '30 minutos / 6 horas',
-  'Y se lee bien con otras perillas: en minutos o en horas');
+SELECT is(crm.duracion_legible(interval '1 hour') || ' / ' || crm.duracion_legible(interval '6 hours'),
+  '1 hora / 6 horas',
+  'Y se lee bien con otras perillas: en singular o en plural');
 
 -- --- Escalado y luego escribe el asesor -----------------------------------
 SET LOCAL ROLE service_role;
@@ -79,22 +79,22 @@ SELECT is(
 SELECT is(
   (SELECT cuerpo FROM crm.actividades
     WHERE contacto_id = 'c0490003-0000-0000-0000-000000000003' AND tipo = 'sistema'),
-  'Alguien del equipo atendió a quien pidió una persona: el bot vuelve si nadie le escribe en 1 hora.',
+  'Alguien del equipo atendió a quien pidió una persona: el bot vuelve si nadie le escribe en 30 minutos.',
   'Y el historial lo explica'
 );
 
 SELECT is(
   crm.bot_vuelve_at('c0490003-0000-0000-0000-000000000003'),
-  now() - interval '5 minutes' + interval '1 hour',
-  'La ficha sabe que vuelve una hora después del mensaje del asesor'
+  now() - interval '5 minutes' + interval '30 minutes',
+  'La ficha sabe que vuelve media hora después del mensaje del asesor'
 );
 
--- Pasa la hora sin que nadie vuelva a escribir.
-UPDATE crm.contactos SET bot_cambiado_at = now() - interval '61 minutes'
+-- Pasa la media hora sin que nadie vuelva a escribir.
+UPDATE crm.contactos SET bot_cambiado_at = now() - interval '31 minutes'
  WHERE id = 'c0490003-0000-0000-0000-000000000003';
 
 SELECT is(crm.reactivar_relevos(), 1,
-  'A los 61 minutos sin mensajes del equipo, el cron lo encuentra');
+  'A los 31 minutos sin mensajes del equipo, el cron lo encuentra');
 
 SELECT ok(
   (SELECT bot_activo FROM crm.contactos WHERE id = 'c0490003-0000-0000-0000-000000000003'),

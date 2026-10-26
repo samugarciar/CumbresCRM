@@ -1,16 +1,17 @@
 -- =====================================================================
--- Relevo de 1 hora, separado del escalamiento (26 oct 2026)
+-- Relevo de 30 minutos, separado del escalamiento (26 oct 2026)
 --
 -- LO QUE DECIDIÓ SAMUEL
 -- Cuando alguien del equipo le escribe al cliente, el bot se calla para
 -- no hablarle encima al asesor, pero VUELVE SOLO si el asesor no escribe
--- en 1 hora (antes, 6). La ventana del escalamiento —cuánto espera el bot
+-- en 30 minutos (antes, 6 horas; Samuel lo bajó de 1 hora a 30 minutos
+-- la mañana del 26 oct). La ventana del escalamiento —cuánto espera el bot
 -- callado a que llegue una persona cuando el cliente la pidió— sigue en
 -- 6 horas, y el filtro de frescura de registrar_relevo también: son
 -- perillas distintas (20261001150001).
 --
 -- LO QUE CAMBIA
---  1. crm.ventana_relevo() pasa a 1 hora. Es la perilla: cambiarla mueve
+--  1. crm.ventana_relevo() pasa a 30 minutos. Es la perilla: cambiarla mueve
 --     la regla, el aviso del historial y la hora que enseña la ficha.
 --  2. crm.reactivar_relevos escribe el aviso con la cifra de la perilla
 --     y en buen español: «pasó 1 hora», «pasaron 2 horas», «pasaron 30
@@ -21,13 +22,13 @@
 --       la siguiente pasada del cron;
 --     · si el bot estaba callado por un ESCALAMIENTO que caduca, lo pasa a
 --       relevo desde el mensaje del asesor. Quien pidió una persona ya la
---       tuvo: si el asesor no vuelve a escribir en 1 hora, el bot vuelve.
+--       tuvo: si el asesor no vuelve a escribir en 30 minutos, el bot vuelve.
 --       Antes se quedaba callado para siempre (reactivar_bots no despierta
 --       a un escalado atendido);
 --     · un silencio MANUAL no se toca: «yo me encargo» no caduca.
 --  4. crm.bot_vuelve_at también responde para un escalamiento sin atender
 --     que caduca: bot_cambiado_at + ventana_silencio_escalamiento().
---  5. crm_reactivar_relevos corre cada minuto: con una ventana de 1 hora,
+--  5. crm_reactivar_relevos corre cada minuto: con una ventana de 30 minutos,
 --     5 minutos de retraso ya se notan frente a la hora que dice la ficha.
 --
 -- Mismas firmas y mismos permisos (CREATE OR REPLACE los conserva).
@@ -41,11 +42,11 @@ CREATE OR REPLACE FUNCTION crm.ventana_relevo()
 RETURNS interval
 LANGUAGE sql IMMUTABLE SET search_path = ''
 -- Perilla del relevo: cámbiala aquí.
-AS $vr$ SELECT interval '1 hour'; $vr$;
+AS $vr$ SELECT interval '30 minutes'; $vr$;
 
 COMMENT ON FUNCTION crm.ventana_relevo() IS
   'Perilla del relevo: cámbiala aquí. Cuánto tiempo sin mensajes del equipo hace falta para que el bot '
-  'recupere el turno tras un relevo. 1 h desde el 26 oct 2026 (antes 6 h). Mueve la regla '
+  'recupere el turno tras un relevo. 30 min desde el 26 oct 2026 (antes 6 h). Mueve la regla '
   '(reactivar_relevos), el aviso del historial y la hora de la ficha (bot_vuelve_at). NO mueve la '
   'ventana del escalamiento (crm.ventana_silencio_escalamiento) ni el filtro de frescura (crm.frescura_relevo).';
 

@@ -34,8 +34,8 @@ VALUES
 SELECT is(crm.frescura_relevo(), interval '6 hours',
   'La frescura del relevo arranca en 6 h');
 
-SELECT is(crm.ventana_relevo(), interval '1 hour',
-  'Y la ventana en 1 h desde el 26 oct: bajarla no movió la frescura');
+SELECT is(crm.ventana_relevo(), interval '30 minutes',
+  'Y la ventana en 30 min desde el 26 oct: bajarla no movió la frescura');
 
 SET LOCAL "request.jwt.claims" = '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","role":"authenticated"}';
 SET LOCAL ROLE authenticated;

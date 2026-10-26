@@ -34,8 +34,8 @@ SELECT is(
 
 SELECT is(
   crm.ventana_relevo(),
-  interval '1 hour',
-  'Y el relevo, 1 h desde el 26 oct: son dos perillas, y bajar una no movió la otra'
+  interval '30 minutes',
+  'Y el relevo, 30 min desde el 26 oct: son dos perillas, y bajar una no movió la otra'
 );
 
 -- =====================================================================
