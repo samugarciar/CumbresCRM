@@ -3,13 +3,14 @@
 --
 -- Lo que se mide: que cada columna traiga las primeras N pero diga
 -- cuántas hay de verdad, que lo que espera a una persona salga ARRIBA,
--- que "esperando" deje de serlo en cuanto alguien abre la ficha, y que
+-- que "esperando" deje de serlo en cuanto alguien del equipo hace algo
+-- (abrir la ficha no basta, desde el 26 oct), y que
 -- nada de esto se filtre entre inmobiliarias.
 -- =====================================================================
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(19);
+SELECT plan(21);
 
 DELETE FROM crm.contactos;
 
@@ -116,13 +117,24 @@ SELECT is(
   'Y arriba sigue la reciente, no la vieja'
 );
 
--- --- Abrir la ficha la atiende ---------------------------------------
--- "Atender" es que alguien del equipo abra la ficha después de la
--- escalada. No se mira si respondió por WhatsApp porque esa respuesta
--- la manda el asesor desde su teléfono y no pasa por esta base.
+-- --- Abrir la ficha NO la atiende; hacer algo, sí ---------------------
+-- Desde el 26 oct "atender" es que alguien del equipo HAGA algo después
+-- de la escalada (crm.bot_atendido_desde): escribirle, dejar una nota,
+-- crear una tarea, mover la etapa. Mirar la ficha no es atender.
 SELECT lives_ok(
   $$SELECT crm.marcar_leido('ff000003-0000-0000-0000-000000000003')$$,
   'Un asesor abre la ficha'
+);
+
+SELECT ok(
+  (SELECT escalado_sin_atender FROM crm.tablero(40)
+    WHERE contacto_id = 'ff000003-0000-0000-0000-000000000003'),
+  'Abrirla no basta: sigue esperando a una persona'
+);
+
+SELECT lives_ok(
+  $$SELECT crm.marcar_atendido('ff000003-0000-0000-0000-000000000003', 'Lo llamé')$$,
+  'El asesor lo llama y deja la nota'
 );
 
 SELECT ok(

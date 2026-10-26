@@ -29,20 +29,25 @@ export default async function PaginaMiDia() {
 
   // Se formatea en el servidor para que el primer render ya traiga la
   // fecha bien: hacerlo en el cliente parpadea y en es-CO no da igual.
-  const hoy = new Date().toLocaleDateString('es-CO', {
+  // Con la zona de Colombia explícita: el servidor corre en UTC y desde
+  // las 7 p. m. ya sería mañana. Mayúscula solo en la primera letra
+  // («Domingo, 25 de octubre»), no en cada palabra.
+  const fecha = new Date().toLocaleDateString('es-CO', {
+    timeZone: 'America/Bogota',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   });
+  const hoy = fecha.charAt(0).toUpperCase() + fecha.slice(1);
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <header className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Mi día</h1>
-          <p className="text-sm capitalize text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground mt-0.5">
             {hoy}
-            <span className="normal-case font-medium">
+            <span className="font-medium">
               {' · '}
               {renglones.length === 0
                 ? 'nada pendiente'

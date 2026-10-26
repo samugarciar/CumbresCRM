@@ -38,7 +38,7 @@ VALUES
 UPDATE crm.oportunidades SET escalado_at = now() - interval '40 minutes'
  WHERE contacto_id = 'dd000001-0000-0000-0000-000000000001';
 
--- Una visita HOY.
+-- Una visita HOY (hoy en Bogotá: la base corre en UTC).
 INSERT INTO public.citas
   (id, inmobiliaria_id, franja_id, inmueble_id, fecha, hora_inicio, hora_fin,
    cliente_nombre, cliente_telefono)
@@ -46,7 +46,7 @@ VALUES ('cc00dd01-0000-0000-0000-000000000001',
         '11111111-1111-1111-1111-111111111111',
         'a3333333-3333-3333-3333-333333333333',
         'a1111111-1111-1111-1111-111111111111',
-        current_date, '15:00', '15:30', 'Visita de hoy', '+573001110003');
+        crm.hoy(), '15:00', '15:30', 'Visita de hoy', '+573001110003');
 
 -- Una tarea vencida y una de hoy.
 INSERT INTO crm.tareas (id, inmobiliaria_id, contacto_id, titulo, vence_at)
@@ -56,7 +56,7 @@ VALUES
    now() - interval '2 days'),
   ('77770002-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111',
    'dd000002-0000-0000-0000-000000000002', 'Mandarle el apartamento',
-   date_trunc('day', now()) + interval '9 hours');
+   crm.inicio_de_hoy() + interval '9 hours');
 
 -- Una tarea pendiente de la plataforma de inventario.
 INSERT INTO public.tareas

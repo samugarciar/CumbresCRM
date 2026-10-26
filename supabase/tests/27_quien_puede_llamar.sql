@@ -75,6 +75,8 @@ INSERT INTO lista_blanca (firma) VALUES
   -- llama: cerrarlo rompe la pantalla, aunque la app no lo nombre nunca
   ('crm.bot_atendido_desde(uuid, timestamptz)'),
   ('crm.frescura(timestamptz)'),
+  ('crm.hoy()'),                               -- «hoy» en Bogotá: mi_dia y lo que venga
+  ('crm.inicio_de_hoy()'),
   ('crm.igual_zona(text, text)'),
   ('crm.motivo_exclusion_contacto(uuid, int, uuid)'),  -- crear y lanzar un envío masivo
   ('crm.normaliza_zonas(text[])'),
