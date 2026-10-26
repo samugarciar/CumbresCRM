@@ -149,7 +149,7 @@ export function UsarPlantilla({
                   }`}
                 >
                   <MessageCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>WhatsApp (Meta HSM)</span>
+                  <span>Plantillas de WhatsApp</span>
                   <span className="rounded-full bg-primary/10 px-1.5 py-0.2 text-[11px] tabular">
                     {plantillasWhatsApp.length}
                   </span>
@@ -165,7 +165,7 @@ export function UsarPlantilla({
                   }`}
                 >
                   <MessageSquare className="size-3.5 text-blue-600 dark:text-blue-400" />
-                  <span>Respuestas Rápidas</span>
+                  <span>Respuestas rápidas</span>
                   <span className="rounded-full bg-muted px-1.5 py-0.2 text-[11px] tabular">
                     {plantillasChat.length}
                   </span>
@@ -177,9 +177,9 @@ export function UsarPlantilla({
                 <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-300">
                   <ShieldAlert className="size-4 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold">Ventana de 24h cerrada:</span>
+                    <span className="font-semibold">Pasaron más de 24 h:</span>
                     <p className="mt-0.5 leading-relaxed">
-                      Por política de Meta, los mensajes de texto libre serán rechazados (error 131047). Para abrir conversación, usa una{' '}
+                      WhatsApp no le entrega un mensaje escrito a mano. Para abrir la conversación, usa una{' '}
                       <button
                         type="button"
                         onClick={() => setTabTipo('whatsapp')}

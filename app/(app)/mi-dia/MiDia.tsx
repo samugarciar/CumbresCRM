@@ -51,7 +51,8 @@ const ICONO: Record<string, typeof Check> = {
  * que la pantalla no enseñaba.
  *
  * 1 escalado y envío fallido, 7 bot callado sin atender → esperando
- * 2 a 6 visitas y tareas de hoy → para hoy
+ * 2 a 6 visitas y tareas de hoy, y lo atrasado (tareas vencidas, visitas
+ *   de días pasados sin cerrar) → para hoy
  * 8 estancadas → se está enfriando
  */
 const BLOQUES = [
@@ -64,7 +65,7 @@ const BLOQUES = [
   {
     clave: 'hoy',
     titulo: 'Para hoy',
-    ayuda: 'Visitas y tareas con fecha de hoy',
+    ayuda: 'Visitas y tareas de hoy, y lo que quedó atrasado',
     de: (p: number) => p >= 2 && p <= 6,
   },
   {

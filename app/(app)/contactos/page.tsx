@@ -78,6 +78,8 @@ function vistaPrevia(texto: string): string {
 function quien(tipo: string | null): string {
   if (tipo === 'mensaje_entrante') return 'Cliente: ';
   if (tipo === 'nota') return 'Nota: ';
+  // La RPC también cuenta las llamadas registradas como «último mensaje».
+  if (tipo === 'llamada') return 'Llamada: ';
   return 'Respuesta: ';
 }
 
