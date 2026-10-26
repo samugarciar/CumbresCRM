@@ -294,6 +294,15 @@ export async function enviarMensaje(
   if (validado.data.embudo && !linea) {
     return { ok: false, error: 'Esa línea no corresponde a esta conversación. Recarga la ficha.' };
   }
+  // Sin ninguna línea conectada no se encola: la fila quedaría pendiente
+  // para siempre o saldría por un número que no es de esta inmobiliaria.
+  if (!linea) {
+    return {
+      ok: false,
+      error:
+        'Tu inmobiliaria no tiene una línea de WhatsApp conectada: el mensaje no saldría. Pide a la administración que conecte una en Líneas.',
+    };
+  }
   if (linea?.token_invalido_at) {
     return {
       ok: false,

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { iniciarSesion } from '@/app/actions/auth';
+import { AVISO_DESACTIVADO } from './avisos';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,11 +17,31 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
+/**
+ * `siguiente` solo si es de ESTE sitio. Con `startsWith('/')` bastaba
+ * «//evil.com» para que el login mandara a otro dominio después de entrar
+ * (redirección abierta). Se resuelve contra el origen propio y se compara.
+ */
+function destinoSeguro(siguiente: string | null): string {
+  if (!siguiente) return '/mi-dia';
+  try {
+    const url = new URL(siguiente, window.location.origin);
+    if (url.origin !== window.location.origin) return '/mi-dia';
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return '/mi-dia';
+  }
+}
+
 export function FormularioLogin() {
-  const [error, setError] = useState<string | null>(null);
+  const params = useSearchParams();
+  // /login/salir manda aquí con ?aviso=desactivado a quien tenía la sesión
+  // abierta cuando lo desactivaron.
+  const [error, setError] = useState<string | null>(
+    params.get('aviso') === 'desactivado' ? AVISO_DESACTIVADO : null
+  );
   const [enviando, iniciarTransicion] = useTransition();
   const router = useRouter();
-  const params = useSearchParams();
 
   const manejarEnvio = (evento: React.FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
@@ -31,8 +52,7 @@ export function FormularioLogin() {
       const resultado = await iniciarSesion(formData);
       if (resultado.ok) {
         // `siguiente` lo pone proxy.ts al desviar a alguien sin sesión.
-        const siguiente = params.get('siguiente');
-        router.push(siguiente && siguiente.startsWith('/') ? siguiente : '/mi-dia');
+        router.push(destinoSeguro(params.get('siguiente')));
         router.refresh();
       } else {
         setError(resultado.error ?? 'No se pudo iniciar sesión.');

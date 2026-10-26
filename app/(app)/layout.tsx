@@ -18,11 +18,19 @@ export default async function LayoutApp({
 
   if (!user) redirect('/login');
 
-  const { data: perfil } = await supabase
+  const { data: perfil, error: errorPerfil } = await supabase
     .from('usuarios')
-    .select('nombre_completo, rol, inmobiliaria_id')
+    .select('nombre_completo, rol, inmobiliaria_id, activo')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
+
+  // Lo desactivaron con la sesión abierta. A un desactivado la RLS no le
+  // deja leer ni su propia fila (get_my_inmobiliaria() es NULL para él), así
+  // que «sin fila» es la señal. Un Server Component no puede borrar cookies
+  // (solo un Route Handler o una Server Function): la sesión la cierra
+  // /login/salir, que luego lo manda a /login con el aviso. Mandarlo directo
+  // a /login no serviría: con la sesión viva, proxy.ts lo devolvería aquí.
+  if (!errorPerfil && (!perfil || perfil.activo === false)) redirect('/login/salir');
 
   const usuario = {
     email: user.email ?? '',

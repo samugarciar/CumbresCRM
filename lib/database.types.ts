@@ -1741,10 +1741,19 @@ export type Database = {
         Args: { p_contacto_id: string; p_desde: string }
         Returns: boolean
       }
-      bot_puede_responder: {
-        Args: { p_inmobiliaria_id: string; p_telefono: string }
-        Returns: boolean
-      }
+      bot_puede_responder:
+        | {
+            Args: { p_inmobiliaria_id: string; p_telefono: string }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_inmobiliaria_id: string
+              p_telefono: string
+              p_wa_phone_number_id: string
+            }
+            Returns: boolean
+          }
       bot_vuelve_at: { Args: { p_contacto_id: string }; Returns: string }
       calidad_nombre: { Args: { p_nombre: string }; Returns: number }
       cambiar_bot: {
@@ -1877,6 +1886,7 @@ export type Database = {
         }[]
       }
       despachar_envios_masivos: { Args: { p_ahora?: string }; Returns: number }
+      duracion_legible: { Args: { p_duracion: string }; Returns: string }
       en_horario_envio: {
         Args: { p_horario: Json; p_momento?: string }
         Returns: boolean
@@ -1893,6 +1903,7 @@ export type Database = {
         Returns: string
       }
       especificidad: { Args: { p_requerimiento_id: string }; Returns: number }
+      esperando_desde: { Args: { p_contacto_id: string }; Returns: string }
       estado_sincronizacion: {
         Args: { l: Database["crm"]["Tables"]["lineas"]["Row"] }
         Returns: string
@@ -1900,6 +1911,7 @@ export type Database = {
       frescura: { Args: { p_ultima: string }; Returns: number }
       frescura_relevo: { Args: never; Returns: string }
       horario_valido: { Args: { p_horario: Json }; Returns: boolean }
+      hoy: { Args: never; Returns: string }
       hueco_variable: { Args: { p_variable: string }; Returns: string }
       identidades_de_conversacion: {
         Args: {
@@ -1910,6 +1922,7 @@ export type Database = {
         Returns: Json
       }
       igual_zona: { Args: { a: string; b: string }; Returns: boolean }
+      inicio_de_hoy: { Args: never; Returns: string }
       inmuebles_para: {
         Args: {
           p_contacto_id: string
@@ -2293,9 +2306,11 @@ export type Database = {
           inmobiliaria_id: string
           kommo_contact_id: string | null
           kommo_lead_id: string | null
+          procesando_at: string | null
           referral: Json | null
           referral_ctwa_clid: string | null
           referral_source_id: string | null
+          silencio_avisado_at: string | null
           telefono: string
           updated_at: string
         }
@@ -2306,9 +2321,11 @@ export type Database = {
           inmobiliaria_id: string
           kommo_contact_id?: string | null
           kommo_lead_id?: string | null
+          procesando_at?: string | null
           referral?: Json | null
           referral_ctwa_clid?: string | null
           referral_source_id?: string | null
+          silencio_avisado_at?: string | null
           telefono: string
           updated_at?: string
         }
@@ -2319,9 +2336,11 @@ export type Database = {
           inmobiliaria_id?: string
           kommo_contact_id?: string | null
           kommo_lead_id?: string | null
+          procesando_at?: string | null
           referral?: Json | null
           referral_ctwa_clid?: string | null
           referral_source_id?: string | null
+          silencio_avisado_at?: string | null
           telefono?: string
           updated_at?: string
         }
@@ -2342,8 +2361,10 @@ export type Database = {
           created_at: string
           herramientas_usadas: Json | null
           id: string
+          medio: Json | null
           rol: string
           wa_message_id: string | null
+          wa_phone_number_id: string | null
         }
         Insert: {
           contenido: string
@@ -2351,8 +2372,10 @@ export type Database = {
           created_at?: string
           herramientas_usadas?: Json | null
           id?: string
+          medio?: Json | null
           rol: string
           wa_message_id?: string | null
+          wa_phone_number_id?: string | null
         }
         Update: {
           contenido?: string
@@ -2360,8 +2383,10 @@ export type Database = {
           created_at?: string
           herramientas_usadas?: Json | null
           id?: string
+          medio?: Json | null
           rol?: string
           wa_message_id?: string | null
+          wa_phone_number_id?: string | null
         }
         Relationships: [
           {
@@ -2940,6 +2965,8 @@ export type Database = {
           cliente_telefono: string
           completada_at: string | null
           completada_por: string | null
+          confirmacion_error: string | null
+          confirmacion_fallida_at: string | null
           confirmada_at: string | null
           confirmada_por: string | null
           created_at: string
@@ -2951,6 +2978,8 @@ export type Database = {
           id: string
           inmobiliaria_id: string
           inmueble_id: string
+          kommo_contact_id: string | null
+          kommo_lead_id: string | null
           notas: string | null
           origen: string
           unidad: string | null
@@ -2963,6 +2992,8 @@ export type Database = {
           cliente_telefono: string
           completada_at?: string | null
           completada_por?: string | null
+          confirmacion_error?: string | null
+          confirmacion_fallida_at?: string | null
           confirmada_at?: string | null
           confirmada_por?: string | null
           created_at?: string
@@ -2974,6 +3005,8 @@ export type Database = {
           id?: string
           inmobiliaria_id: string
           inmueble_id: string
+          kommo_contact_id?: string | null
+          kommo_lead_id?: string | null
           notas?: string | null
           origen?: string
           unidad?: string | null
@@ -2986,6 +3019,8 @@ export type Database = {
           cliente_telefono?: string
           completada_at?: string | null
           completada_por?: string | null
+          confirmacion_error?: string | null
+          confirmacion_fallida_at?: string | null
           confirmada_at?: string | null
           confirmada_por?: string | null
           created_at?: string
@@ -2997,6 +3032,8 @@ export type Database = {
           id?: string
           inmobiliaria_id?: string
           inmueble_id?: string
+          kommo_contact_id?: string | null
+          kommo_lead_id?: string | null
           notas?: string | null
           origen?: string
           unidad?: string | null
@@ -3134,21 +3171,18 @@ export type Database = {
           id: string
           nit: string
           nombre: string
-          wa_phone_number_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           nit: string
           nombre: string
-          wa_phone_number_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           nit?: string
           nombre?: string
-          wa_phone_number_id?: string | null
         }
         Relationships: []
       }
@@ -3574,7 +3608,9 @@ export type Database = {
       }
       usuarios: {
         Row: {
+          activo: boolean
           created_at: string
+          desactivado_at: string | null
           email: string
           id: string
           inmobiliaria_id: string
@@ -3583,7 +3619,9 @@ export type Database = {
           telefono: string | null
         }
         Insert: {
+          activo?: boolean
           created_at?: string
+          desactivado_at?: string | null
           email: string
           id: string
           inmobiliaria_id: string
@@ -3592,7 +3630,9 @@ export type Database = {
           telefono?: string | null
         }
         Update: {
+          activo?: boolean
           created_at?: string
+          desactivado_at?: string | null
           email?: string
           id?: string
           inmobiliaria_id?: string
@@ -3701,6 +3741,10 @@ export type Database = {
       }
     }
     Functions: {
+      adquirir_bloqueo_agente: {
+        Args: { p_conversacion_id: string; p_segundos?: number }
+        Returns: boolean
+      }
       agendar_cita: {
         Args: {
           p_alcance?: string
@@ -3780,6 +3824,11 @@ export type Database = {
       crear_tarea_actualizar_inmuebles: { Args: never; Returns: undefined }
       get_my_inmobiliaria: { Args: never; Returns: string }
       get_my_role: { Args: never; Returns: string }
+      inmuebles_de_mi_agenda: { Args: never; Returns: string[] }
+      liberar_bloqueo_agente: {
+        Args: { p_conversacion_id: string }
+        Returns: undefined
+      }
       marcar_cita_realizada: { Args: { p_cita_id: string }; Returns: Json }
       resolver_inmuebles_por_texto: {
         Args: { p_texto: string; p_tipo_transaccion?: string }

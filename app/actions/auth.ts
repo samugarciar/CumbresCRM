@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { AVISO_DESACTIVADO } from '@/app/login/avisos';
 
 export interface ResultadoAuth {
   ok: boolean;
@@ -20,12 +21,48 @@ export async function iniciarSesion(formData: FormData): Promise<ResultadoAuth> 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    // Desactivar a alguien en /asesores de la plataforma también lo banea en
+    // Auth: Supabase lo dice con este código, después de comprobar la
+    // contraseña, así que no sirve para enumerar cuentas.
+    if (error.code === 'user_banned') {
+      return { ok: false, error: AVISO_DESACTIVADO };
+    }
     // No se devuelve el mensaje crudo de Supabase: distingue "usuario no
     // existe" de "contraseña incorrecta" y eso permite enumerar cuentas.
     return { ok: false, error: 'Correo o contraseña incorrectos.' };
   }
 
+  // Y si no estaba baneado (desactivado a mano en la base, o el baneo
+  // falló), la contraseña sigue sirviendo. A un desactivado la RLS no le
+  // deja leer ni su propia fila de usuarios (get_my_inmobiliaria() es NULL
+  // para él, migración 2026-10-23 de la plataforma): sin fila, se le cierra
+  // la sesión que se acaba de abrir y se le dice por qué.
+  if (await sinAccesoAlCrm(supabase)) {
+    await supabase.auth.signOut();
+    return { ok: false, error: AVISO_DESACTIVADO };
+  }
+
   return { ok: true };
+}
+
+/**
+ * true si quien tiene la sesión no puede usar el CRM: su usuario está
+ * desactivado (o no tiene fila en usuarios). Un error de la consulta NO
+ * cuenta como desactivado: ante la duda se deja entrar, y la RLS hace el
+ * resto.
+ */
+async function sinAccesoAlCrm(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data: perfil, error } = await supabase
+    .from('usuarios')
+    .select('activo')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (error) return false;
+  return !perfil || perfil.activo === false;
 }
 
 export async function cerrarSesion(): Promise<void> {

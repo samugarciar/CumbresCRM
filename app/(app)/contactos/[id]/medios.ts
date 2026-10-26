@@ -23,17 +23,42 @@ export async function conMedios(
   supabase: Awaited<ReturnType<typeof createClient>>,
   actividades: Actividad[]
 ): Promise<Actividad[]> {
-  const rutas = [
-    ...new Set(actividades.map((a) => medioDe(a)?.ruta).filter((r): r is string => Boolean(r))),
-  ];
-  if (rutas.length === 0) return actividades;
-
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrls(rutas, DURACION_SEGUNDOS);
-  if (error) {
-    console.error('[medios] No se pudieron firmar las URLs:', error.message);
-    return actividades;
+  // Los documentos se firman para DESCARGA (Content-Disposition: attachment):
+  // un PDF abierto en otra pestaña desde una URL firmada no se puede guardar
+  // con su nombre, y en el celular a veces ni se abre. Fotos, audios y
+  // videos se firman para verse en línea, en el chat.
+  // Cada documento con su nombre original («soporte_pago_octubre.pdf» y no
+  // el wamid con que se guardó); son pocos por ficha.
+  const documentos = new Map<string, string | null>();
+  const enLinea = new Set<string>();
+  for (const a of actividades) {
+    const medio = medioDe(a);
+    if (!medio?.ruta) continue;
+    if (medio.tipo === 'document') documentos.set(medio.ruta, medio.nombre?.trim() || null);
+    else enLinea.add(medio.ruta);
   }
-  const urls = new Map((data ?? []).filter((d) => d.signedUrl && d.path).map((d) => [d.path!, d.signedUrl]));
+  if (documentos.size === 0 && enLinea.size === 0) return actividades;
+
+  const bucket = supabase.storage.from(BUCKET);
+  const urls = new Map<string, string>();
+
+  const [firmadasEnLinea, ...firmadasDescarga] = await Promise.all([
+    enLinea.size > 0 ? bucket.createSignedUrls([...enLinea], DURACION_SEGUNDOS) : null,
+    ...[...documentos].map(([ruta, nombre]) =>
+      bucket.createSignedUrl(ruta, DURACION_SEGUNDOS, { download: nombre ?? true }).then((r) => ({ ruta, r }))
+    ),
+  ]);
+
+  if (firmadasEnLinea?.error) {
+    console.error('[medios] No se pudieron firmar las URLs:', firmadasEnLinea.error.message);
+  }
+  for (const d of firmadasEnLinea?.data ?? []) {
+    if (d.signedUrl && d.path) urls.set(d.path, d.signedUrl);
+  }
+  for (const { ruta, r } of firmadasDescarga) {
+    if (r.error) console.error('[medios] No se pudo firmar un documento:', r.error.message);
+    else if (r.data?.signedUrl) urls.set(ruta, r.data.signedUrl);
+  }
 
   return actividades.map((a) => {
     const medio = medioDe(a);
