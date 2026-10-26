@@ -66,11 +66,13 @@ RETURNS TABLE(prioridad smallint, tipo text, titulo text, detalle text, cuando t
 LANGUAGE sql STABLE SET search_path = ''
 AS $mi_dia$
   WITH yo AS (
-    -- La admin ve todas las tareas del CRM; un asesor, las suyas y las
-    -- que no tienen a nadie asignado.
+    -- El día de una admin trae todas las tareas del CRM; el de un asesor,
+    -- las suyas y las que no tienen a nadie asignado. Se mira el rol de
+    -- p_asesor (el dueño del día), no el de quien llama: una admin que mira
+    -- el día de un asesor ve lo que ve él.
     SELECT EXISTS (
       SELECT 1 FROM crm.v_asesores u
-       WHERE u.id = (SELECT auth.uid()) AND u.rol = 'admin'
+       WHERE u.id = p_asesor AND u.rol = 'admin'
     ) AS es_admin
   ),
   todo (prioridad, tipo, titulo, detalle, cuando,
