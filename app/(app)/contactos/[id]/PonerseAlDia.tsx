@@ -94,14 +94,15 @@ export function PonerseAlDia({ resumen, contactoId }: { resumen: Resumen; contac
 
   if (esperando !== null) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-        <div className="flex min-w-0 flex-col gap-1">
+      // Una sola franja: cada renglón de más aquí es altura que pierde el chat.
+      <div
+        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2"
+        title="Si ya lo atendiste por llamada o en persona, márcalo como respondido."
+      >
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-hidden />
             Está esperando tu respuesta hace {esperaLegible(esperando)}
-          </p>
-          <p className="hidden text-xs text-muted-foreground sm:block">
-            Si ya lo atendiste por llamada o en persona, márcalo como respondido.
           </p>
           {lista}
         </div>

@@ -20,7 +20,14 @@ const CERCA_DEL_FONDO = 80;
  * La altura se mide en vez de adivinarse con CSS: la cabecera de la ficha
  * cambia de alto (el chip del bot, el aviso de espera, una o dos líneas en
  * el celular), y un `calc()` fijo dejaba la caja debajo del borde.
+ *
+ * Si lo que queda de pantalla es poco (una laptop con la cabecera y el aviso
+ * de espera arriba), el marco no se encoge hasta el mínimo: toma casi toda
+ * la ventana y la página baja un poco para verlo entero. Antes se quedaba
+ * en 360 px y los mensajes vivían en una franja de ~130 px.
  */
+const ALTO_COMODO = 480;
+const ALTO_MAXIMO_PANTALLA = 720;
 export function ContenedorChat({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const pegadoAbajo = useRef(true);
@@ -36,7 +43,11 @@ export function ContenedorChat({ children }: { children: React.ReactNode }) {
     const ajustarAltura = () => {
       const arriba = el.getBoundingClientRect().top + window.scrollY;
       const margen = window.matchMedia('(min-width: 768px)').matches ? 24 : 12;
-      const alto = Math.max(360, Math.round(window.innerHeight - arriba - margen));
+      const restante = Math.round(window.innerHeight - arriba - margen);
+      const alto =
+        restante >= ALTO_COMODO
+          ? restante
+          : Math.max(360, Math.min(window.innerHeight - 2 * margen - 56, ALTO_MAXIMO_PANTALLA));
       if (el.style.height !== `${alto}px`) el.style.height = `${alto}px`;
       if (pegadoAbajo.current) bajar();
     };
@@ -106,6 +117,15 @@ export function ContenedorChat({ children }: { children: React.ReactNode }) {
 
     ajustarAltura();
     bajar();
+    // Al abrir la ficha en una pantalla baja, el marco no cabe entero: la
+    // página baja lo justo para dejarlo completo a la vista, con la caja de
+    // escribir abajo, como en WhatsApp Web. Solo al abrir y solo si nadie
+    // ha movido la página: después, quien mira manda.
+    const marco = el.getBoundingClientRect();
+    const sobra = marco.bottom - window.innerHeight;
+    if (sobra > 0 && window.scrollY === 0) {
+      window.scrollTo({ top: Math.ceil(sobra) + 8, behavior: 'instant' });
+    }
     el.addEventListener('scroll', alDesplazar, { passive: true });
     window.addEventListener('resize', ajustarAltura);
     window.addEventListener('hashchange', enfocarSiToca);

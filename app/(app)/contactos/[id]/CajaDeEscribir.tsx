@@ -491,7 +491,7 @@ export function CajaDeEscribir({
   // CASO 2: DENTRO DE LA VENTANA DE 24 HORAS (CONVERSACIÓN LIBRE + PLANTILLAS)
   // =========================================================================
   return (
-    <div className="sticky bottom-0 z-10 mb-3 flex flex-col gap-2.5 rounded-xl border bg-card p-3 shadow-[0_-6px_12px_-10px_rgb(0_0_0/0.25)]">
+    <div className="sticky bottom-0 z-10 mb-3 flex flex-col gap-1.5 rounded-xl border bg-card px-3 pt-2 pb-2.5 shadow-[0_-6px_12px_-10px_rgb(0_0_0/0.25)]">
       {/* Menú flotante de autocompletado con '/' */}
       {slashActivo && sugerenciasSlash.length > 0 && (
         <div className="absolute bottom-full left-3 z-30 mb-2 w-80 rounded-xl border border-border/80 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
@@ -541,83 +541,20 @@ export function CajaDeEscribir({
         </div>
       )}
 
-      {/* Barra de herramientas superior del chat */}
-      <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-        <div className="flex items-center gap-1.5">
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setSelectorAbierto(true);
-              setBusqueda('');
-            }}
-            className="h-8 gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-          >
-            <Zap className="size-3.5 text-amber-500" />
-            <span>Respuestas rápidas</span>
-            <span className="rounded-md bg-muted px-1.5 py-0.2 text-[11px] text-muted-foreground font-mono">
-              /
-            </span>
-          </Button>
-        </div>
-
-        {/* La ventana de 24 h, dicha una sola vez y con la hora de Colombia */}
-        {hastaCuando && (
-          <span className="text-xs text-muted-foreground">
-            Puedes escribirle hasta {hastaCuando}
-          </span>
-        )}
-      </div>
-
-      {/* Campo de texto de mensaje */}
-      <div className="relative">
-        <Textarea
-          ref={textareaRef}
-          value={texto}
-          onChange={manejarCambioTexto}
-          onKeyDown={manejarKeyDown}
-          rows={3}
-          placeholder="Escribe un mensaje, o «/» para una respuesta rápida…"
-          aria-label="Mensaje para esta persona"
-          disabled={enviando || insertando}
-          className="rounded-xl border-none bg-transparent p-1 text-sm shadow-none focus-visible:ring-0 resize-none leading-relaxed"
-        />
-      </div>
-
-      {/* Selector de línea y detalles */}
-      {elegida && (
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground pt-1 border-t border-border/40">
-          <Phone className="size-3 text-muted-foreground" />
-          {linea.opciones.length > 1 ? (
-            <>
-              <label htmlFor={`linea-${contactoId}`} className="text-xs">
-                Sale por
-              </label>
-              <select
-                id={`linea-${contactoId}`}
-                value={elegida.embudo}
-                onChange={(e) => setEmbudo(e.target.value)}
-                disabled={enviando}
-                className="h-7 rounded-lg border bg-background px-2 text-xs font-medium text-foreground"
-              >
-                {linea.opciones.map((l) => (
-                  <option key={l.embudo} value={l.embudo}>
-                    {l.nombre}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : (
-            <span className="text-xs">
-              Sale por <b className="font-medium text-foreground">{elegida.nombre}</b>
-            </span>
-          )}
-          {elegida.telefono_e164 && (
-            <span className="tabular text-xs">· {telefonoLegible(elegida.telefono_e164)}</span>
-          )}
-        </div>
-      )}
+      {/* El mensaje: arranca en dos renglones y crece mientras se escribe,
+          así la conversación conserva la altura (antes la caja ocupaba
+          cuatro filas y en una laptop dejaba ~130 px para los mensajes). */}
+      <Textarea
+        ref={textareaRef}
+        value={texto}
+        onChange={manejarCambioTexto}
+        onKeyDown={manejarKeyDown}
+        rows={2}
+        placeholder="Escribe un mensaje, o «/» para una respuesta rápida…"
+        aria-label="Mensaje para esta persona"
+        disabled={enviando || insertando}
+        className="min-h-0 max-h-40 resize-none rounded-xl border-none bg-transparent p-1 text-sm leading-relaxed shadow-none [field-sizing:content] focus-visible:ring-0"
+      />
 
       {lineaCaida && (
         <p role="alert" className="flex items-start gap-1.5 text-xs text-destructive">
@@ -632,13 +569,61 @@ export function CajaDeEscribir({
         </p>
       )}
 
-      {/* Botones inferiores */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-        {/* En pantallas táctiles no hay teclado con Ctrl: la pista sobra */}
-        <span className="hidden text-[11px] text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:inline">
-          <kbd className="rounded bg-muted px-1 py-0.5 font-mono">{esMac ? '⌘ + Enter' : 'Ctrl + Enter'}</kbd>{' '}
-          para enviar
-        </span>
+      {/* Lo demás en una sola fila: respuestas rápidas, por qué línea sale,
+          hasta cuándo se puede escribir y enviar. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border/40 pt-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setSelectorAbierto(true);
+            setBusqueda('');
+          }}
+          className="h-7 gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+          title="Respuestas rápidas (también con «/»)"
+        >
+          <Zap className="size-3.5 text-amber-500" />
+          <span>Respuestas rápidas</span>
+        </Button>
+
+        {elegida && (
+          <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+            <Phone className="size-3 shrink-0" />
+            {linea.opciones.length > 1 ? (
+              <>
+                <label htmlFor={`linea-${contactoId}`} className="text-xs">
+                  Sale por
+                </label>
+                <select
+                  id={`linea-${contactoId}`}
+                  value={elegida.embudo}
+                  onChange={(e) => setEmbudo(e.target.value)}
+                  disabled={enviando}
+                  className="h-7 rounded-lg border bg-background px-2 text-xs font-medium text-foreground"
+                >
+                  {linea.opciones.map((l) => (
+                    <option key={l.embudo} value={l.embudo}>
+                      {l.nombre}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <span>
+                Sale por <b className="font-medium text-foreground">{elegida.nombre}</b>
+              </span>
+            )}
+            {elegida.telefono_e164 && (
+              <span className="tabular">· {telefonoLegible(elegida.telefono_e164)}</span>
+            )}
+          </div>
+        )}
+
+        {/* La ventana de 24 h, dicha una sola vez y con la hora de Colombia */}
+        {hastaCuando && (
+          <span className="text-xs text-muted-foreground">Puedes escribirle hasta {hastaCuando}</span>
+        )}
 
         <div className="ml-auto flex items-center gap-1.5">
           {!canalListo && (
@@ -661,7 +646,7 @@ export function CajaDeEscribir({
             className="h-8 gap-1.5 rounded-lg px-3.5 text-xs font-semibold"
             title={
               canalListo
-                ? 'Enviar por WhatsApp'
+                ? `Enviar por WhatsApp (${esMac ? '⌘' : 'Ctrl'} + Enter)`
                 : 'El envío directo todavía no está conectado'
             }
           >
