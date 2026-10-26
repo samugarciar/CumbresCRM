@@ -178,7 +178,7 @@ export function PanelEnvio({
             <span className="flex flex-wrap items-center gap-2 text-xs">
               {estado === 'borrador'
                 ? 'Se descarta el borrador.'
-                : 'Lo que no ha salido ya no saldrá. Lo que salió, salió.'}
+                : 'Lo que no ha salido ya no saldrá y pasa a «Gestión manual». Lo que salió, salió.'}
               <Button
                 variant="destructive"
                 size="sm"
