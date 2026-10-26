@@ -49,6 +49,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.en_horario_envio(jsonb, timestamptz)'),
   ('crm.encender_bot_freno(text)'),             -- «Bots callados», el freno de quien no está en el CRM
   ('crm.encolar_envio(uuid, text, uuid, uuid, text)'),
+  ('crm.esperando_desde(uuid)'),               -- la regla del 🔥: bandeja, contadores y ficha
   ('crm.inmuebles_para(uuid, smallint, int, boolean)'),
   ('crm.lanzar_envio_masivo(uuid, int)'),
   ('crm.marcar_atendido(uuid, text)'),
