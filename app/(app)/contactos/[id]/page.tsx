@@ -7,7 +7,8 @@ import { iniciales, telefonoLegible, tiempoRelativo, enlaceWhatsApp } from '@/li
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PanelDatos } from './PanelDatos';
-import { Historial } from './Historial';
+import { Historial, type Actividad } from './Historial';
+import { conMedios } from './medios';
 import { PonerseAlDia, esperaLegible } from './PonerseAlDia';
 import { MarcarLeido } from './MarcarLeido';
 import { Recomendaciones, type Recomendable } from './Recomendaciones';
@@ -63,7 +64,7 @@ export default async function FichaContacto({
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
       .from('v_timeline')
-      .select('id, tipo, origen, cuerpo, ocurrido_at, inmueble_titulo, inmueble_barrio')
+      .select('id, tipo, origen, cuerpo, ocurrido_at, inmueble_titulo, inmueble_barrio, metadata')
       .eq('contacto_id', id)
       .order('ocurrido_at', { ascending: false })
       .limit(500),
@@ -98,6 +99,10 @@ export default async function FichaContacto({
       .in('embudo', ['comercial', 'administrativa', 'captacion'])
       .order('orden'),
   ]);
+
+  // Fotos, audios y documentos de WhatsApp: viven en el bucket privado de
+  // la plataforma, y la sesión del usuario solo firma los de su inmobiliaria.
+  const actividades = await conMedios(supabase, (timeline ?? []) as Actividad[]);
 
   // El resumen se lee ANTES de marcar como leído, para que el separador
   // "nuevo desde tu última visita" sepa dónde va.
@@ -244,7 +249,7 @@ export default async function FichaContacto({
           {resumen && <PonerseAlDia resumen={resumen} />}
 
           <Historial
-            actividades={timeline ?? []}
+            actividades={actividades}
             vistoHasta={resumen?.visto_hasta ?? null}
             contactoId={contacto.id}
             canalListo={canalConfigurado()}

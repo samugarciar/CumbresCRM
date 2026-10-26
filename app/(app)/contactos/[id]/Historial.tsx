@@ -29,6 +29,19 @@ export interface Actividad {
   ocurrido_at: string | null;
   inmueble_titulo: string | null;
   inmueble_barrio: string | null;
+  metadata?: unknown;
+  /** La foto, el audio o el documento, con su URL ya firmada (ver medios.ts). */
+  medio?: MedioActividad | null;
+}
+
+/** `metadata.medio` de un mensaje de WhatsApp, como lo deja la plataforma. */
+export interface MedioActividad {
+  tipo: 'image' | 'audio' | 'video' | 'document' | 'sticker';
+  mime: string | null;
+  ruta: string | null;
+  nombre: string | null;
+  voz?: boolean;
+  url?: string | null;
 }
 
 const ASPECTO: Record<
@@ -254,6 +267,7 @@ function Conversacion({ mensajes }: { mensajes: Actividad[] }) {
                     : 'rounded-br-xs bg-primary text-primary-foreground'
                 }`}
               >
+                {m.medio && <Medio medio={m.medio} delCliente={delCliente} />}
                 <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{m.cuerpo}</p>
                 <div
                   className={`flex items-center justify-end gap-1 text-[10px] ${
@@ -289,6 +303,47 @@ function Conversacion({ mensajes }: { mensajes: Actividad[] }) {
       })}
     </div>
   );
+}
+
+/** La foto, el audio, el video o el documento de una burbuja del chat. */
+function Medio({ medio, delCliente }: { medio: MedioActividad; delCliente: boolean }) {
+  if (!medio.url) {
+    return (
+      <span className={`text-xs italic ${delCliente ? 'text-muted-foreground' : 'text-primary-foreground/75'}`}>
+        El archivo no está disponible.
+      </span>
+    );
+  }
+  switch (medio.tipo) {
+    case 'image':
+    case 'sticker':
+      return (
+        <a href={medio.url} target="_blank" rel="noreferrer" className="block">
+          {/* eslint-disable-next-line @next/next/no-img-element -- URL firmada de Supabase, sin optimizar */}
+          <img
+            src={medio.url}
+            alt={medio.tipo === 'sticker' ? 'Sticker' : 'Foto que mandó el cliente'}
+            className={`rounded-lg object-cover ${medio.tipo === 'sticker' ? 'max-h-28' : 'max-h-72 w-full'}`}
+            loading="lazy"
+          />
+        </a>
+      );
+    case 'audio':
+      return <audio controls preload="none" src={medio.url} className="w-64 max-w-full" />;
+    case 'video':
+      return <video controls preload="none" src={medio.url} className="max-h-72 w-full rounded-lg" />;
+    default:
+      return (
+        <a
+          href={medio.url}
+          target="_blank"
+          rel="noreferrer"
+          className={`text-sm font-medium underline underline-offset-2 ${delCliente ? '' : 'text-primary-foreground'}`}
+        >
+          Abrir {medio.nombre ?? 'documento'}
+        </a>
+      );
+  }
 }
 
 function Linea({
