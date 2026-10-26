@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 // Tres niveles y no un deslizador: un asesor no quiere calibrar un
 // porcentaje, quiere decidir cuánto ruido aguanta hoy. Los nombres dicen
@@ -14,13 +13,12 @@ const NIVELES = [
   { valor: 30, etiqueta: 'Amplio', ayuda: 'Puntaje 30 o más — más nombres, menos precisión' },
 ];
 
-export function FiltrosCoincidencias({
-  minimo,
-  historico,
-}: {
-  minimo: number;
-  historico: boolean;
-}) {
+/**
+ * Qué tan exigente es el cruce. «Rebuscar en el histórico» ya no va aquí:
+ * es un enlace aparte en la página, porque no es otro nivel de exigencia
+ * sino otra lista (gente que lleva más de un mes sin hablar).
+ */
+export function FiltrosCoincidencias({ minimo }: { minimo: number }) {
   const router = useRouter();
   const params = useSearchParams();
   const [navegando, iniciarNavegacion] = useTransition();
@@ -37,35 +35,24 @@ export function FiltrosCoincidencias({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-sm text-muted-foreground">Qué tan exigente:</span>
-      {NIVELES.map((n) => (
-        <Button
-          key={n.valor}
-          size="sm"
-          variant={minimo === n.valor ? 'default' : 'outline'}
-          onClick={() => aplicar(n.valor)}
-          title={n.ayuda}
-        >
-          {n.etiqueta}
-        </Button>
-      ))}
-      {/* El histórico se pide a propósito. Por defecto la pantalla solo
-          enseña gente que habló en el último mes, porque de los 500 que
-          encajan con un apartamento genérico, la mayoría lleva meses
-          callada y no vale una llamada hoy. */}
-      <Button
-        size="sm"
-        variant={historico ? 'default' : 'outline'}
-        onClick={() => {
-          const siguientes = new URLSearchParams(params.toString());
-          if (historico) siguientes.delete('historico');
-          else siguientes.set('historico', '1');
-          siguientes.delete('inmueble');
-          iniciarNavegacion(() => router.push(`/coincidencias?${siguientes.toString()}`));
-        }}
-        title="Incluir a quien lleva más de un mes sin hablar"
-      >
-        Rebuscar en el histórico
-      </Button>
+      <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-1">
+        {NIVELES.map((n) => (
+          <button
+            key={n.valor}
+            type="button"
+            onClick={() => aplicar(n.valor)}
+            title={n.ayuda}
+            aria-pressed={minimo === n.valor}
+            className={`h-7 rounded-md px-2.5 text-xs font-medium transition-colors ${
+              minimo === n.valor
+                ? 'bg-background text-foreground shadow-2xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {n.etiqueta}
+          </button>
+        ))}
+      </div>
 
       {navegando && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
     </div>

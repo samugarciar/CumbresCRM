@@ -41,12 +41,12 @@ export default async function PaginaPlantillas() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Plantillas y Respuestas</h1>
-        <p className="max-w-[70ch] text-sm text-muted-foreground mt-1">
-          Gestiona las respuestas rápidas para el chat del día a día y las plantillas oficiales de WhatsApp
-          (HSM) de cada línea, aprobadas por Meta para abrir conversaciones fuera de la ventana de 24 horas.
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Plantillas</h1>
+        <p className="max-w-[70ch] text-sm text-muted-foreground">
+          Las respuestas rápidas para el chat del día a día y las plantillas de WhatsApp de cada línea,
+          que hay que hacer aprobar para escribirle a alguien pasadas 24 horas de su último mensaje.
         </p>
       </header>
 

@@ -35,6 +35,7 @@ interface Resumen {
 interface Fila {
   fila: number;
   nombre: string | null;
+  contacto_id: string | null;
   telefono: string | null;
   resultado: string;
   motivo: string | null;
@@ -86,9 +87,17 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
   const destinatarios = resumen ? resumen.total - resumen.excluidos : 0;
   const listos = resumen?.en_cola ?? 0;
   const [costoMin, costoMax] = costoEstimado(estado === 'borrador' ? listos : destinatarios, plantilla?.categoria ?? 'utilidad');
+  // Con pocos destinatarios los dos extremos dicen «menos de US$0,01»: una
+  // sola vez, y con mayúscula porque abre la cifra.
+  const [textoMin, textoMax] = [dolares(costoMin), dolares(costoMax)];
+  const costo = (textoMin === textoMax ? textoMin : `${textoMin} – ${textoMax}`).replace(/^./, (c) =>
+    c.toUpperCase()
+  );
+  // «p. m.» ya trae su punto.
+  const lanzado = envio.lanzado_at ? `Lanzado el ${fechaLarga(envio.lanzado_at)}`.replace(/\.?$/, '.') : null;
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
       <header className="flex flex-col gap-1">
         <Link
           href="/envios-masivos"
@@ -124,7 +133,7 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
                 ['Filas del archivo', resumen.total],
                 ['Recibirían el mensaje', listos],
                 ['No se les enviará', resumen.excluidos],
-                ['Costo estimado en Meta', costoMin === costoMax ? dolares(costoMin) : `${dolares(costoMin)} – ${dolares(costoMax)}`],
+                ['Costo estimado en Meta', costo],
               ]
             : [
                 ['Enviados', `${resumen.enviados} de ${destinatarios}`],
@@ -133,8 +142,8 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
                 ['Fallaron', resumen.fallidos],
               ]
           ).map(([titulo, valor]) => (
-            <div key={titulo as string} className="rounded-2xl border border-border/70 bg-card p-3">
-              <p className="text-[11px] text-muted-foreground">{titulo}</p>
+            <div key={titulo as string} className="rounded-xl border bg-card p-3">
+              <p className="text-xs text-muted-foreground">{titulo}</p>
               <p className="mt-0.5 text-lg font-semibold tabular">{valor}</p>
             </div>
           ))}
@@ -142,7 +151,7 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
       )}
 
       {estado === 'borrador' && (
-        <p className="text-[11px] text-muted-foreground -mt-2">
+        <p className="-mt-2 text-xs text-muted-foreground">
           El costo es una estimación con la tarifa de {plantilla?.categoria === 'marketing' ? 'marketing' : 'utilidad'}{' '}
           para Colombia que no está verificada contra la tarjeta oficial de Meta.
         </p>
@@ -164,9 +173,7 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
         <section className="grid gap-3 md:grid-cols-3">
           {(previas ?? []).map((p) => (
             <div key={p.fila} className="rounded-xl border border-border/40 bg-[#efeae2] p-3 dark:bg-[#0b141a]">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Fila {p.fila}
-              </p>
+              <p className="mb-1 text-[11px] font-semibold text-muted-foreground">Fila {p.fila}</p>
               <p className="whitespace-pre-wrap rounded-xl rounded-tl-xs bg-white p-2.5 text-xs shadow-xs dark:bg-[#202c33]">
                 {p.cuerpo}
               </p>
@@ -199,13 +206,13 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
           <b className="text-foreground">A quién no:</b> a quien pidió no recibir más mensajes, y a quien recibió
           otro envío masivo en los últimos {envio.frecuencia_dias} días.
         </p>
-        {envio.lanzado_at && <p>Lanzado el {fechaLarga(envio.lanzado_at)}.</p>}
+        {lanzado && <p>{lanzado}</p>}
         {envio.abrir_caso && <p>A cada persona se le abre (o se le mueve a «En mora») su caso administrativo.</p>}
       </section>
 
       {/* Las filas */}
       {filas.length > 0 && (
-        <section className="overflow-x-auto rounded-2xl border border-border/70 bg-card">
+        <section className="overflow-x-auto rounded-xl border bg-card">
           <table className="w-full text-xs">
             <thead className="bg-muted/40 text-left text-[11px] text-muted-foreground">
               <tr>
@@ -220,7 +227,15 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
               {filas.map((f) => (
                 <tr key={f.fila} className="border-t border-border/50">
                   <td className="px-3 py-2 tabular text-muted-foreground">{f.fila}</td>
-                  <td className="px-3 py-2">{f.nombre ?? '—'}</td>
+                  <td className="px-3 py-2">
+                    {f.contacto_id ? (
+                      <Link href={`/contactos/${f.contacto_id}`} className="font-medium text-primary hover:underline">
+                        {f.nombre ?? 'Sin nombre'}
+                      </Link>
+                    ) : (
+                      (f.nombre ?? '—')
+                    )}
+                  </td>
                   <td className="px-3 py-2 tabular">{telefonoLegible(f.telefono) ?? f.telefono ?? '—'}</td>
                   <td className="px-3 py-2">
                     {RESULTADOS[f.resultado] ?? f.resultado}
@@ -234,7 +249,7 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
             </tbody>
           </table>
           {resumen && resumen.total > FILAS_EN_PANTALLA && (
-            <p className="border-t border-border/50 px-3 py-2 text-[11px] text-muted-foreground">
+            <p className="border-t border-border/50 px-3 py-2 text-xs text-muted-foreground">
               Se ven las primeras {FILAS_EN_PANTALLA} de {resumen.total} filas. Todas van en el archivo de resultados.
             </p>
           )}

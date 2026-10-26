@@ -39,9 +39,9 @@ export function Responsable({
   };
 
   return (
-    <section className="flex flex-col gap-2 rounded-lg border bg-card p-4">
+    <section className="flex flex-col gap-2 rounded-xl border bg-card p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-medium">Responsable</h2>
+        <h2 className="text-sm font-semibold">Responsable</h2>
         {nombre && (
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <UserRound className="size-3.5" />
@@ -66,12 +66,12 @@ export function Responsable({
           <Button
             size="sm"
             variant="outline"
-            className="w-fit"
+            className="h-8 w-fit rounded-lg text-xs"
             onClick={encargarme}
             disabled={pendiente}
           >
             {pendiente ? (
-              <Loader2 className="animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : (
               <UserRoundPlus className="size-3.5" />
             )}

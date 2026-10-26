@@ -63,7 +63,7 @@ export function FiltrosTablero({ zonas }: { zonas: Zona[] }) {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/60 p-2 shadow-2xs backdrop-blur-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/60 p-2 shadow-2xs backdrop-blur-xs">
       <div className="relative min-w-64 flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input

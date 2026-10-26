@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { fechaLarga } from '@/lib/formato';
 import { ControlBot } from './ControlBot';
 import { Responsable } from './Responsable';
-import { VentanaWhatsApp } from './VentanaWhatsApp';
 
 interface Props {
   contactoId: string;
@@ -22,7 +21,8 @@ interface Props {
   botMotivo: string | null;
   botCambiadoAt: string | null;
   botVuelveAt: string | null;
-  ventanaCierraAt: string | null;
+  /** Todas sus oportunidades abiertas son de embudos que el bot no atiende. */
+  botNoAtiende: boolean;
   ahora: string;
   responsableNombre: string | null;
   responsableEsMio: boolean;
@@ -31,11 +31,32 @@ interface Props {
 const ETIQUETA_IDENTIDAD: Record<string, string> = {
   telefono_e164: 'Teléfono',
   whatsapp_username: 'Usuario de WhatsApp',
-  kommo_lead: 'Lead en Kommo',
-  kommo_contact: 'Contacto en Kommo',
+  // Kommo ya no se usa: son números de la era anterior, solo de consulta.
+  kommo_lead: 'Histórico Kommo · lead',
+  kommo_contact: 'Histórico Kommo · contacto',
   email: 'Correo',
   meta_psid: 'Meta',
   otro: 'Otro',
+};
+
+/** De dónde salió el contacto, dicho como lo diría una persona. */
+const ETIQUETA_ORIGEN: Record<string, string> = {
+  whatsapp: 'WhatsApp',
+  envio_masivo: 'Envío masivo',
+  cita: 'Cita de la plataforma',
+  kommo: 'Histórico Kommo',
+  manual: 'Creado a mano',
+};
+
+function origenLegible(origen: string | null): string {
+  if (!origen) return '—';
+  return ETIQUETA_ORIGEN[origen] ?? origen.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+}
+
+const ETIQUETA_TIPO: Record<string, string> = {
+  cliente: 'Cliente',
+  propietario: 'Propietario',
+  ambos: 'Cliente y propietario',
 };
 
 export function PanelDatos(props: Props) {
@@ -54,8 +75,12 @@ export function PanelDatos(props: Props) {
     });
   };
 
+  // El teléfono ya está en la cabecera: la sección solo aporta algo si
+  // hay otra forma de reconocerlo (correo, histórico de Kommo…).
+  const otrasIdentidades = props.identidades.filter((i) => i.tipo !== 'telefono_e164');
+
   return (
-    <aside className="flex flex-col gap-5 text-sm">
+    <aside className="flex flex-col gap-4 text-sm">
       {/* Quién lleva esto va primero: si entras a una ficha ajena, es lo
           que tienes que saber antes de escribir. */}
       <Responsable
@@ -73,16 +98,19 @@ export function PanelDatos(props: Props) {
         cambiadoAt={props.botCambiadoAt}
         vuelveAt={props.botVuelveAt}
         ahora={props.ahora}
+        noAtiende={props.botNoAtiende}
       />
 
-      {/* Antes de escribir, no después de que falle. */}
-      <VentanaWhatsApp cierraAt={props.ventanaCierraAt} ahora={props.ahora} />
-
-      <section className="flex flex-col gap-3 rounded-lg border bg-card p-4">
+      <section className="flex flex-col gap-3 rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium">Datos</h2>
+          <h2 className="text-sm font-semibold">Datos</h2>
           {!editando && (
-            <Button variant="ghost" size="sm" onClick={() => setEditando(true)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditando(true)}
+              className="h-8 rounded-lg text-xs"
+            >
               <Pencil className="size-3.5" />
               Editar
             </Button>
@@ -106,7 +134,7 @@ export function PanelDatos(props: Props) {
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value)}
                 disabled={guardando}
-                className="h-9 rounded-md border bg-background px-3 text-sm"
+                className="h-8 rounded-lg border bg-background px-2.5 text-sm"
               >
                 <option value="cliente">Cliente</option>
                 <option value="propietario">Propietario</option>
@@ -115,7 +143,7 @@ export function PanelDatos(props: Props) {
             </label>
 
             <div className="flex gap-2">
-              <Button size="sm" onClick={guardar} disabled={guardando}>
+              <Button size="sm" onClick={guardar} disabled={guardando} className="h-8 rounded-lg">
                 {guardando ? <Loader2 className="animate-spin" /> : <Check className="size-3.5" />}
                 Guardar
               </Button>
@@ -128,6 +156,8 @@ export function PanelDatos(props: Props) {
                   setTipo(props.tipo);
                 }}
                 disabled={guardando}
+                className="h-8 rounded-lg"
+                aria-label="Cancelar"
               >
                 <X className="size-3.5" />
               </Button>
@@ -136,10 +166,10 @@ export function PanelDatos(props: Props) {
         ) : (
           <dl className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-2">
             <dt className="text-muted-foreground">Tipo</dt>
-            <dd className="capitalize">{props.tipo}</dd>
+            <dd>{ETIQUETA_TIPO[props.tipo] ?? props.tipo}</dd>
 
-            <dt className="text-muted-foreground">Origen</dt>
-            <dd>{props.origen ?? '—'}</dd>
+            <dt className="text-muted-foreground">Llegó por</dt>
+            <dd>{origenLegible(props.origen)}</dd>
 
             <dt className="text-muted-foreground">Conocido desde</dt>
             <dd>{fechaLarga(props.creadoAt)}</dd>
@@ -162,13 +192,11 @@ export function PanelDatos(props: Props) {
         )}
       </section>
 
-      <section className="flex flex-col gap-3 rounded-lg border bg-card p-4">
-        <h2 className="font-medium">Cómo lo reconocemos</h2>
-        {props.identidades.length === 0 ? (
-          <p className="text-muted-foreground">Sin identidades registradas.</p>
-        ) : (
+      {otrasIdentidades.length > 0 && (
+        <section className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+          <h2 className="text-sm font-semibold">Cómo lo reconocemos</h2>
           <ul className="flex flex-col gap-2">
-            {props.identidades.map((i) => (
+            {otrasIdentidades.map((i) => (
               <li key={`${i.tipo}:${i.valor}`} className="flex flex-col">
                 <span className="text-xs text-muted-foreground">
                   {ETIQUETA_IDENTIDAD[i.tipo] ?? i.tipo}
@@ -177,8 +205,8 @@ export function PanelDatos(props: Props) {
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      )}
 
     </aside>
   );

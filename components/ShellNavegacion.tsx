@@ -41,8 +41,18 @@ interface ElementoNav {
 interface GrupoNav {
   titulo: string;
   elementos: ElementoNav[];
+  /** Solo se enseña a la administradora. */
+  soloAdmin?: boolean;
 }
 
+/**
+ * El menú. Envíos masivos y Plantillas son para todos: los asesores los
+ * usan (decisión del 15 oct). Líneas es configuración y solo la ve la
+ * administradora.
+ *
+ * Esconder un enlace NO quita el permiso: lo que cada quien puede leer o
+ * cambiar lo decide la base (RLS y funciones). Esto solo ordena el menú.
+ */
 const GRUPOS_NAV: GrupoNav[] = [
   {
     titulo: 'Operación',
@@ -55,7 +65,7 @@ const GRUPOS_NAV: GrupoNav[] = [
       },
       {
         href: '/contactos',
-        etiqueta: 'Bandeja de entrada',
+        etiqueta: 'Bandeja',
         icono: MessageSquare,
         descripcion: 'Chats de WhatsApp y contactos',
       },
@@ -68,7 +78,7 @@ const GRUPOS_NAV: GrupoNav[] = [
     ],
   },
   {
-    titulo: 'Oportunidades',
+    titulo: 'Seguimiento',
     elementos: [
       {
         href: '/coincidencias',
@@ -82,17 +92,17 @@ const GRUPOS_NAV: GrupoNav[] = [
         icono: Flame,
         descripcion: 'Leads fríos para reenganche',
       },
-    ],
-  },
-  {
-    titulo: 'Canal & Supervisión',
-    elementos: [
       {
         href: '/bot-callado',
         etiqueta: 'Bot callado',
         icono: BotOff,
         descripcion: 'Conversaciones con bot silenciado',
       },
+    ],
+  },
+  {
+    titulo: 'Mensajes',
+    elementos: [
       {
         href: '/envios-masivos',
         etiqueta: 'Envíos masivos',
@@ -105,6 +115,12 @@ const GRUPOS_NAV: GrupoNav[] = [
         icono: FileText,
         descripcion: 'Mensajes aprobados por Meta',
       },
+    ],
+  },
+  {
+    titulo: 'Configuración',
+    soloAdmin: true,
+    elementos: [
       {
         href: '/lineas',
         etiqueta: 'Líneas',
@@ -124,6 +140,7 @@ export function ShellNavegacion({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const grupos = GRUPOS_NAV.filter((g) => !g.soloAdmin || usuario.rol === 'admin');
   const [colapsado, setColapsado] = React.useState(false);
   const [menuMovilAbierto, setMenuMovilAbierto] = React.useState(false);
 
@@ -178,8 +195,8 @@ export function ShellNavegacion({
                 <span className="text-base font-bold leading-none tracking-tight">
                   Cumbres
                 </span>
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
-                  CRM Inmobiliario
+                <span className="mt-0.5 text-xs font-medium text-muted-foreground">
+                  CRM inmobiliario
                 </span>
               </div>
             </Link>
@@ -211,11 +228,11 @@ export function ShellNavegacion({
         </div>
 
         {/* Lista de Navegación por Grupos */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-          {GRUPOS_NAV.map((grupo) => (
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {grupos.map((grupo) => (
             <div key={grupo.titulo} className="space-y-1">
               {!colapsado && (
-                <p className="px-3 pb-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">
                   {grupo.titulo}
                 </p>
               )}
@@ -276,7 +293,7 @@ export function ShellNavegacion({
                   {usuario.nombre}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <Badge variant="outline" className="text-[10px] h-4 px-1.5 py-0 capitalize">
+                  <Badge variant="outline" className="h-4 px-1.5 py-0 text-[11px] capitalize">
                     {usuario.rol}
                   </Badge>
                 </div>
@@ -362,15 +379,16 @@ export function ShellNavegacion({
                 size="icon-xs"
                 onClick={() => setMenuMovilAbierto(false)}
                 className="text-muted-foreground"
+                aria-label="Cerrar menú"
               >
                 <X className="size-4" />
               </Button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto p-4 space-y-6">
-              {GRUPOS_NAV.map((grupo) => (
+            <nav className="flex-1 overflow-y-auto p-4 space-y-5">
+              {grupos.map((grupo) => (
                 <div key={grupo.titulo} className="space-y-1">
-                  <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <p className="px-2 text-xs font-medium text-muted-foreground">
                     {grupo.titulo}
                   </p>
                   <div className="space-y-1">
@@ -450,15 +468,6 @@ export function ShellNavegacion({
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-xs text-muted-foreground font-medium hidden lg:inline-flex items-center gap-1.5 bg-muted/60 px-2.5 py-1 rounded-md border">
-              <span>Consejo:</span>
-              <kbd className="font-mono text-[10px] bg-background px-1 py-0.5 rounded border shadow-2xs">
-                ⌘ + Enter
-              </kbd>
-              <span>para guardar notas rápido</span>
-            </div>
-          </div>
         </header>
 
         {/* Área del Contenido */}

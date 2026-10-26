@@ -46,10 +46,12 @@ export function VentanaWhatsApp({
     : null;
 
   if (abierta) {
+    // «p. m.» ya trae su punto: sin esto quedaba «hasta las 11:11 p. m..».
+    const hasta = `hasta las ${hora}`.replace(/\.?$/, '.');
     const texto =
       horas >= 1
-        ? `Puedes escribirle libremente ${horas} h más, hasta las ${hora}.`
-        : `Te queda menos de una hora, hasta las ${hora}.`;
+        ? `Puedes escribirle libremente ${horas} h más, ${hasta}`
+        : `Te queda menos de una hora, ${hasta}`;
     return (
       <p
         className={`flex items-start gap-1.5 text-xs text-muted-foreground ${

@@ -1,4 +1,5 @@
-import { CalendarCheck, CalendarClock, Clock, Home, MessageSquare } from 'lucide-react';
+import { CalendarCheck, CalendarClock, Home, MessageSquare } from 'lucide-react';
+import { BotonMarcarAtendido } from '../BotonMarcarAtendido';
 
 export interface Resumen {
   mensajes_cliente: number | null;
@@ -29,21 +30,12 @@ export function esperaLegible(segundos: number): string {
  * mensajes, qué visitas, qué inmuebles, cuánto lleva esperando. Cero
  * riesgo de que diga algo que no pasó, y cero costo por abrir la ficha.
  *
- * El resumen redactado por el agente vendrá después y será otra cosa:
- * se generará en el momento de escalar y se guardará inmutable.
+ * Si la persona está esperando respuesta, el bloque se vuelve EL aviso de
+ * la ficha, con su botón. Antes había un aviso naranja arriba y otra línea
+ * «Esperando respuesta hace…» justo debajo: lo mismo dos veces.
  */
-export function PonerseAlDia({ resumen }: { resumen: Resumen }) {
-  const hechos: { icono: typeof Clock; texto: string; alerta?: boolean }[] = [];
-
-  // Lo primero es lo que exige acción: alguien escribió y nadie del
-  // equipo le ha contestado.
-  if (resumen.esperando_segundos !== null && resumen.esperando_segundos > 0) {
-    hechos.push({
-      icono: Clock,
-      texto: `Esperando respuesta hace ${esperaLegible(resumen.esperando_segundos)}`,
-      alerta: true,
-    });
-  }
+export function PonerseAlDia({ resumen, contactoId }: { resumen: Resumen; contactoId: string }) {
+  const hechos: { icono: typeof Home; texto: string }[] = [];
 
   const mensajes = (resumen.mensajes_cliente ?? 0) + (resumen.mensajes_bot ?? 0);
   if (mensajes > 0) {
@@ -79,24 +71,46 @@ export function PonerseAlDia({ resumen }: { resumen: Resumen }) {
     });
   }
 
-  if (hechos.length === 0) return null;
+  const esperando =
+    resumen.esperando_segundos !== null && resumen.esperando_segundos > 0
+      ? resumen.esperando_segundos
+      : null;
 
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-card px-4 py-3 text-sm">
+  // En el celular los hechos se esconden: ahí manda la conversación, y
+  // ocupaban media pantalla antes de llegar al primer mensaje.
+  const lista = hechos.length > 0 && (
+    <ul className="hidden flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground sm:flex">
       {hechos.map((h, i) => {
         const Icono = h.icono;
         return (
-          <span
-            key={i}
-            className={`inline-flex items-center gap-1.5 ${
-              h.alerta ? 'font-medium text-destructive' : 'text-muted-foreground'
-            }`}
-          >
+          <li key={i} className="inline-flex items-center gap-1.5">
             <Icono className="size-3.5 shrink-0" />
             {h.texto}
-          </span>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
+
+  if (esperando !== null) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-hidden />
+            Está esperando tu respuesta hace {esperaLegible(esperando)}
+          </p>
+          <p className="hidden text-xs text-muted-foreground sm:block">
+            Si ya lo atendiste por llamada o en persona, márcalo como respondido.
+          </p>
+          {lista}
+        </div>
+        <BotonMarcarAtendido contactoId={contactoId} variante="completo" />
+      </div>
+    );
+  }
+
+  if (!lista) return null;
+
+  return <div className="hidden rounded-xl border bg-card px-4 py-2.5 sm:block">{lista}</div>;
 }

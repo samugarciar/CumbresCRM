@@ -2,9 +2,19 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition, useRef } from 'react';
-import { Search, X, Loader2, PhoneOff, Users, Flame, MessageSquare, Building2, Briefcase, Globe } from 'lucide-react';
+import { Search, X, Loader2, SlidersHorizontal } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export interface ConteosBandeja {
   total: number;
@@ -25,9 +35,17 @@ interface Props {
   conteos: ConteosBandeja;
 }
 
-// Los filtros viven en la URL, no en estado de React. Así una búsqueda se
-// puede compartir por chat, recargar sin perderse y volver atrás con el
-// botón del navegador.
+const ADMINISTRATIVOS = ['administrativa_captacion', 'administrativa', 'captacion'];
+
+/**
+ * Los filtros de la bandeja, en una sola fila: de qué línea, solo los que
+ * esperan, y buscar. Lo que se usa poco (tipo de contacto, sin teléfono,
+ * administrativa o captación por separado) vive en «Más filtros».
+ *
+ * Los filtros viven en la URL, no en estado de React. Así una búsqueda se
+ * puede compartir por chat, recargar sin perderse y volver atrás con el
+ * botón del navegador. Los parámetros son los mismos de siempre.
+ */
 export function FiltrosContactos({ sinTelefono, canalActual, conteos }: Props) {
   const router = useRouter();
   const params = useSearchParams();
@@ -54,266 +72,183 @@ export function FiltrosContactos({ sinTelefono, canalActual, conteos }: Props) {
   const tipo = params.get('tipo');
   const soloSinTelefono = params.get('sin_telefono') === '1';
   const soloEsperando = params.get('esperando') === '1';
-  const hayFiltros = Boolean(params.get('q') || tipo || params.get('sin_telefono') || params.get('esperando'));
+  const enAdministrativa = ADMINISTRATIVOS.includes(canalActual);
 
-  const esperandoEnCanal =
-    canalActual === 'comercial'
-      ? conteos.comercial_esperando
-      : canalActual === 'administrativa'
-      ? conteos.admin_esperando
-      : canalActual === 'captacion'
-      ? conteos.captacion_esperando
-      : canalActual === 'administrativa_captacion'
-      ? conteos.admin_captacion_esperando
-      : conteos.total_esperando;
+  // Lo que hay dentro de «Más filtros», para que el botón diga si hay algo puesto.
+  const masFiltros =
+    (tipo ? 1 : 0) + (soloSinTelefono ? 1 : 0) + (canalActual === 'administrativa' || canalActual === 'captacion' ? 1 : 0);
+  const hayFiltros = Boolean(params.get('q') || tipo || soloSinTelefono || soloEsperando);
+
+  const pestanas = [
+    {
+      clave: 'comercial',
+      etiqueta: 'Comercial',
+      total: conteos.comercial_total,
+      esperando: conteos.comercial_esperando,
+      activa: canalActual === 'comercial',
+    },
+    {
+      clave: 'administrativa_captacion',
+      etiqueta: 'Administrativa y captación',
+      total: conteos.admin_captacion_total,
+      esperando: conteos.admin_captacion_esperando,
+      activa: enAdministrativa,
+    },
+    {
+      clave: 'todos',
+      etiqueta: 'Todas',
+      total: conteos.total,
+      esperando: conteos.total_esperando,
+      activa: canalActual === 'todos',
+    },
+  ];
 
   return (
-    <div className="flex flex-col gap-3.5">
-      {/* Nivel 1: Selector principal de Canal / Línea */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border/50 pb-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Vista Comercial */}
-          <Button
-            variant={canalActual === 'comercial' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => aplicar({ canal: 'comercial' })}
-            className={`h-9 rounded-xl text-xs font-semibold px-3.5 transition-all ${
-              canalActual === 'comercial'
-                ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-2xs'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
-            }`}
-          >
-            <Briefcase className="size-3.5 mr-1.5" />
-            <span>Comercial · Línea 324</span>
-            <span
-              className={`ml-2 rounded-full px-1.5 py-0.2 tabular text-[10px] font-bold ${
-                canalActual === 'comercial' ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {conteos.comercial_total}
-            </span>
-            {conteos.comercial_esperando > 0 && (
-              <span className="ml-1 flex items-center gap-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 text-[10px] font-bold">
-                🔥 {conteos.comercial_esperando}
-              </span>
-            )}
-          </Button>
-
-          {/* Vista Administrativo y Captaciones */}
-          <Button
-            variant={
-              canalActual === 'administrativa_captacion' ||
-              canalActual === 'administrativa' ||
-              canalActual === 'captacion'
-                ? 'default'
-                : 'outline'
-            }
-            size="sm"
-            onClick={() => aplicar({ canal: 'administrativa_captacion' })}
-            className={`h-9 rounded-xl text-xs font-semibold px-3.5 transition-all ${
-              canalActual === 'administrativa_captacion' ||
-              canalActual === 'administrativa' ||
-              canalActual === 'captacion'
-                ? 'bg-purple-600 text-white hover:bg-purple-700 shadow-2xs'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
-            }`}
-          >
-            <Building2 className="size-3.5 mr-1.5" />
-            <span>Administrativo y Captaciones · Línea 320</span>
-            <span
-              className={`ml-2 rounded-full px-1.5 py-0.2 tabular text-[10px] font-bold ${
-                canalActual === 'administrativa_captacion' ||
-                canalActual === 'administrativa' ||
-                canalActual === 'captacion'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {conteos.admin_captacion_total}
-            </span>
-            {conteos.admin_captacion_esperando > 0 && (
-              <span className="ml-1 flex items-center gap-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 text-[10px] font-bold">
-                🔥 {conteos.admin_captacion_esperando}
-              </span>
-            )}
-          </Button>
-
-          {/* Todos los canales */}
-          <Button
-            variant={canalActual === 'todos' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => aplicar({ canal: 'todos' })}
-            className={`h-9 rounded-xl text-xs font-medium px-3 transition-all ${
-              canalActual === 'todos'
-                ? 'bg-muted text-foreground font-semibold shadow-2xs'
+    <div className="flex flex-wrap items-center gap-2">
+      {/* Pestañas de línea */}
+      <div role="tablist" aria-label="Línea" className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted/60 p-1">
+        {pestanas.map((p) => (
+          <button
+            key={p.clave}
+            type="button"
+            role="tab"
+            aria-selected={p.activa}
+            onClick={() => aplicar({ canal: p.clave })}
+            className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors ${
+              p.activa
+                ? 'bg-background text-foreground shadow-2xs'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Globe className="size-3.5 mr-1 opacity-70" />
-            <span>Todos ({conteos.total})</span>
-            {conteos.total_esperando > 0 && (
-              <span className="ml-1.5 flex items-center gap-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 text-[10px] font-bold">
-                🔥 {conteos.total_esperando}
+            <span>{p.etiqueta}</span>
+            <span className="tabular text-muted-foreground">{p.total.toLocaleString('es-CO')}</span>
+            {p.esperando > 0 && (
+              <span
+                className="tabular rounded-full bg-amber-600 px-1.5 py-px text-[11px] font-semibold text-white"
+                title={`${p.esperando} esperando respuesta`}
+              >
+                🔥 {p.esperando}
               </span>
             )}
-          </Button>
-        </div>
+          </button>
+        ))}
+      </div>
 
-        {/* Sub-filtro para Administrativo y Captaciones */}
-        {(canalActual === 'administrativa_captacion' ||
-          canalActual === 'administrativa' ||
-          canalActual === 'captacion') && (
-          <div className="flex items-center gap-1 rounded-xl bg-purple-500/10 p-1 border border-purple-500/20 text-xs">
-            <button
-              type="button"
-              onClick={() => aplicar({ canal: 'administrativa_captacion' })}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                canalActual === 'administrativa_captacion'
-                  ? 'bg-purple-600 text-white font-semibold shadow-2xs'
-                  : 'text-purple-800 dark:text-purple-300 hover:bg-purple-500/15'
-              }`}
-            >
-              Ambos ({conteos.admin_captacion_total})
-            </button>
-            <button
-              type="button"
-              onClick={() => aplicar({ canal: 'administrativa' })}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                canalActual === 'administrativa'
-                  ? 'bg-purple-600 text-white font-semibold shadow-2xs'
-                  : 'text-purple-800 dark:text-purple-300 hover:bg-purple-500/15'
-              }`}
-            >
-              Solo Administrativa ({conteos.admin_total})
-            </button>
-            <button
-              type="button"
-              onClick={() => aplicar({ canal: 'captacion' })}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
-                canalActual === 'captacion'
-                  ? 'bg-purple-600 text-white font-semibold shadow-2xs'
-                  : 'text-purple-800 dark:text-purple-300 hover:bg-purple-500/15'
-              }`}
-            >
-              Solo Captación ({conteos.captacion_total})
-            </button>
-          </div>
+      {/* Solo los que esperan respuesta */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={soloEsperando}
+        onClick={() => aplicar({ esperando: soloEsperando ? null : '1' })}
+        className={`flex h-9 items-center gap-2 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+          soloEsperando
+            ? 'border-amber-600/40 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+            : 'bg-background text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <span
+          aria-hidden
+          className={`relative inline-flex h-4 w-7 shrink-0 rounded-full transition-colors ${
+            soloEsperando ? 'bg-amber-600' : 'bg-muted-foreground/30'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 size-3 rounded-full bg-white shadow-xs transition-all ${
+              soloEsperando ? 'left-3.5' : 'left-0.5'
+            }`}
+          />
+        </span>
+        Solo esperando
+      </button>
+
+      {/* Buscar */}
+      <div className="relative min-w-52 flex-1">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          defaultValue={params.get('q') ?? ''}
+          onChange={(e) => buscar(e.target.value)}
+          placeholder="Buscar por nombre o teléfono"
+          className="h-9 rounded-lg bg-background pl-8 text-sm"
+          aria-label="Buscar por nombre o teléfono"
+        />
+        {navegando && (
+          <Loader2 className="absolute right-2.5 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
         )}
       </div>
 
-      {/* Nivel 2: Turno de respuesta (Todos vs Esperando respuesta) */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1 rounded-xl bg-muted/60 p-1 border border-border/50 shadow-2xs">
-          <Button
-            variant={!soloEsperando ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => aplicar({ esperando: null })}
-            className={`h-8 rounded-lg text-xs font-medium px-3.5 transition-all ${
-              !soloEsperando
-                ? 'bg-background text-foreground shadow-2xs font-semibold'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <MessageSquare className="size-3.5 mr-1.5 opacity-70" />
-            Todos los mensajes
-          </Button>
-
-          <Button
-            variant={soloEsperando ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => aplicar({ esperando: soloEsperando ? null : '1' })}
-            className={`h-8 rounded-lg text-xs font-medium px-3.5 transition-all ${
-              soloEsperando
-                ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-2xs font-semibold'
-                : 'text-amber-700 dark:text-amber-400 hover:text-amber-800 hover:bg-amber-500/10'
-            }`}
-          >
-            <Flame className={`size-3.5 mr-1.5 ${soloEsperando ? 'text-white' : 'text-amber-500'}`} />
-            Esperando respuesta
-            {esperandoEnCanal > 0 && (
-              <span
-                className={`ml-1.5 rounded-full px-1.5 py-0.2 tabular text-[11px] font-bold ${
-                  soloEsperando ? 'bg-white/20 text-white' : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                }`}
-              >
-                {esperandoEnCanal}
+      {/* Lo que se usa poco */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-lg text-xs">
+            <SlidersHorizontal className="size-3.5" />
+            Más filtros
+            {masFiltros > 0 && (
+              <span className="tabular rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+                {masFiltros}
               </span>
             )}
           </Button>
-        </div>
-      </div>
-
-      {/* Nivel 3: Barra de búsqueda y filtros secundarios */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/60 p-2 shadow-2xs backdrop-blur-xs">
-        <div className="relative min-w-64 flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            defaultValue={params.get('q') ?? ''}
-            onChange={(e) => buscar(e.target.value)}
-            placeholder="Buscar por nombre, teléfono o mensaje…"
-            className="h-9 rounded-xl border-border/60 bg-background/70 pl-9 text-sm focus-visible:bg-background"
-            aria-label="Buscar contactos"
-          />
-          {navegando && (
-            <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex items-center gap-1">
-            {(['cliente', 'propietario'] as const).map((t) => (
-              <Button
-                key={t}
-                variant={tipo === t ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => aplicar({ tipo: tipo === t ? null : t })}
-                className={`h-9 rounded-xl text-xs font-medium capitalize transition-all ${
-                  tipo === t ? 'shadow-xs' : ''
-                }`}
-              >
-                <Users className="size-3.5 opacity-60" />
-                {t}s
-              </Button>
-            ))}
-          </div>
-
-          <div className="mx-1 hidden h-5 w-px bg-border/60 sm:block" />
-
-          <Button
-            variant={soloSinTelefono ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => aplicar({ sin_telefono: soloSinTelefono ? null : '1' })}
-            className={`h-9 rounded-xl text-xs font-medium transition-all ${
-              soloSinTelefono
-                ? 'bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-700 shadow-xs'
-                : 'hover:border-amber-500/40 hover:text-amber-600 dark:hover:text-amber-400'
-            }`}
-            title="Personas reales con conversación, pero sin un número al que llamar"
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-60">
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Tipo de contacto</DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={tipo === 'cliente'}
+            onCheckedChange={() => aplicar({ tipo: tipo === 'cliente' ? null : 'cliente' })}
           >
-            <PhoneOff className="size-3.5" />
-            <span>Sin teléfono</span>
-            <span
-              className={`ml-1.5 rounded-full px-1.5 py-0.2 tabular text-[11px] font-semibold ${
-                soloSinTelefono ? 'bg-black/20 text-white' : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {sinTelefono}
-            </span>
-          </Button>
+            Clientes
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={tipo === 'propietario'}
+            onCheckedChange={() => aplicar({ tipo: tipo === 'propietario' ? null : 'propietario' })}
+          >
+            Propietarios
+          </DropdownMenuCheckboxItem>
 
-          {hayFiltros && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => iniciarNavegacion(() => router.push(`/contactos?canal=${canalActual}`))}
-              className="h-9 rounded-xl text-xs text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-3.5" />
-              Limpiar
-            </Button>
+          {(sinTelefono > 0 || soloSinTelefono) && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={soloSinTelefono}
+                onCheckedChange={() => aplicar({ sin_telefono: soloSinTelefono ? null : '1' })}
+              >
+                Sin teléfono ({sinTelefono})
+              </DropdownMenuCheckboxItem>
+            </>
           )}
-        </div>
-      </div>
+
+          {enAdministrativa && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Administrativa y captación
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={canalActual} onValueChange={(v) => aplicar({ canal: v })}>
+                <DropdownMenuRadioItem value="administrativa_captacion">
+                  Las dos ({conteos.admin_captacion_total})
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="administrativa">
+                  Solo administrativa ({conteos.admin_total})
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="captacion">
+                  Solo captación ({conteos.captacion_total})
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {hayFiltros && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => iniciarNavegacion(() => router.push(`/contactos?canal=${canalActual}`))}
+          className="h-9 gap-1 rounded-lg text-xs text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-3.5" />
+          Limpiar
+        </Button>
+      )}
     </div>
   );
 }

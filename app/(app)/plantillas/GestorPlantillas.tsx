@@ -251,7 +251,7 @@ export function GestorPlantillas({
     <div className="flex flex-col gap-5">
       {/* Pestañas ergonómicas de selección */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-        <div className="flex items-center gap-2 rounded-2xl bg-muted/40 p-1 border border-border/50">
+        <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-1 border border-border/50">
           <button
             type="button"
             onClick={() => setTabActiva('whatsapp')}
@@ -262,8 +262,8 @@ export function GestorPlantillas({
             }`}
           >
             <MessageCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Plantillas de WhatsApp (Meta HSM)</span>
-            <span className="rounded-full bg-primary/10 px-2 py-0.2 text-[10px] font-bold tabular text-primary">
+            <span>Plantillas de WhatsApp</span>
+            <span className="rounded-full bg-primary/10 px-2 py-0.2 text-[11px] font-bold tabular text-primary">
               {plantillasWhatsApp.length}
             </span>
           </button>
@@ -278,8 +278,8 @@ export function GestorPlantillas({
             }`}
           >
             <MessageSquare className="size-3.5 text-blue-600 dark:text-blue-400" />
-            <span>Respuestas Rápidas de Chat</span>
-            <span className="rounded-full bg-muted px-2 py-0.2 text-[10px] font-bold tabular text-muted-foreground">
+            <span>Respuestas rápidas de chat</span>
+            <span className="rounded-full bg-muted px-2 py-0.2 text-[11px] font-bold tabular text-muted-foreground">
               {plantillasChat.length}
             </span>
           </button>
@@ -293,7 +293,7 @@ export function GestorPlantillas({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 rounded-xl text-xs gap-1.5"
+                  className="h-8 rounded-lg text-xs gap-1.5"
                   onClick={sincronizar}
                   disabled={pendiente || lineas.length === 0}
                   title={
@@ -308,7 +308,7 @@ export function GestorPlantillas({
 
                 <Button
                   size="sm"
-                  className="h-9 rounded-xl text-xs gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs"
+                  className="h-8 rounded-lg text-xs gap-1.5"
                   onClick={() => abrir('nueva-whatsapp')}
                 >
                   <Plus className="size-3.5" />
@@ -320,7 +320,7 @@ export function GestorPlantillas({
             {tabActiva === 'chat' && (
               <Button
                 size="sm"
-                className="h-9 rounded-xl text-xs gap-1.5 shadow-xs"
+                className="h-8 rounded-lg text-xs gap-1.5 shadow-xs"
                 onClick={() => abrir('nueva-chat')}
               >
                 <Plus className="size-3.5" />
@@ -365,7 +365,7 @@ export function GestorPlantillas({
           </div>
 
           {plantillasWhatsApp.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border/80 py-16 text-center bg-card/40">
+            <div className="rounded-xl border border-dashed border-border/80 py-16 text-center bg-card/40">
               <MessageCircle className="mx-auto size-8 text-muted-foreground/60 mb-2" />
               <p className="font-semibold text-foreground">No hay plantillas de WhatsApp registradas</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -382,7 +382,7 @@ export function GestorPlantillas({
                 return (
                   <div
                     key={p.id}
-                    className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-4 shadow-2xs hover:shadow-sm transition-all"
+                    className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs hover:shadow-sm transition-all"
                   >
                     <div>
                       {/* Cabecera de la tarjeta */}
@@ -391,16 +391,16 @@ export function GestorPlantillas({
                           <h3 className="font-semibold text-sm truncate text-foreground">{p.nombre}</h3>
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
                             {p.nombre_meta && (
-                              <code className="text-[10px] rounded-md bg-muted px-1.5 py-0.5 font-mono text-muted-foreground">
+                              <code className="text-[11px] rounded-md bg-muted px-1.5 py-0.5 font-mono text-muted-foreground">
                                 {p.nombre_meta}
                               </code>
                             )}
-                            <Badge variant="outline" className="capitalize text-[10px] rounded-md">
+                            <Badge variant="outline" className="capitalize text-[11px] rounded-md">
                               {p.categoria}
                             </Badge>
                             <Badge
                               variant="outline"
-                              className="text-[10px] rounded-md"
+                              className="text-[11px] rounded-md"
                               title="La cuenta de WhatsApp donde vive: solo sale por esta línea"
                             >
                               {nombreDeLinea(p.wa_phone_number_id) ??
@@ -472,7 +472,7 @@ export function GestorPlantillas({
                       <div className="mt-3.5 rounded-xl bg-[#efeae2] dark:bg-[#0b141a] p-3 border border-border/40 shadow-inner">
                         <div className="max-w-[90%] rounded-xl rounded-tl-xs bg-white dark:bg-[#202c33] p-2.5 shadow-xs text-xs text-foreground space-y-1">
                           <p className="whitespace-pre-wrap leading-relaxed">{previsualizar(p.cuerpo)}</p>
-                          <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground/70">
+                          <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground/70">
                             <span>10:30 a.m.</span>
                             <span className="text-emerald-600 font-bold">✓✓</span>
                           </div>
@@ -495,7 +495,7 @@ export function GestorPlantillas({
           <div className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-muted/20 p-3.5 text-xs text-muted-foreground">
             <Sparkles className="size-4 shrink-0 text-amber-500 mt-0.5" />
             <div>
-              <p className="font-semibold text-foreground">Respuestas Rápidas para el Chat Diario:</p>
+              <p className="font-semibold text-foreground">Respuestas rápidas para el chat del día a día</p>
               <p className="mt-0.5 leading-relaxed">
                 Mensajes guardados para responder preguntas comunes en un clic durante la conversación activa
                 (dentro de la ventana de 24 horas). Están disponibles de inmediato y no requieren trámite de Meta.
@@ -504,7 +504,7 @@ export function GestorPlantillas({
           </div>
 
           {plantillasChat.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border/80 py-16 text-center bg-card/40">
+            <div className="rounded-xl border border-dashed border-border/80 py-16 text-center bg-card/40">
               <MessageSquare className="mx-auto size-8 text-muted-foreground/60 mb-2" />
               <p className="font-semibold text-foreground">Todavía no hay respuestas rápidas de chat</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -516,13 +516,13 @@ export function GestorPlantillas({
               {plantillasChat.map((p) => (
                 <div
                   key={p.id}
-                  className="flex flex-col justify-between rounded-2xl border border-border/70 bg-card p-4 shadow-2xs hover:shadow-sm transition-all"
+                  className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs hover:shadow-sm transition-all"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 border-b border-border/40 pb-2.5">
                       <div>
                         <h3 className="font-semibold text-sm text-foreground">{p.nombre}</h3>
-                        <Badge variant="secondary" className="capitalize text-[10px] mt-1">
+                        <Badge variant="secondary" className="capitalize text-[11px] mt-1">
                           {p.categoria}
                         </Badge>
                       </div>
@@ -567,17 +567,17 @@ export function GestorPlantillas({
       {/* DIÁLOGO MODAL: CREAR / EDITAR SEGÚN EL TIPO                   */}
       {/* ============================================================== */}
       <Dialog open={editando !== null} onOpenChange={(o) => !o && setEditando(null)}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-xl">
           <DialogHeader>
             <DialogTitle>
-              {editando === 'nueva-whatsapp' && 'Nueva Plantilla Oficial de WhatsApp (Meta HSM)'}
-              {editando === 'nueva-chat' && 'Nueva Respuesta Rápida de Chat'}
+              {editando === 'nueva-whatsapp' && 'Nueva plantilla de WhatsApp'}
+              {editando === 'nueva-chat' && 'Nueva respuesta rápida de chat'}
               {typeof editando === 'object' &&
                 editando?.tipo === 'chat' &&
-                'Editar Respuesta Rápida'}
+                'Editar respuesta rápida'}
               {typeof editando === 'object' &&
                 editando?.tipo !== 'chat' &&
-                'Editar Plantilla de WhatsApp'}
+                'Editar plantilla de WhatsApp'}
             </DialogTitle>
             <DialogDescription className="text-xs">
               {editando === 'nueva-whatsapp' || (typeof editando === 'object' && editando?.tipo !== 'chat')
@@ -655,7 +655,7 @@ export function GestorPlantillas({
                     value={linea}
                     onChange={(ev) => setLinea(ev.target.value)}
                     disabled={pendiente || bloqueada}
-                    className="h-9 rounded-xl border border-input bg-background px-3 text-xs"
+                    className="h-8 rounded-lg border border-input bg-background px-3 text-xs"
                   >
                     {linea === '' && <option value="">Sin línea</option>}
                     {lineas.map((l) => (
@@ -751,7 +751,7 @@ export function GestorPlantillas({
                     type="button"
                     disabled={bloqueada}
                     onClick={() => setCuerpo((prev) => `${prev} {{${v}}}`)}
-                    className="rounded bg-muted/80 px-1.5 py-0.5 font-mono text-[10px] hover:bg-primary/20 hover:text-primary transition-colors"
+                    className="rounded bg-muted/80 px-1.5 py-0.5 font-mono text-[11px] hover:bg-primary/20 hover:text-primary transition-colors"
                     title="Clic para insertar"
                   >
                     {`{{${v}}}`}
@@ -763,12 +763,12 @@ export function GestorPlantillas({
             {/* Previsualización en vivo tipo WhatsApp */}
             {cuerpo.trim() && (
               <div className="flex flex-col gap-1 rounded-xl bg-[#efeae2] dark:bg-[#0b141a] p-3 border border-border/40">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <span className="text-[11px] font-semibold text-muted-foreground">
                   Previsualización en WhatsApp
                 </span>
                 <div className="rounded-xl rounded-tl-xs bg-white dark:bg-[#202c33] p-2.5 shadow-xs text-xs text-foreground space-y-1">
                   <p className="whitespace-pre-wrap">{previsualizar(cuerpo)}</p>
-                  <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground/70">
+                  <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground/70">
                     <span>10:30 a.m.</span>
                     <span className="text-emerald-600 font-bold">✓✓</span>
                   </div>
@@ -801,10 +801,10 @@ export function GestorPlantillas({
                   onClick={() => guardar(false)}
                   disabled={pendiente || !nombre.trim() || !cuerpo.trim()}
                 >
-                  Guardar Borrador
+                  Guardar borrador
                 </Button>
                 <Button
-                  className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
+                  className="rounded-lg gap-1.5"
                   onClick={() => guardar(true)}
                   disabled={pendiente || !nombre.trim() || !cuerpo.trim() || !linea}
                   title={linea ? undefined : 'Hace falta una línea conectada para mandarla a Meta'}
@@ -820,7 +820,7 @@ export function GestorPlantillas({
                 disabled={pendiente || !nombre.trim() || !cuerpo.trim()}
               >
                 {pendiente && <Loader2 className="size-3.5 animate-spin mr-1" />}
-                Guardar Respuesta
+                Guardar respuesta
               </Button>
             )}
           </DialogFooter>

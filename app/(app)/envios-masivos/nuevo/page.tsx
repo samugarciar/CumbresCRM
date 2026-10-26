@@ -26,7 +26,7 @@ export default async function PaginaNuevoEnvio() {
   ]);
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 [&>*]:max-w-4xl">
       <header>
         <Link
           href="/envios-masivos"

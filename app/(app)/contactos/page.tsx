@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { MessageSquare, PhoneOff, Phone, ArrowRight, Clock, Check, Inbox } from 'lucide-react';
+import { MessageSquare, PhoneOff, Clock, Check, UserRound } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { tiempoRelativo, telefonoLegible, iniciales } from '@/lib/formato';
+import { tiempoRelativo, telefonoLegible, iniciales, fechaLarga } from '@/lib/formato';
 import { FiltrosContactos, type ConteosBandeja } from './FiltrosContactos';
 import { BotonMarcarAtendido } from './BotonMarcarAtendido';
-import { Badge } from '@/components/ui/badge';
+import { BandejaEnVivo } from './BandejaEnVivo';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -27,6 +27,60 @@ interface Busqueda {
   canal?: string;
   cursor_at?: string;
   cursor_id?: string;
+}
+
+/**
+ * Sin números de línea escritos a mano: la comercial ya cambió de número
+ * una vez (de la 324 a la 312) y la bandeja siguió diciendo «Línea 324».
+ */
+const CANAL: Record<string, { etiqueta: string; clase: string }> = {
+  comercial: {
+    etiqueta: 'Comercial',
+    clase: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30',
+  },
+  administrativa: {
+    etiqueta: 'Administrativa',
+    clase: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30',
+  },
+  captacion: {
+    etiqueta: 'Captación',
+    clase: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+  },
+};
+
+/**
+ * El último mensaje, como se lee en una lista.
+ *
+ * Las fotos, notas de voz y documentos llegan al CRM con la marca que les
+ * pone la plataforma («[foto] … (La foto muestra: …)», la transcripción
+ * entera de la nota de voz…). En la bandeja basta con saber qué es y, si el
+ * cliente escribió algo con la foto, qué escribió.
+ */
+function vistaPrevia(texto: string): string {
+  const t = texto.trim();
+  const conTexto = (icono: string, resto: string) => {
+    const leyenda = resto.split(/\n\(La foto muestra:/)[0].trim();
+    return leyenda ? `${icono}: ${leyenda}` : icono;
+  };
+  let m = t.match(/^\[foto\]([\s\S]*)$/i);
+  if (m) return conTexto('📷 Foto', m[1]);
+  if (/^\[nota de voz/i.test(t)) return '🎤 Nota de voz';
+  if (/^\[audio/i.test(t)) return '🎤 Audio';
+  m = t.match(/^\[video\]([\s\S]*)$/i);
+  if (m) return conTexto('🎬 Video', m[1]);
+  m = t.match(/^\[documento(?::[^\]]*)?\]([\s\S]*)$/i);
+  if (m) return conTexto('📄 Documento', m[1]);
+  if (/^\[sticker\]/i.test(t)) return 'Sticker';
+  return t;
+}
+
+/** Quién dijo lo último. La RPC no dice si contestó el bot o el equipo. */
+function quien(tipo: string | null): string {
+  if (tipo === 'mensaje_entrante') return 'Cliente: ';
+  if (tipo === 'nota') return 'Nota: ';
+  // La RPC también cuenta las llamadas registradas como «último mensaje».
+  if (tipo === 'llamada') return 'Llamada: ';
+  return 'Respuesta: ';
 }
 
 export default async function PaginaContactos({
@@ -69,7 +123,7 @@ export default async function PaginaContactos({
 
   if (error) {
     return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+      <div className="mx-auto w-full max-w-6xl rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
         No se pudo cargar la bandeja: {error.message}
       </div>
     );
@@ -103,68 +157,61 @@ export default async function PaginaContactos({
     siguiente.set('cursor_id', ultimo.id);
   }
 
+  const resumen: Record<string, { total: number; esperando: number; que: string }> = {
+    comercial: {
+      total: conteos.comercial_total,
+      esperando: conteos.comercial_esperando,
+      que: 'conversaciones comerciales',
+    },
+    administrativa: {
+      total: conteos.admin_total,
+      esperando: conteos.admin_esperando,
+      que: 'casos administrativos',
+    },
+    captacion: {
+      total: conteos.captacion_total,
+      esperando: conteos.captacion_esperando,
+      que: 'propietarios en captación',
+    },
+    administrativa_captacion: {
+      total: conteos.admin_captacion_total,
+      esperando: conteos.admin_captacion_esperando,
+      que: 'casos administrativos y de captación',
+    },
+  };
+  const enCanal = resumen[canalActual] ?? {
+    total: conteos.total,
+    esperando: conteos.total_esperando,
+    que: 'conversaciones en total',
+  };
+
+  // La columna de canal solo dice algo cuando se ven todos juntos.
+  const verCanal = canalActual === 'todos';
+
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Inbox className="size-6 text-primary" />
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">
-              Bandeja de entrada
-            </h1>
-          </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {canalActual === 'comercial' ? (
-              <>
-                <span className="font-semibold text-foreground tabular">{conteos.comercial_total.toLocaleString('es-CO')}</span>{' '}
-                conversaciones comerciales (Línea 324) ·{' '}
-                <span className="tabular font-medium text-amber-700 dark:text-amber-400">
-                  {conteos.comercial_esperando} esperando respuesta
-                </span>
-              </>
-            ) : canalActual === 'administrativa' ? (
-              <>
-                <span className="font-semibold text-foreground tabular">{conteos.admin_total.toLocaleString('es-CO')}</span>{' '}
-                casos administrativos (Línea 320) ·{' '}
-                <span className="tabular font-medium text-amber-700 dark:text-amber-400">
-                  {conteos.admin_esperando} esperando respuesta
-                </span>
-              </>
-            ) : canalActual === 'captacion' ? (
-              <>
-                <span className="font-semibold text-foreground tabular">{conteos.captacion_total.toLocaleString('es-CO')}</span>{' '}
-                prospectos de captación (Línea 320) ·{' '}
-                <span className="tabular font-medium text-amber-700 dark:text-amber-400">
-                  {conteos.captacion_esperando} esperando respuesta
-                </span>
-              </>
-            ) : canalActual === 'administrativa_captacion' ? (
-              <>
-                <span className="font-semibold text-foreground tabular">{conteos.admin_captacion_total.toLocaleString('es-CO')}</span>{' '}
-                casos administrativos y de captación (Línea 320) ·{' '}
-                <span className="tabular font-medium text-amber-700 dark:text-amber-400">
-                  {conteos.admin_captacion_esperando} esperando respuesta
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="font-semibold text-foreground tabular">{conteos.total.toLocaleString('es-CO')}</span>{' '}
-                conversaciones en total ·{' '}
-                <span className="tabular font-medium text-amber-700 dark:text-amber-400">
-                  {conteos.total_esperando} esperando respuesta
-                </span>
-              </>
-            )}
-          </p>
-        </div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+      <BandejaEnVivo pausado={Boolean(sp.cursor_at)} />
+
+      <header>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Bandeja de entrada</h1>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          <span className="tabular font-medium text-foreground">
+            {enCanal.total.toLocaleString('es-CO')}
+          </span>{' '}
+          {enCanal.que}
+          {enCanal.esperando > 0 && (
+            <>
+              {' · '}
+              <span className="tabular font-medium text-amber-700 dark:text-amber-400">
+                {enCanal.esperando} esperando respuesta
+              </span>
+            </>
+          )}
+        </p>
       </header>
 
-      <Suspense fallback={<Skeleton className="h-28 w-full rounded-2xl" />}>
-        <FiltrosContactos
-          sinTelefono={sinTelefono ?? 0}
-          canalActual={canalActual}
-          conteos={conteos}
-        />
+      <Suspense fallback={<Skeleton className="h-24 w-full rounded-xl" />}>
+        <FiltrosContactos sinTelefono={sinTelefono ?? 0} canalActual={canalActual} conteos={conteos} />
       </Suspense>
 
       {contactos.length === 0 ? (
@@ -174,229 +221,169 @@ export default async function PaginaContactos({
         />
       ) : (
         <>
-          {/* Vista Escritorio / Tablet: Tabla Inbox */}
-          <div className="hidden md:block overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xs">
-            <Table>
+          {/* Escritorio: tabla de ancho fijo. La primera columna se recorta
+              para que hora, estado y acción se vean siempre, sin scroll
+              horizontal. */}
+          <div className="hidden overflow-hidden rounded-xl border bg-card md:block">
+            <Table className="table-fixed">
               <TableHeader className="bg-muted/30">
-                <TableRow className="border-border/60 hover:bg-transparent">
-                  <TableHead className="w-[38%] py-3 font-semibold text-xs text-foreground/80">Contacto y último mensaje</TableHead>
-                  <TableHead className="py-3 font-semibold text-xs text-foreground/80">Teléfono</TableHead>
-                  <TableHead className="py-3 font-semibold text-xs text-foreground/80">Canal / Línea</TableHead>
-                  <TableHead className="py-3 font-semibold text-xs text-foreground/80">Turno</TableHead>
-                  <TableHead className="py-3 text-right font-semibold text-xs text-foreground/80">Estado / Acción</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="py-2.5 text-xs font-semibold text-foreground/80">
+                    Contacto y último mensaje
+                  </TableHead>
+                  {verCanal && (
+                    <TableHead className="w-32 py-2.5 text-xs font-semibold text-foreground/80">
+                      Canal
+                    </TableHead>
+                  )}
+                  <TableHead className="w-44 py-2.5 text-xs font-semibold text-foreground/80">
+                    Estado
+                  </TableHead>
+                  <TableHead className="w-44 py-2.5 text-right text-xs font-semibold text-foreground/80">
+                    Acción
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {contactos.map((c) => (
-                  <TableRow key={c.id} className="group border-border/40 hover:bg-muted/30 transition-colors">
-                    <TableCell className="py-3">
-                      <Link
-                        href={`/contactos/${c.id}`}
-                        className="flex items-start gap-3 outline-none"
-                      >
-                        <div className="relative mt-0.5">
-                          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-xs font-semibold group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                            {iniciales(c.nombre)}
-                          </span>
-                          {c.esperando_respuesta && (
-                            <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-background animate-pulse" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-semibold text-sm group-hover:text-primary group-hover:underline underline-offset-4 transition-colors">
-                            {c.nombre || <span className="text-muted-foreground font-normal">Sin nombre</span>}
-                          </p>
-                          {c.ultimo_mensaje ? (
-                            <p className="line-clamp-1 text-xs text-muted-foreground mt-0.5">
-                              <span className="font-semibold text-foreground/75">
-                                {c.ultimo_mensaje_tipo === 'mensaje_entrante'
-                                  ? 'Cliente: '
-                                  : c.ultimo_mensaje_tipo === 'nota'
-                                  ? 'Nota: '
-                                  : 'Tú: '}
+                {contactos.map((c) => {
+                  const titulo = c.nombre?.trim() || telefonoLegible(c.telefono_e164) || 'Sin nombre';
+                  const canal = CANAL[c.canal ?? ''] ?? CANAL.comercial;
+                  return (
+                    <TableRow key={c.id} className="group">
+                      <TableCell className="py-3 whitespace-normal">
+                        <Link href={`/contactos/${c.id}`} className="flex min-w-0 items-start gap-3 outline-none">
+                          <Avatar nombre={c.nombre} esperando={Boolean(c.esperando_respuesta)} />
+                          <div className="min-w-0 flex-1">
+                            <p className="flex min-w-0 items-baseline gap-2">
+                              <span className="truncate text-sm font-semibold group-hover:text-primary">
+                                {titulo}
                               </span>
-                              {c.ultimo_mensaje}
+                              <span
+                                className="shrink-0 text-xs text-muted-foreground tabular"
+                                title={fechaLarga(c.ultima_actividad_at)}
+                              >
+                                {tiempoRelativo(c.ultima_actividad_at)}
+                              </span>
                             </p>
-                          ) : (
-                            <p className="text-[11px] text-muted-foreground/60 italic mt-0.5">
-                              Sin mensajes registrados
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                    </TableCell>
+                            <Telefono c={c} />
+                            {c.ultimo_mensaje ? (
+                              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground/75">
+                                  {quien(c.ultimo_mensaje_tipo)}
+                                </span>
+                                {vistaPrevia(c.ultimo_mensaje)}
+                              </p>
+                            ) : (
+                              <p className="mt-0.5 text-xs italic text-muted-foreground/70">
+                                Sin mensajes todavía
+                              </p>
+                            )}
+                          </div>
+                        </Link>
+                      </TableCell>
 
-                    <TableCell className="tabular text-xs">
-                      {c.telefono_e164 ? (
-                        <span className="text-foreground/90 font-medium">
-                          {telefonoLegible(c.telefono_e164)}
-                        </span>
-                      ) : (
-                        <span
-                          className="inline-flex items-center gap-1.5 text-muted-foreground/80"
-                          title={`Lo que llegó en su lugar: ${c.telefono_crudo ?? 'nada'}`}
-                        >
-                          <PhoneOff className="size-3.5 opacity-60" />
-                          Sin número
-                        </span>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="flex flex-col gap-1 items-start">
-                        {c.canal === 'comercial' ? (
-                          <Badge variant="outline" className="bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30 text-[10px] font-semibold py-0.5">
-                            Línea 324 · Comercial
-                          </Badge>
-                        ) : c.canal === 'captacion' ? (
-                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] font-semibold py-0.5">
-                            Línea 320 · Captación
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30 text-[10px] font-semibold py-0.5">
-                            Línea 320 · Admin
-                          </Badge>
-                        )}
-                        <span className="text-[11px] text-muted-foreground capitalize">
-                          {c.tipo}
-                        </span>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      {c.esperando_respuesta ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                          <Clock className="size-3 text-amber-600 animate-pulse" />
-                          Esperando respuesta
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
-                          <Check className="size-3 text-emerald-500" />
-                          Al día
-                        </span>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {c.esperando_respuesta && (
-                          <BotonMarcarAtendido contactoId={c.id} variante="compacto" />
-                        )}
-
-                        {c.sin_leer && c.sin_leer > 0 ? (
+                      {verCanal && (
+                        <TableCell className="whitespace-normal">
                           <span
-                            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
-                            title={`${c.n_actividades} mensajes en total`}
+                            className={`inline-flex rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${canal.clase}`}
                           >
-                            <MessageSquare className="size-3" />
-                            {c.sin_leer} nuevos
+                            {canal.etiqueta}
                           </span>
-                        ) : null}
+                        </TableCell>
+                      )}
 
-                        <span className="text-xs text-muted-foreground tabular whitespace-nowrap">
-                          {tiempoRelativo(c.ultima_actividad_at)}
-                        </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      <TableCell className="whitespace-normal">
+                        <div className="flex flex-col items-start gap-1">
+                          <Estado esperando={Boolean(c.esperando_respuesta)} />
+                          {c.sin_leer && c.sin_leer > 0 ? (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
+                              title={`${c.n_actividades} mensajes en total`}
+                            >
+                              <MessageSquare className="size-3" />
+                              {c.sin_leer} {c.sin_leer === 1 ? 'nuevo' : 'nuevos'}
+                            </span>
+                          ) : null}
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        {c.esperando_respuesta ? (
+                          <BotonMarcarAtendido contactoId={c.id} variante="compacto" />
+                        ) : (
+                          <Link
+                            href={`/contactos/${c.id}`}
+                            className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                          >
+                            Abrir
+                          </Link>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
 
-          {/* Vista Móvil: Tarjetas de conversación */}
-          <div className="flex flex-col gap-2.5 md:hidden">
-            {contactos.map((c) => (
-              <div
-                key={c.id}
-                className="group flex flex-col gap-2.5 rounded-2xl border border-border/70 bg-card p-3.5 shadow-2xs transition-all"
-              >
-                <Link href={`/contactos/${c.id}`} className="block">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                        {iniciales(c.nombre)}
-                        {c.esperando_respuesta && (
-                          <span className="absolute top-0 right-0 size-2.5 rounded-full bg-amber-500 ring-2 ring-background" />
-                        )}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold tracking-tight text-foreground">
-                          {c.nombre || <span className="text-muted-foreground font-normal">Sin nombre</span>}
-                        </p>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Phone className="size-3 opacity-60" />
-                          <span className="tabular">
-                            {c.telefono_e164 ? telefonoLegible(c.telefono_e164) : 'Sin número'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <ArrowRight className="size-4 shrink-0 text-muted-foreground/50 group-hover:text-primary transition-colors mt-1" />
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    {c.canal === 'comercial' ? (
-                      <Badge variant="outline" className="bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30 text-[10px] font-semibold py-0">
-                        Línea 324 · Comercial
-                      </Badge>
-                    ) : c.canal === 'captacion' ? (
-                      <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] font-semibold py-0">
-                        Línea 320 · Captación
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30 text-[10px] font-semibold py-0">
-                        Línea 320 · Admin
-                      </Badge>
-                    )}
-                    <span className="text-[11px] text-muted-foreground capitalize">
-                      · {c.tipo}
-                    </span>
-                  </div>
-
-                  {c.ultimo_mensaje && (
-                    <div className="mt-2 rounded-xl bg-muted/40 p-2 text-xs text-muted-foreground">
-                      <p className="line-clamp-2 italic">
-                        <span className="font-semibold text-foreground/75 not-italic">
-                          {c.ultimo_mensaje_tipo === 'mensaje_entrante' ? 'Cliente: ' : 'Tú: '}
+          {/* Celular: tarjetas */}
+          <ul className="flex flex-col gap-2 md:hidden">
+            {contactos.map((c) => {
+              const titulo = c.nombre?.trim() || telefonoLegible(c.telefono_e164) || 'Sin nombre';
+              const canal = CANAL[c.canal ?? ''] ?? CANAL.comercial;
+              return (
+                <li key={c.id} className="flex flex-col gap-2 rounded-xl border bg-card p-3">
+                  <Link href={`/contactos/${c.id}`} className="flex min-w-0 items-start gap-3">
+                    <Avatar nombre={c.nombre} esperando={Boolean(c.esperando_respuesta)} />
+                    <div className="min-w-0 flex-1">
+                      <p className="flex min-w-0 items-baseline gap-2">
+                        <span className="truncate text-sm font-semibold text-foreground">{titulo}</span>
+                        <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular">
+                          {tiempoRelativo(c.ultima_actividad_at)}
                         </span>
-                        {c.ultimo_mensaje}
                       </p>
+                      <Telefono c={c} />
+                      {c.ultimo_mensaje && (
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground/75">
+                            {quien(c.ultimo_mensaje_tipo)}
+                          </span>
+                          {vistaPrevia(c.ultimo_mensaje)}
+                        </p>
+                      )}
                     </div>
-                  )}
-                </Link>
+                  </Link>
 
-                <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    {c.esperando_respuesta ? (
-                      <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                        <Clock className="size-3" /> Esperando
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                        <Check className="size-3 text-emerald-500" /> Al día
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between gap-2 border-t pt-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Estado esperando={Boolean(c.esperando_respuesta)} />
+                      {c.sin_leer && c.sin_leer > 0 ? (
+                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                          {c.sin_leer} {c.sin_leer === 1 ? 'nuevo' : 'nuevos'}
+                        </span>
+                      ) : null}
+                      {verCanal && (
+                        <span
+                          className={`rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${canal.clase}`}
+                        >
+                          {canal.etiqueta}
+                        </span>
+                      )}
+                    </div>
                     {c.esperando_respuesta && (
                       <BotonMarcarAtendido contactoId={c.id} variante="compacto" />
                     )}
-                    <span className="text-[11px] text-muted-foreground tabular">
-                      {tiempoRelativo(c.ultima_actividad_at)}
-                    </span>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
 
       {hayMas && (
-        <div className="flex justify-center pt-2 pb-6">
-          <Button variant="outline" className="h-10 rounded-xl px-6 font-medium shadow-2xs" asChild>
+        <div className="flex justify-center pb-6 pt-2">
+          <Button variant="outline" size="sm" className="h-8 rounded-lg px-4" asChild>
             <Link href={`/contactos?${siguiente.toString()}`}>Cargar más</Link>
           </Button>
         </div>
@@ -405,31 +392,77 @@ export default async function PaginaContactos({
   );
 }
 
+function Avatar({ nombre, esperando }: { nombre: string | null; esperando: boolean }) {
+  return (
+    <span className="relative mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+      {nombre?.trim() ? iniciales(nombre) : <UserRound className="size-4" aria-hidden />}
+      {esperando && (
+        <span className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-amber-500 ring-2 ring-background" />
+      )}
+    </span>
+  );
+}
+
+/** El teléfono va debajo del nombre; si no hay nombre, ya es el título. */
+function Telefono({
+  c,
+}: {
+  c: { nombre: string | null; telefono_e164: string | null; telefono_crudo: string | null };
+}) {
+  if (!c.telefono_e164) {
+    return (
+      <p
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+        title={`Lo que llegó en su lugar: ${c.telefono_crudo ?? 'nada'}`}
+      >
+        <PhoneOff className="size-3 opacity-70" />
+        Sin número
+      </p>
+    );
+  }
+  if (!c.nombre?.trim()) return null;
+  return <p className="text-xs text-muted-foreground tabular">{telefonoLegible(c.telefono_e164)}</p>;
+}
+
+function Estado({ esperando }: { esperando: boolean }) {
+  return esperando ? (
+    <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
+      <Clock className="size-3" />
+      Esperando respuesta
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <Check className="size-3 text-emerald-600" />
+      Al día
+    </span>
+  );
+}
+
 function EstadoVacio({ hayBusqueda, canal }: { hayBusqueda: boolean; canal: string }) {
   const canalTexto =
     canal === 'comercial'
-      ? 'en el canal comercial (Línea 324)'
+      ? 'en Comercial'
       : canal === 'administrativa'
-      ? 'en administrativa (Línea 320)'
-      : canal === 'captacion'
-      ? 'en captaciones (Línea 320)'
-      : canal === 'administrativa_captacion'
-      ? 'en administrativo y captaciones (Línea 320)'
-      : 'en la bandeja';
+        ? 'en Administrativa'
+        : canal === 'captacion'
+          ? 'en Captación'
+          : canal === 'administrativa_captacion'
+            ? 'en Administrativa y captación'
+            : 'en la bandeja';
 
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border/80 bg-card/40 py-16 px-4 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-card/40 px-4 py-16 text-center">
       <div className="grid size-12 place-items-center rounded-full bg-muted">
         <MessageSquare className="size-6 text-muted-foreground" />
       </div>
       <div>
         <p className="font-semibold text-foreground">
-          {hayBusqueda ? 'No hay mensajes que coincidan con los filtros' : `Sin mensajes pendientes ${canalTexto}`}
+          {hayBusqueda ? 'Nada coincide con los filtros' : `No hay conversaciones ${canalTexto}`}
         </p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
           {hayBusqueda
-            ? 'Prueba desactivando «Esperando respuesta» o cambiando de canal.'
-            : 'Los mensajes nuevos de WhatsApp recibidos por esta línea aparecerán aquí en tiempo real.'}
+            ? 'Prueba quitando «Solo esperando» o cambiando de pestaña.'
+            : 'Los mensajes nuevos de WhatsApp aparecen aquí solos, sin recargar.'}
         </p>
       </div>
     </div>

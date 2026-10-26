@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect, useRef } from 'react';
+import { useState, useTransition, useEffect, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import {
   Check,
@@ -33,24 +33,51 @@ import { telefonoLegible } from '@/lib/formato';
 import type { EleccionLinea } from '@/lib/lineas';
 import type { PlantillaResumen } from './UsarPlantilla';
 import { enviarMensaje, renderizar } from './acciones';
+import { cuandoColombia } from './estadoBot';
+
+/** Cómo se dice cada variable cuando falta. */
+const NOMBRE_VARIABLE: Record<string, string> = {
+  nombre: 'el nombre',
+  telefono: 'el teléfono',
+  asesor: 'tu nombre',
+  inmueble: 'el inmueble',
+  barrio: 'el barrio',
+  ciudad: 'la ciudad',
+  precio: 'el precio',
+  habitaciones: 'las habitaciones',
+  monto: 'monto',
+  fecha_limite: 'fecha límite',
+  dias_mora: 'días de mora',
+  referencia: 'referencia',
+};
+
+/** Las que solo llegan en el archivo de un envío masivo de cartera. */
+const DE_CARTERA = new Set(['monto', 'fecha_limite', 'dias_mora', 'referencia']);
+
+/** «monto, fecha límite y referencia». */
+function enumerar(variables: string[]): string {
+  const nombres = variables.map((v) => NOMBRE_VARIABLE[v] ?? v.replace(/_/g, ' '));
+  if (nombres.length <= 1) return nombres.join('');
+  return `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}`;
+}
+
+/** El atajo de enviar se escribe distinto en Mac. Sin suscripción: no cambia. */
+const sinSuscripcion = () => () => {};
+const esMacEnNavegador = () => /Mac|iPhone|iPad/.test(navigator.userAgent);
+const esMacEnServidor = () => false;
 
 /**
- * Caja de conversación interactiva de WhatsApp.
+ * La caja de escribir de la ficha: lo único que se le manda al cliente sale
+ * de aquí, por la línea oficial.
  *
- * INTEGRA DIRECTAMENTE LAS PLANTILLAS Y RESPUESTAS RÁPIDAS:
+ * 1. DENTRO DE LA VENTANA DE 24 H: texto libre, respuestas rápidas con '/'
+ *    y el aviso de hasta qué hora se le puede escribir. Es el ÚNICO sitio de
+ *    la ficha que habla de la ventana.
  *
- * 1. DENTRO DE LA VENTANA DE 24H:
- *    - Permite escribir libremente.
- *    - Soporta autocompletado rápido con '/' en el teclado.
- *    - Botón de acceso rápido a plantillas (Respuestas de Chat vs. WhatsApp Meta).
- *    - Inserción directa en el texto con sustitución de variables en vivo.
- *
- * 2. FUERA DE LA VENTANA DE 24H (MODO REACTIVACIÓN OFICIAL):
- *    - WhatsApp rechaza mensajes libres (error 131047).
- *    - La caja se transforma en un panel de reactivación con las plantillas
- *      oficiales de WhatsApp aprobadas por Meta (HSM).
- *    - Envía a través de crm.encolar_envio() pasando plantilla_id para
- *      cumplir la validación de la base de datos y reabrir la ventana.
+ * 2. FUERA DE LA VENTANA: WhatsApp no entrega texto libre, así que la caja
+ *    pasa a ofrecer las plantillas aprobadas de la línea. Arranca con la
+ *    primera que se puede llenar con los datos de la ficha: una de cartera
+ *    sin monto ni referencia saldría con huecos, y Meta la rechaza.
  */
 export function CajaDeEscribir({
   contactoId,
@@ -103,24 +130,20 @@ export function CajaDeEscribir({
       p.estado_meta === 'aprobada' &&
       (p.wa_phone_number_id ?? null) === lineaElegida
   );
-  const [plantillaElegidaId, setPlantillaReactivacionId] = useState<string | null>(
-    aprobadas[0]?.id ?? null
-  );
+  // La primera que sale completa; si ninguna, la primera.
+  const completas = aprobadas.filter((p) => (p.faltan ?? []).length === 0);
+  const porDefecto = completas[0]?.id ?? aprobadas[0]?.id ?? null;
+  const [plantillaElegidaId, setPlantillaReactivacionId] = useState<string | null>(porDefecto);
   // Al cambiar de línea, la que estaba elegida puede no ser de la nueva.
   const plantillaReactivacionId = aprobadas.some((p) => p.id === plantillaElegidaId)
     ? plantillaElegidaId
-    : (aprobadas[0]?.id ?? null);
+    : porDefecto;
+  const esMac = useSyncExternalStore(sinSuscripcion, esMacEnNavegador, esMacEnServidor);
   const [textoReactivacion, setTextoReactivacion] = useState('');
   const [cargandoReactivacion, iniciarRenderReactivacion] = useTransition();
 
-  const horas = cierraAt
-    ? Math.max(
-        0,
-        Math.round(
-          (new Date(cierraAt).getTime() - new Date(ahora).getTime()) / 3_600_000
-        )
-      )
-    : 0;
+  // «hasta las 11:11 p. m.» o «hasta mañana a las 9:00 a. m.»
+  const hastaCuando = cierraAt ? cuandoColombia(cierraAt, ahora).replace(/^a (las?) /, '$1 ') : null;
 
   // Cargar texto renderizado de la plantilla de reactivación seleccionada
   useEffect(() => {
@@ -280,33 +303,27 @@ export function CajaDeEscribir({
   const huecosReactivacion = textoReactivacion.match(/\[sin [^\]]+\]|\[asesor\]/g);
 
   // =========================================================================
-  // CASO 1: FUERA DE LA VENTANA DE 24 HORAS (MODO REACTIVACIÓN OFICIAL)
+  // CASO 1: FUERA DE LA VENTANA DE 24 HORAS (SOLO PLANTILLAS APROBADAS)
   // =========================================================================
   if (!ventanaAbierta) {
     const plantillaActual = aprobadas.find((p) => p.id === plantillaReactivacionId);
+    const faltan = plantillaActual?.faltan ?? [];
+    const incompleta = faltan.length > 0 || Boolean(huecosReactivacion);
+    const hayOtraCompleta = completas.some((p) => p.id !== plantillaActual?.id);
 
+    // Esta no es sticky: es alta (plantilla, vista previa, aviso) y fija
+    // abajo taparía casi toda la conversación. El chat abre en el fondo,
+    // así que igual se ve al llegar.
     return (
-      <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-2xs">
-        {/* Encabezado explicativo con aviso de Meta */}
-        <div className="flex items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-300">
-            <ShieldAlert className="size-5" />
-          </div>
+      <div className="mb-3 flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-50 p-4 dark:bg-amber-950">
+        <div className="flex items-start gap-2.5">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-700 dark:text-amber-300" />
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
-              Reactivar conversación por WhatsApp
-              <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-800 dark:text-amber-300">
-                Ventana cerrada
-              </Badge>
-            </h3>
-            <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-              {nuncaEscribio ? (
-                <>Esta persona aún no ha iniciado chat.</>
-              ) : (
-                <>Pasaron más de 24 horas desde su último mensaje.</>
-              )}{' '}
-              Por política de Meta, el texto libre será rechazado (error 131047). Para abrir la
-              conversación, debes enviar una <b>plantilla oficial de WhatsApp aprobada</b>.
+            <h3 className="text-sm font-semibold text-foreground">Reactivar la conversación</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              {nuncaEscribio
+                ? 'Esta persona todavía no nos ha escrito: solo puedes enviarle una plantilla aprobada.'
+                : 'Pasaron más de 24 h: solo puedes enviarle una plantilla aprobada.'}
             </p>
           </div>
         </div>
@@ -315,16 +332,16 @@ export function CajaDeEscribir({
           <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/50 p-6 text-center">
             <Lock className="size-6 text-muted-foreground/60" />
             <p className="text-xs font-semibold text-foreground">
-              No tienes plantillas de WhatsApp aprobadas por Meta
+              Esta línea no tiene plantillas aprobadas
             </p>
             <p className="max-w-md text-xs text-muted-foreground">
-              Para reactivar contactos fuera de la ventana necesitas al menos una plantilla con
-              estado «aprobada». Puedes gestionarlas y sincronizarlas desde el módulo de plantillas.
+              Para escribirle fuera de las 24 h hace falta al menos una plantilla aprobada por
+              WhatsApp para esta línea.
             </p>
-            <Button size="sm" variant="outline" asChild className="mt-2 text-xs rounded-xl gap-1.5">
+            <Button size="sm" variant="outline" asChild className="mt-2 h-8 gap-1.5 rounded-lg text-xs">
               <Link href="/plantillas">
                 <Sparkles className="size-3.5" />
-                Ir a Plantillas y Respuestas
+                Ir a Plantillas
               </Link>
             </Button>
           </div>
@@ -332,8 +349,8 @@ export function CajaDeEscribir({
           <div className="flex flex-col gap-3">
             {/* Selector de plantilla aprobada */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="select-reactivacion" className="text-xs font-semibold text-foreground">
-                Selecciona la plantilla oficial de WhatsApp:
+              <label htmlFor="select-reactivacion" className="text-xs font-medium text-foreground">
+                Plantilla aprobada
               </label>
               <div className="relative">
                 <select
@@ -341,52 +358,59 @@ export function CajaDeEscribir({
                   value={plantillaReactivacionId ?? ''}
                   onChange={(e) => setPlantillaReactivacionId(e.target.value)}
                   disabled={cargandoReactivacion || enviando}
-                  className="w-full appearance-none rounded-xl border border-border/80 bg-background px-3 py-2 text-xs font-medium text-foreground shadow-2xs pr-8 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="h-8 w-full appearance-none rounded-lg border bg-background px-2.5 pr-8 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring/50"
                 >
-                  {aprobadas.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre} ({p.categoria}) · Meta Aprobada
-                    </option>
-                  ))}
+                  {aprobadas.map((p) => {
+                    const le = p.faltan ?? [];
+                    const nota =
+                      le.length === 0
+                        ? ''
+                        : le.some((v) => DE_CARTERA.has(v))
+                          ? ' · necesita datos del archivo de cartera'
+                          : ' · necesita datos que no están en la ficha';
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre}
+                        {nota}
+                      </option>
+                    );
+                  })}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 size-4 text-muted-foreground" />
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-2 size-4 text-muted-foreground" />
               </div>
             </div>
 
             {/* Vista previa en burbuja de WhatsApp */}
             <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] font-medium text-muted-foreground">
-                Vista previa con datos del contacto:
+              <span className="text-xs font-medium text-muted-foreground">
+                Así le llegará
               </span>
-              <div className="relative rounded-xl border bg-background/80 p-3 shadow-2xs">
+              <div className="relative max-h-40 overflow-y-auto rounded-lg border bg-background p-3">
                 {cargandoReactivacion ? (
                   <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
                     <Loader2 className="size-4 animate-spin text-primary" />
                     Preparando variables del contacto…
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground">
-                      {textoReactivacion || 'Sin contenido en la plantilla.'}
-                    </p>
-                    {plantillaActual && (
-                      <div className="flex items-center justify-between border-t pt-1.5 text-[10px] text-muted-foreground">
-                        <span className="capitalize">Categoría: {plantillaActual.categoria}</span>
-                        <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-                          HSM Oficial Meta
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground">
+                    {textoReactivacion || 'Sin contenido en la plantilla.'}
+                  </p>
                 )}
               </div>
 
-              {huecosReactivacion && (
-                <div className="flex items-start gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-300">
+              {incompleta && (
+                <div
+                  role="status"
+                  className="flex items-start gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-900 dark:text-amber-200"
+                >
                   <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
                   <span>
-                    Faltan datos en la ficha: {huecosReactivacion.join(', ')}. Te recomendamos
-                    actualizar el contacto antes de reactivar.
+                    {faltan.length > 0
+                      ? `Esta plantilla necesita ${enumerar(faltan)}, que no ${faltan.length === 1 ? 'está' : 'están'} en la ficha.`
+                      : `A esta plantilla le faltan datos de la ficha: ${huecosReactivacion?.join(', ')}.`}{' '}
+                    {hayOtraCompleta
+                      ? 'Elige otra.'
+                      : 'No hay otra plantilla aprobada de esta línea que salga completa.'}
                   </span>
                 </div>
               )}
@@ -406,18 +430,21 @@ export function CajaDeEscribir({
             )}
 
             {/* Botones de acción */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-border/50">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => copiar(textoReactivacion)}
-                disabled={!textoReactivacion || enviando || cargandoReactivacion}
-                className="gap-1.5 text-xs rounded-xl"
-              >
-                {copiado ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                {copiado ? 'Copiado' : 'Copiar texto'}
-              </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-amber-500/20 pt-2">
+              {/* Copiar solo hace falta si el envío directo no está conectado */}
+              {!canalListo && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => copiar(textoReactivacion)}
+                  disabled={!textoReactivacion || enviando || cargandoReactivacion}
+                  className="h-8 gap-1.5 rounded-lg text-xs"
+                >
+                  {copiado ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  {copiado ? 'Copiado' : 'Copiar texto'}
+                </Button>
+              )}
 
               <Button
                 type="button"
@@ -426,18 +453,19 @@ export function CajaDeEscribir({
                 disabled={
                   !canalListo ||
                   lineaCaida ||
+                  incompleta ||
                   !textoReactivacion.trim() ||
                   enviando ||
                   cargandoReactivacion
                 }
-                className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-2xs"
+                className="h-8 gap-1.5 rounded-lg text-xs font-semibold"
               >
                 {enviando ? (
                   <Loader2 className="size-3.5 animate-spin" />
                 ) : (
                   <SendHorizontal className="size-3.5" />
                 )}
-                {enviando ? 'Reactivando…' : 'Reactivar conversación por WhatsApp'}
+                {enviando ? 'Enviando…' : 'Reactivar conversación'}
               </Button>
             </div>
 
@@ -448,9 +476,9 @@ export function CajaDeEscribir({
             )}
 
             {!canalListo && (
-              <p className="text-[11px] text-muted-foreground">
-                El envío directo aún no está conectado a la Cloud API: por ahora puedes copiar el
-                mensaje y mandarlo por la línea de WhatsApp correspondiente.
+              <p className="text-xs text-muted-foreground">
+                El envío directo todavía no está conectado: por ahora copia el mensaje y mándalo
+                por la línea de WhatsApp que corresponde.
               </p>
             )}
           </div>
@@ -463,16 +491,16 @@ export function CajaDeEscribir({
   // CASO 2: DENTRO DE LA VENTANA DE 24 HORAS (CONVERSACIÓN LIBRE + PLANTILLAS)
   // =========================================================================
   return (
-    <div className="relative flex flex-col gap-2.5 rounded-2xl border bg-card p-3 shadow-2xs">
+    <div className="sticky bottom-0 z-10 mb-3 flex flex-col gap-2.5 rounded-xl border bg-card p-3 shadow-[0_-6px_12px_-10px_rgb(0_0_0/0.25)]">
       {/* Menú flotante de autocompletado con '/' */}
       {slashActivo && sugerenciasSlash.length > 0 && (
-        <div className="absolute bottom-full left-3 z-30 mb-2 w-80 rounded-2xl border border-border/80 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
+        <div className="absolute bottom-full left-3 z-30 mb-2 w-80 rounded-xl border border-border/80 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
           <div className="flex items-center justify-between px-2.5 py-1 text-[11px] font-semibold text-muted-foreground border-b border-border/50 pb-1 mb-1">
             <span className="flex items-center gap-1">
               <Sparkles className="size-3 text-primary" />
               Respuestas rápidas sugeridas
             </span>
-            <span className="text-[10px] text-muted-foreground/75">↑↓ navegar · Enter</span>
+            <span className="text-[11px] text-muted-foreground/75">↑↓ navegar · Enter</span>
           </div>
           <div className="flex flex-col gap-0.5">
             {sugerenciasSlash.map((p, idx) => {
@@ -498,7 +526,7 @@ export function CajaDeEscribir({
                     <span className="truncate">{p.nombre}</span>
                   </div>
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-md capitalize shrink-0 ${
+                    className={`text-[11px] px-1.5 py-0.2 rounded-md capitalize shrink-0 ${
                       seleccionado
                         ? 'bg-primary-foreground/20 text-primary-foreground'
                         : 'bg-muted text-muted-foreground'
@@ -524,20 +552,22 @@ export function CajaDeEscribir({
               setSelectorAbierto(true);
               setBusqueda('');
             }}
-            className="h-7 gap-1.5 rounded-lg px-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted"
+            className="h-8 gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
           >
             <Zap className="size-3.5 text-amber-500" />
-            <span>Respuestas Rápidas</span>
-            <span className="rounded-md bg-muted px-1.5 py-0.2 text-[10px] text-muted-foreground font-mono">
+            <span>Respuestas rápidas</span>
+            <span className="rounded-md bg-muted px-1.5 py-0.2 text-[11px] text-muted-foreground font-mono">
               /
             </span>
           </Button>
         </div>
 
-        {/* Indicador de horas restantes */}
-        <span className="text-[11px] text-muted-foreground tabular">
-          {horas >= 1 ? `Ventana activa: ~${horas} h restantes` : 'Menos de 1 h restante'}
-        </span>
+        {/* La ventana de 24 h, dicha una sola vez y con la hora de Colombia */}
+        {hastaCuando && (
+          <span className="text-xs text-muted-foreground">
+            Puedes escribirle hasta {hastaCuando}
+          </span>
+        )}
       </div>
 
       {/* Campo de texto de mensaje */}
@@ -548,7 +578,7 @@ export function CajaDeEscribir({
           onChange={manejarCambioTexto}
           onKeyDown={manejarKeyDown}
           rows={3}
-          placeholder="Escribe un mensaje o escribe '/' para insertar una respuesta rápida…"
+          placeholder="Escribe un mensaje, o «/» para una respuesta rápida…"
           aria-label="Mensaje para esta persona"
           disabled={enviando || insertando}
           className="rounded-xl border-none bg-transparent p-1 text-sm shadow-none focus-visible:ring-0 resize-none leading-relaxed"
@@ -561,15 +591,15 @@ export function CajaDeEscribir({
           <Phone className="size-3 text-muted-foreground" />
           {linea.opciones.length > 1 ? (
             <>
-              <label htmlFor={`linea-${contactoId}`} className="text-[11px]">
-                Línea de envío:
+              <label htmlFor={`linea-${contactoId}`} className="text-xs">
+                Sale por
               </label>
               <select
                 id={`linea-${contactoId}`}
                 value={elegida.embudo}
                 onChange={(e) => setEmbudo(e.target.value)}
                 disabled={enviando}
-                className="rounded-lg border bg-background px-2 py-0.5 text-xs text-foreground font-medium"
+                className="h-7 rounded-lg border bg-background px-2 text-xs font-medium text-foreground"
               >
                 {linea.opciones.map((l) => (
                   <option key={l.embudo} value={l.embudo}>
@@ -579,12 +609,12 @@ export function CajaDeEscribir({
               </select>
             </>
           ) : (
-            <span className="text-[11px]">
+            <span className="text-xs">
               Sale por <b className="font-medium text-foreground">{elegida.nombre}</b>
             </span>
           )}
           {elegida.telefono_e164 && (
-            <span className="tabular text-[11px]">· {telefonoLegible(elegida.telefono_e164)}</span>
+            <span className="tabular text-xs">· {telefonoLegible(elegida.telefono_e164)}</span>
           )}
         </div>
       )}
@@ -593,7 +623,7 @@ export function CajaDeEscribir({
         <p role="alert" className="flex items-start gap-1.5 text-xs text-destructive">
           <KeyRound className="mt-0.5 size-3.5 shrink-0" />
           <span>
-            Meta rechaza la credencial de esta línea. Hay que reconectarla en{' '}
+            WhatsApp rechaza la credencial de esta línea. Hay que reconectarla en{' '}
             <Link href="/lineas" className="underline font-medium">
               Líneas
             </Link>
@@ -604,31 +634,35 @@ export function CajaDeEscribir({
 
       {/* Botones inferiores */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-        <span className="text-[10px] text-muted-foreground">
-          Presiona <kbd className="rounded bg-muted px-1 py-0.5 font-mono">⌘+Enter</kbd> para enviar
+        {/* En pantallas táctiles no hay teclado con Ctrl: la pista sobra */}
+        <span className="hidden text-[11px] text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:inline">
+          <kbd className="rounded bg-muted px-1 py-0.5 font-mono">{esMac ? '⌘ + Enter' : 'Ctrl + Enter'}</kbd>{' '}
+          para enviar
         </span>
 
-        <div className="flex items-center gap-1.5">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => copiar(texto)}
-            disabled={!texto.trim() || enviando}
-            className="h-8 gap-1.5 text-xs rounded-xl"
-          >
-            {copiado ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-            {copiado ? 'Copiado' : 'Copiar'}
-          </Button>
+        <div className="ml-auto flex items-center gap-1.5">
+          {!canalListo && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => copiar(texto)}
+              disabled={!texto.trim() || enviando}
+              className="h-8 gap-1.5 rounded-lg text-xs"
+            >
+              {copiado ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+              {copiado ? 'Copiado' : 'Copiar'}
+            </Button>
+          )}
 
           <Button
             size="sm"
             onClick={enviarLibre}
             disabled={!canalListo || lineaCaida || !texto.trim() || enviando}
-            className="h-8 gap-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-xl shadow-2xs"
+            className="h-8 gap-1.5 rounded-lg px-3.5 text-xs font-semibold"
             title={
               canalListo
                 ? 'Enviar por WhatsApp'
-                : 'El envío directo requiere conectar el canal oficial de Meta'
+                : 'El envío directo todavía no está conectado'
             }
           >
             {enviando ? (
@@ -648,19 +682,19 @@ export function CajaDeEscribir({
       )}
 
       {!canalListo && (
-        <p className="text-[11px] text-muted-foreground">
-          El envío directo todavía no está conectado a Meta: por ahora copia el mensaje y pégalo
-          en WhatsApp.
+        <p className="text-xs text-muted-foreground">
+          El envío directo todavía no está conectado: por ahora copia el mensaje y pégalo en
+          WhatsApp.
         </p>
       )}
 
       {/* Diálogo / Selector Completo de Plantillas y Respuestas */}
       <Dialog open={selectorAbierto} onOpenChange={setSelectorAbierto}>
-        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl">
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto rounded-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Zap className="size-4 text-amber-500" />
-              Respuestas Rápidas y Plantillas
+              Respuestas rápidas y plantillas
             </DialogTitle>
             <DialogDescription className="text-xs">
               Selecciona una respuesta para insertarla en el chat con los datos de esta persona ya
@@ -693,8 +727,8 @@ export function CajaDeEscribir({
                 }`}
               >
                 <MessageSquare className="size-3.5 text-blue-500" />
-                <span>Respuestas Rápidas (Chat)</span>
-                <span className="rounded-full bg-muted px-1.5 py-0.2 text-[10px] tabular">
+                <span>Respuestas rápidas</span>
+                <span className="rounded-full bg-muted px-1.5 py-0.2 text-[11px] tabular">
                   {plantillas.filter((p) => p.tipo === 'chat').length}
                 </span>
               </button>
@@ -709,8 +743,8 @@ export function CajaDeEscribir({
                 }`}
               >
                 <MessageCircle className="size-3.5 text-emerald-500" />
-                <span>WhatsApp (Meta HSM)</span>
-                <span className="rounded-full bg-muted px-1.5 py-0.2 text-[10px] tabular">
+                <span>Plantillas de WhatsApp</span>
+                <span className="rounded-full bg-muted px-1.5 py-0.2 text-[11px] tabular">
                   {plantillas.filter((p) => p.tipo !== 'chat').length}
                 </span>
               </button>
@@ -740,13 +774,13 @@ export function CajaDeEscribir({
                           {p.tipo !== 'chat' && (
                             <Badge
                               variant="outline"
-                              className={`text-[9px] h-4 px-1.5 ${
+                              className={`text-[11px] h-4 px-1.5 ${
                                 esAprobada
                                   ? 'border-emerald-500/30 text-emerald-700 bg-emerald-500/10'
                                   : 'text-muted-foreground'
                               }`}
                             >
-                              {esAprobada ? 'Meta Aprobada' : p.estado_meta ?? 'Borrador'}
+                              {esAprobada ? 'Aprobada' : p.estado_meta ?? 'Borrador'}
                             </Badge>
                           )}
                         </div>

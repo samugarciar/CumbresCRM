@@ -1,7 +1,9 @@
 import Link from 'next/link';
-import { BotOff, MessageCircle } from 'lucide-react';
+import { BotOff, MessageCircle, UserRound } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { iniciales, telefonoLegible, tiempoRelativo } from '@/lib/formato';
+import { Button } from '@/components/ui/button';
+import { cuandoColombia } from '@/app/(app)/contactos/[id]/estadoBot';
 import { EncenderBot } from './EncenderBot';
 
 interface Callado {
@@ -54,7 +56,7 @@ export default async function PaginaBotCallado() {
 
   if (error) {
     return (
-      <p className="text-sm text-destructive">
+      <p className="mx-auto w-full max-w-6xl text-sm text-destructive">
         No se pudo cargar la lista: {error.message}
       </p>
     );
@@ -69,36 +71,35 @@ export default async function PaginaBotCallado() {
   const ahora = new Date().getTime();
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
       <header>
         <h1 className="text-xl font-semibold tracking-tight">Bot callado</h1>
         <p className="max-w-[64ch] text-sm text-muted-foreground">
           {filas.length === 0
             ? 'El bot está respondiendo en todas las conversaciones.'
-            : `${filas.length} ${filas.length === 1 ? 'conversación' : 'conversaciones'} donde el bot no está respondiendo, sea por lo que sea. Las de arriba no vuelven solas: si nadie las mira, se quedan así.`}
+            : `${filas.length} ${filas.length === 1 ? 'conversación' : 'conversaciones'} donde el bot no está respondiendo.`}
         </p>
       </header>
 
       {filas.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-16 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-16 text-center">
           <BotOff className="size-8 text-muted-foreground" />
           <p className="font-medium">Ninguna conversación con el bot callado</p>
         </div>
       ) : (
         <>
           <Seccion
-            titulo="No vuelven solas"
-            explicacion="El bot no va a volver por su cuenta. Alguien tiene que atenderlas o encenderlo desde la ficha; las de Kommo, que no tienen ficha, desde aquí."
+            titulo="No vuelven solos: alguien tiene que atenderlos o encender el bot"
+            explicacion="Los de la línea vieja, que no tienen ficha, se encienden desde aquí."
             filas={noVuelven}
             ahora={ahora}
-            vacio="Ninguna: todos los silencios de ahora terminan solos."
+            vacio="Ninguno: todos los silencios de ahora terminan solos."
           />
           <Seccion
-            titulo="Vuelven solas"
-            explicacion="El bot recupera la voz a la hora indicada si nadie del equipo interviene."
+            titulo="Vuelven solos a la hora indicada"
             filas={vuelven}
             ahora={ahora}
-            vacio="Ninguna."
+            vacio="Ninguno."
           />
         </>
       )}
@@ -114,7 +115,7 @@ function Seccion({
   vacio,
 }: {
   titulo: string;
-  explicacion: string;
+  explicacion?: string;
   filas: Callado[];
   ahora: number;
   vacio: string;
@@ -125,13 +126,13 @@ function Seccion({
         <h2 className="text-sm font-semibold">
           {titulo} <span className="tabular font-normal text-muted-foreground">· {filas.length}</span>
         </h2>
-        <p className="text-xs text-muted-foreground">{explicacion}</p>
+        {explicacion && <p className="text-xs text-muted-foreground">{explicacion}</p>}
       </div>
 
       {filas.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">{vacio}</p>
+        <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">{vacio}</p>
       ) : (
-        <ul className="divide-y rounded-lg border bg-card">
+        <ul className="divide-y rounded-xl border bg-card">
           {filas.map((f) => (
             <Fila key={f.contacto_id ?? `freno-${f.telefono_e164}`} f={f} ahora={ahora} />
           ))}
@@ -153,34 +154,41 @@ function Fila({ f, ahora }: { f: Callado; ahora: number }) {
     <li className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 py-3">
       <div className="flex min-w-0 items-start gap-3">
         <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
-          {iniciales(f.nombre)}
+          {f.nombre?.trim() ? (
+            iniciales(f.nombre.replace(/[()]/g, ''))
+          ) : (
+            <UserRound className="size-4" aria-hidden />
+          )}
         </span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {f.contacto_id ? (
               <Link href={`/contactos/${f.contacto_id}`} className="font-medium hover:text-primary">
-                {f.nombre || 'Sin nombre'}
+                {f.nombre || telefonoLegible(f.telefono_e164) || 'Sin nombre'}
               </Link>
             ) : (
-              <span className="font-medium">{f.nombre || 'Sin nombre'}</span>
+              <span className="font-medium">{f.nombre || telefonoLegible(f.telefono_e164) || 'Sin nombre'}</span>
             )}
-            <span className="rounded-4xl bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
               {f.motivo ? MOTIVO[f.motivo] : 'Sin motivo anotado'}
             </span>
             {!f.contacto_id && (
-              <span className="rounded-4xl border px-2 py-0.5 text-xs text-muted-foreground">
-                Por Kommo
+              <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+                Línea vieja (324)
               </span>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {f.telefono_e164 && <span className="tabular">{telefonoLegible(f.telefono_e164)} · </span>}
+            {/* Sin nombre, el teléfono ya es el título */}
+            {f.telefono_e164 && f.nombre?.trim() && (
+              <span className="tabular">{telefonoLegible(f.telefono_e164)} · </span>
+            )}
             {porQue(f, ahora)}
           </p>
         </div>
       </div>
 
-      <div className="flex flex-col items-start gap-0.5 text-xs sm:items-end sm:text-right">
+      <div className="flex flex-col items-start gap-1 text-xs sm:items-end sm:text-right">
         <span className="text-foreground">Callado {tiempoRelativo(f.callado_desde)}</span>
         {f.ultimo_entrante_at ? (
           <span
@@ -195,7 +203,13 @@ function Fila({ f, ahora }: { f: Callado; ahora: number }) {
         ) : (
           <span className="text-muted-foreground">No ha escrito</span>
         )}
-        {!f.contacto_id && f.telefono_e164 && <EncenderBot telefono={f.telefono_e164} />}
+        {f.contacto_id ? (
+          <Button size="sm" variant="outline" asChild className="mt-1 h-8 rounded-lg text-xs">
+            <Link href={`/contactos/${f.contacto_id}`}>Abrir ficha</Link>
+          </Button>
+        ) : (
+          f.telefono_e164 && <EncenderBot telefono={f.telefono_e164} />
+        )}
       </div>
     </li>
   );
@@ -208,7 +222,9 @@ function porQue(f: Callado, ahora: number): string {
   const vuelve =
     f.vuelve_at && ms(f.vuelve_at) <= ahora
       ? 'Ya le toca volver: el bot lo retoma en unos minutos'
-      : `Vuelve solo ${tiempoRelativo(f.vuelve_at)}`;
+      : f.vuelve_at
+        ? `Vuelve solo ${cuandoColombia(f.vuelve_at, new Date(ahora))} (${tiempoRelativo(f.vuelve_at)})`
+        : 'No vuelve solo';
   switch (f.motivo) {
     case 'relevo':
       return `Le escribió alguien del equipo. ${vuelve} si nadie más le escribe.`;

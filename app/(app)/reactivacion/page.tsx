@@ -44,7 +44,7 @@ export default async function PaginaReactivacion({
 
   if (error) {
     return (
-      <p className="text-sm text-destructive">
+      <p className="mx-auto w-full max-w-6xl text-sm text-destructive">
         No se pudo cargar la bandeja: {error.message}
       </p>
     );
@@ -55,13 +55,14 @@ export default async function PaginaReactivacion({
   const ahora = new Date().toISOString();
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+      {/* Primero los que llevan más tiempo callados: es al revés de lo que
+          hace uno solo, y al que lleva cuatro meses no le escribe nadie. */}
       <header>
         <h1 className="text-xl font-semibold tracking-tight">Reactivación</h1>
         <p className="max-w-[64ch] text-sm text-muted-foreground">
-          Gente que nos escribió, nos contó algo y se quedó callada. Están
-          ordenados del más callado al menos, que es al revés de lo que hace
-          uno solo: al que lleva cuatro meses no le escribe nadie nunca.
+          Personas que escribieron y dejaron de responder, primero las que llevan más tiempo
+          calladas.
         </p>
       </header>
 

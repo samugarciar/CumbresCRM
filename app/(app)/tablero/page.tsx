@@ -122,7 +122,10 @@ export default async function PaginaTablero({
           </p>
         </div>
       ) : (
-        <Tablero columnas={columnas} porColumna={POR_COLUMNA} />
+        // Un tablero por embudo: sin la llave, al pasar de Comercial a
+        // Administrativa el celular seguía buscando la columna elegida en
+        // Comercial y no enseñaba ninguna.
+        <Tablero key={embudoActual} columnas={columnas} porColumna={POR_COLUMNA} />
       )}
     </div>
   );
