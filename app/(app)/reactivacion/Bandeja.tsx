@@ -54,7 +54,7 @@ export function Bandeja({
 
   if (gente.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed py-14 text-center">
+      <div className="rounded-xl border border-dashed py-14 text-center">
         <p className="font-medium">No hay nadie dormido</p>
         <p className="text-sm text-muted-foreground">
           Todo el mundo ha tenido actividad reciente.
@@ -66,7 +66,7 @@ export function Bandeja({
   return (
     <ul className="flex flex-col gap-2">
       {gente.map((p) => (
-        <li key={p.contacto_id} className="rounded-lg border bg-card p-3.5">
+        <li key={p.contacto_id} className="rounded-xl border bg-card p-3.5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-baseline gap-x-2">
@@ -137,7 +137,7 @@ export function Bandeja({
 
 export function CabeceraVentana({ total }: { total: number }) {
   return (
-    <p className="flex items-start gap-2 rounded-lg bg-warning/10 px-3.5 py-3 text-sm text-warning">
+    <p className="flex items-start gap-2 rounded-xl bg-warning/10 px-3.5 py-3 text-sm text-warning">
       <MessageSquareText className="mt-0.5 size-4 shrink-0" />
       <span>
         <b>Las {total} están fuera de la ventana de 24 horas</b>, por definición:
