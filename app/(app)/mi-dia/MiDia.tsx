@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Sparkles,
   Reply,
+  ListChecks,
 } from 'lucide-react';
 import { tiempoRelativo } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ export interface Renglon {
   nombre: string | null;
   telefono_e164: string | null;
   tarea_id: string | null;
+  /** En 'gestion_envio_masivo' trae el id del envío: la firma de crm.mi_dia no cambió. */
   cita_id: string | null;
 }
 
@@ -43,6 +45,7 @@ const ICONO: Record<string, typeof Check> = {
   tarea_plataforma: ClipboardList,
   bot_callado: BotOff,
   estancada: AlarmClock,
+  gestion_envio_masivo: ListChecks,
 };
 
 /**
@@ -51,8 +54,9 @@ const ICONO: Record<string, typeof Check> = {
  * que la pantalla no enseñaba.
  *
  * 1 escalado y envío fallido, 7 bot callado sin atender → esperando
- * 2 a 6 visitas y tareas de hoy, y lo atrasado (tareas vencidas, visitas
- *   de días pasados sin cerrar) → para hoy
+ * 2 a 6 visitas y tareas de hoy, lo atrasado (tareas vencidas, visitas
+ *   de días pasados sin cerrar) y la gente de un envío masivo que hay que
+ *   gestionar a mano (5, solo en el día de quien lo lanzó) → para hoy
  * 8 estancadas → se está enfriando
  */
 const BLOQUES = [
@@ -80,6 +84,9 @@ type Clave = (typeof BLOQUES)[number]['clave'];
 
 /** Lo que hay que hacer con cada renglón, dicho en el botón. */
 function accion(r: Renglon): { texto: string; href: string } | null {
+  if (r.tipo === 'gestion_envio_masivo') {
+    return r.cita_id ? { texto: 'Gestionar', href: `/envios-masivos/${r.cita_id}#gestion` } : null;
+  }
   if (!r.contacto_id) return null;
   const ficha = `/contactos/${r.contacto_id}`;
   switch (r.tipo) {
@@ -101,6 +108,7 @@ function accion(r: Renglon): { texto: string; href: string } | null {
 function pista(r: Renglon): string | null {
   if (r.tipo === 'visita_sin_cerrar') return 'Márcala como realizada o cancelada en Citas de la plataforma.';
   if (r.tipo === 'tarea_plataforma') return 'Se resuelve en la plataforma de inventario.';
+  if (r.tipo === 'gestion_envio_masivo') return 'Llámalas o escríbeles por otro lado y márcalas en el envío.';
   return null;
 }
 
@@ -215,8 +223,9 @@ export function MiDia({ renglones }: { renglones: Renglon[] }) {
                   const Icono = ICONO[r.tipo] ?? ClipboardList;
                   const a = accion(r);
                   const ayuda = pista(r);
-                  const titulo = r.contacto_id ? (
-                    <Link href={`/contactos/${r.contacto_id}`} className="hover:underline">
+                  const enlace = r.contacto_id ? `/contactos/${r.contacto_id}` : a?.href;
+                  const titulo = enlace ? (
+                    <Link href={enlace} className="hover:underline">
                       {r.titulo}
                     </Link>
                   ) : (
