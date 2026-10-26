@@ -52,7 +52,10 @@ SELECT is(
 );
 
 -- --- El día que la plataforma cree la columna ------------------------------
-ALTER TABLE public.agente_comercial_mensajes ADD COLUMN wa_phone_number_id text;
+-- IF NOT EXISTS: ese día ya llegó (2026-10-08_mensajes_por_linea de la
+-- plataforma), en producción y en la base local que la copia. Sin él, la
+-- prueba se caía antes de llegar a lo que mide.
+ALTER TABLE public.agente_comercial_mensajes ADD COLUMN IF NOT EXISTS wa_phone_number_id text;
 
 -- Persona 2: le escribió a la comercial hace 1 h y a la administrativa
 -- hace 30 h. Ningún mensaje sin número.
