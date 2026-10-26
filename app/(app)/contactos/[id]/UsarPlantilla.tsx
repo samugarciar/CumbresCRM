@@ -33,6 +33,11 @@ export interface PlantillaResumen {
   estado_meta?: string;
   /** La línea en cuya cuenta de WhatsApp vive. NULL = número por defecto. */
   wa_phone_number_id?: string | null;
+  /**
+   * Las variables que la ficha NO sabe llenar para esta persona (monto,
+   * inmueble…). Lo calcula la página; vacío o ausente = sale completa.
+   */
+  faltan?: string[];
 }
 
 /**
@@ -118,7 +123,7 @@ export function UsarPlantilla({
       </Button>
 
       <Dialog open={abierto} onOpenChange={setAbierto}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-xl">
           <DialogHeader>
             <DialogTitle>
               {elegida ? elegida.nombre : 'Elige una plantilla o respuesta'}
@@ -145,7 +150,7 @@ export function UsarPlantilla({
                 >
                   <MessageCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>WhatsApp (Meta HSM)</span>
-                  <span className="rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] tabular">
+                  <span className="rounded-full bg-primary/10 px-1.5 py-0.2 text-[11px] tabular">
                     {plantillasWhatsApp.length}
                   </span>
                 </button>
@@ -161,7 +166,7 @@ export function UsarPlantilla({
                 >
                   <MessageSquare className="size-3.5 text-blue-600 dark:text-blue-400" />
                   <span>Respuestas Rápidas</span>
-                  <span className="rounded-full bg-muted px-1.5 py-0.2 text-[10px] tabular">
+                  <span className="rounded-full bg-muted px-1.5 py-0.2 text-[11px] tabular">
                     {plantillasChat.length}
                   </span>
                 </button>
@@ -215,7 +220,7 @@ export function UsarPlantilla({
                           </div>
                           <Badge
                             variant={estaAprobada ? 'secondary' : 'outline'}
-                            className={`text-[10px] rounded-md ${
+                            className={`text-[11px] rounded-md ${
                               estaAprobada
                                 ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300'
                                 : 'text-muted-foreground'

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Check, ChevronDown, Copy, Home } from 'lucide-react';
 import { tiempoRelativo } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
-import { UsarPlantilla, type PlantillaResumen } from './UsarPlantilla';
 
 export interface Recomendable {
   inmueble_id: string;
@@ -52,22 +51,11 @@ function comoMensaje(i: Recomendable): string {
  * Cerrado por defecto: la ficha es para leer la conversación, y esto es
  * una herramienta que se coge cuando hace falta. Pero la cabecera lleva
  * el número, así que se anuncia sola sin ocupar sitio.
+ *
+ * Solo copia los datos: se pegan en la caja de escribir de la ficha y
+ * salen por la línea oficial. Nada aquí manda al asesor a otro WhatsApp.
  */
-export function Recomendaciones({
-  inmuebles,
-  plantillas,
-  contactoId,
-  asesor,
-  ventanaCierraAt,
-  ahora,
-}: {
-  inmuebles: Recomendable[];
-  plantillas: PlantillaResumen[];
-  contactoId: string;
-  asesor: string | null;
-  ventanaCierraAt: string | null;
-  ahora: string;
-}) {
+export function Recomendaciones({ inmuebles }: { inmuebles: Recomendable[] }) {
   const [abierto, setAbierto] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
 
@@ -85,15 +73,15 @@ export function Recomendaciones({
   }
 
   return (
-    <section className="overflow-hidden rounded-lg border bg-card">
+    <section className="overflow-hidden rounded-xl border bg-card">
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
         aria-expanded={abierto}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted"
+        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm hover:bg-muted"
       >
         <Home className="size-4 shrink-0 text-muted-foreground" />
-        <span className="flex-1 font-medium">
+        <span className="flex-1 font-semibold">
           {inmuebles.length} para recomendarle
         </span>
         <ChevronDown
@@ -104,22 +92,16 @@ export function Recomendaciones({
       </button>
 
       {abierto && (
-        <ul className="divide-y border-t">
+        <>
+        <p className="border-t px-4 pt-2.5 text-xs text-muted-foreground">
+          Copia los datos del que te guste y pégalo en el mensaje de abajo.
+        </p>
+        <ul className="divide-y">
           {inmuebles.map((i) => (
-            <li key={i.inmueble_id} className="flex flex-col gap-1 px-3 py-2.5">
-              <div className="flex items-start gap-2">
-                <span
-                  className="tabular shrink-0 text-xs font-semibold text-muted-foreground"
-                  title={`Cumple el ${i.puntaje}% de lo que pidió`}
-                >
-                  {i.puntaje}
-                </span>
-                <p className="min-w-0 flex-1 text-sm font-medium leading-tight">
-                  {i.titulo ?? 'Sin título'}
-                </p>
-              </div>
+            <li key={i.inmueble_id} className="flex flex-col gap-1 px-4 py-2.5">
+              <p className="text-sm font-medium leading-tight">{i.titulo ?? 'Sin título'}</p>
 
-              <p className="flex flex-wrap items-center gap-x-2 pl-6 text-xs text-muted-foreground">
+              <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                 <span>{[i.barrio, i.ciudad].filter(Boolean).join(' · ') || 'Sin zona'}</span>
                 <span aria-hidden>·</span>
                 <span className="tabular">{pesos(i.precio)}</span>
@@ -131,35 +113,31 @@ export function Recomendaciones({
                 )}
               </p>
 
-              <div className="flex items-center gap-2 pl-6">
+              <div className="flex items-center gap-2">
                 {/* El dato que explica el orden. Sin él, que arriba salga
                     el de hace cuatro meses parece un error. */}
                 <span className="flex-1 text-xs text-muted-foreground">
-                  disponible {tiempoRelativo(i.disponible_desde)}
+                  <span className="tabular font-medium text-foreground/80">
+                    Coincide {i.puntaje} %
+                  </span>
+                  {' · '}disponible {tiempoRelativo(i.disponible_desde)}
                 </span>
-                {/* La plantilla es el camino principal: sale con el
-                    nombre de la persona y el del asesor, no como una ficha
-                    técnica pegada de golpe. El copiar crudo se queda al
-                    lado para cuando alguien solo quiere los datos. */}
-                <UsarPlantilla
-                  plantillas={plantillas}
-                  contactoId={contactoId}
-                  inmuebleId={i.inmueble_id}
-                  asesor={asesor}
-                  etiqueta="Plantilla"
-                  ventanaCierraAt={ventanaCierraAt}
-                  ahora={ahora}
-                />
-                <Button size="xs" variant="ghost" onClick={() => copiar(i)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => copiar(i)}
+                  className="h-8 rounded-lg text-xs"
+                  title="Copia título, zona, habitaciones y precio para pegarlos en el mensaje"
+                >
                   {copiado === i.inmueble_id ? (
                     <>
-                      <Check className="size-3" />
+                      <Check className="size-3.5" />
                       Copiado
                     </>
                   ) : (
                     <>
-                      <Copy className="size-3" />
-                      Datos
+                      <Copy className="size-3.5" />
+                      Copiar datos
                     </>
                   )}
                 </Button>
@@ -167,6 +145,7 @@ export function Recomendaciones({
             </li>
           ))}
         </ul>
+        </>
       )}
     </section>
   );

@@ -34,7 +34,7 @@ export function BotonMarcarAtendido({
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
         <CheckCheck className="size-3.5" />
-        Atendido
+        Respondido
       </span>
     );
   }
@@ -46,15 +46,15 @@ export function BotonMarcarAtendido({
         size="sm"
         onClick={ejecutar}
         disabled={pendiente}
-        title="Marcar como respondido / al día"
-        className={`h-7 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-lg ${className}`}
+        title="Ya le respondiste por otro medio: sale de «Esperando respuesta»"
+        className={`h-8 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground ${className}`}
       >
         {pendiente ? (
           <Loader2 className="size-3 animate-spin" />
         ) : (
           <Check className="size-3 text-muted-foreground" />
         )}
-        <span>{pendiente ? 'Guardando…' : 'Al día'}</span>
+        <span>{pendiente ? 'Guardando…' : 'Marcar respondido'}</span>
       </Button>
     );
   }
@@ -65,7 +65,7 @@ export function BotonMarcarAtendido({
       size="sm"
       onClick={ejecutar}
       disabled={pendiente}
-      className={`h-8 gap-1.5 text-xs font-medium rounded-xl border-border/70 hover:border-emerald-500/40 hover:text-emerald-600 transition-colors ${className}`}
+      className={`h-8 gap-1.5 rounded-lg bg-background text-xs font-medium ${className}`}
     >
       {pendiente ? (
         <Loader2 className="size-3.5 animate-spin" />

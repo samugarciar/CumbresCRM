@@ -1,23 +1,26 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, MessageCircle, PhoneOff } from 'lucide-react';
+import { ArrowLeft, BotOff, PhoneOff, UserRound } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { canalConfigurado } from '@/lib/canal';
-import { iniciales, telefonoLegible, tiempoRelativo, enlaceWhatsApp } from '@/lib/formato';
+import { iniciales, telefonoLegible, tiempoRelativo } from '@/lib/formato';
+import { variablesDe } from '@/lib/plantillas';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { PanelDatos } from './PanelDatos';
 import { Historial, type Actividad } from './Historial';
 import { conMedios } from './medios';
-import { PonerseAlDia, esperaLegible } from './PonerseAlDia';
+import { PonerseAlDia } from './PonerseAlDia';
 import { MarcarLeido } from './MarcarLeido';
 import { ChatEnVivo } from './ChatEnVivo';
 import { Recomendaciones, type Recomendable } from './Recomendaciones';
-import { UsarPlantilla, type PlantillaResumen } from './UsarPlantilla';
+import type { PlantillaResumen } from './UsarPlantilla';
 import { TareaNueva } from '@/app/(app)/mi-dia/TareaNueva';
-import { BotonMarcarAtendido } from '../BotonMarcarAtendido';
 import { lineaDeEnvio } from './lineaDeEnvio';
 import { CasosYEmbudos, type OportunidadContacto, type EtapaConfig } from './CasosYEmbudos';
+import { ContenedorChat } from './ContenedorChat';
+import { DatosDelContacto } from './DatosDelContacto';
+import { CopiarNumero } from './CopiarNumero';
+import { describirBot } from './estadoBot';
 
 export default async function FichaContacto({
   params,
@@ -61,6 +64,7 @@ export default async function FichaContacto({
     linea,
     { data: oportunidades },
     { data: etapas },
+    { data: embudos },
   ] = await Promise.all([
     crm.from('identidades').select('tipo, valor').eq('contacto_id', id).order('tipo'),
     crm
@@ -78,14 +82,19 @@ export default async function FichaContacto({
       p_limite: 6,
       p_rotar: true,
     }),
-    crm.from('plantillas').select('id, nombre, categoria, tipo, estado_meta, wa_phone_number_id').eq('activa', true).order('nombre'),
+    // El cuerpo solo para saber qué variables usa cada una (ver abajo).
+    crm
+      .from('plantillas')
+      .select('id, nombre, categoria, tipo, estado_meta, wa_phone_number_id, cuerpo')
+      .eq('activa', true)
+      .order('nombre'),
     // Cuándo se cierra la ventana de 24 h de WhatsApp. Se calcula en la
     // base, del último mensaje ENTRANTE: es lo único que la abre.
     crm.rpc('ventana_whatsapp', { p_contacto_id: id }),
     // Quién lleva esta conversación. Casi siempre nadie, todavía.
     crm.rpc('responsable_de', { p_contacto_id: id }),
-    // Cuándo vuelve el bot tras un relevo. La perilla vive en la base: si
-    // la ficha sumara las horas por su cuenta, mentiría el día que cambie.
+    // Cuándo vuelve el bot. La perilla vive en la base: si la ficha sumara
+    // las horas por su cuenta, mentiría el día que cambie.
     crm.rpc('bot_vuelve_at', { p_contacto_id: id }),
     // Por qué línea se le escribe: la decide el embudo de sus oportunidades.
     lineaDeEnvio(id),
@@ -99,6 +108,9 @@ export default async function FichaContacto({
       .select('codigo, etiqueta, embudo, orden')
       .in('embudo', ['comercial', 'administrativa', 'captacion'])
       .order('orden'),
+    // Qué embudos atiende el bot: en los que no, la ficha no ofrece el
+    // interruptor (encenderlo ahí no haría nada).
+    crm.from('embudos').select('codigo, bot_atiende'),
   ]);
 
   // Fotos, audios y documentos de WhatsApp: viven en el bucket privado de
@@ -114,81 +126,106 @@ export default async function FichaContacto({
   const ahora = new Date().toISOString();
 
   const responsable = responsableFilas?.[0] ?? null;
-
   const telefono = telefonoLegible(contacto.telefono_e164);
-  const wa = enlaceWhatsApp(contacto.telefono_e164);
+
+  // Qué variables NO se pueden llenar aquí: sin inmueble elegido ni archivo
+  // de cartera, una plantilla con {{monto}} o {{inmueble}} saldría con
+  // huecos. La caja de escribir lo usa para no ofrecerla por defecto.
+  const llenables: Record<string, boolean> = {
+    nombre: Boolean(contacto.nombre?.trim()),
+    telefono: Boolean(contacto.telefono_e164),
+    asesor: Boolean(asesor?.trim()),
+  };
+  const plantillasFicha: PlantillaResumen[] = (plantillas ?? []).map(({ cuerpo, ...p }) => ({
+    ...p,
+    faltan: variablesDe(cuerpo ?? '').filter((v) => !llenables[v]),
+  }));
+
+  // ¿Lo atiende el bot? Si todas sus oportunidades abiertas son de
+  // embudos sin bot (administrativa, captación), no.
+  const atiendeBot = new Map((embudos ?? []).map((e) => [e.codigo, e.bot_atiende]));
+  const abiertas = (oportunidades ?? []) as OportunidadContacto[];
+  const botNoAtiende =
+    abiertas.length > 0 && abiertas.every((o) => atiendeBot.get(o.embudo) === false);
+
+  const estadoBot = describirBot({
+    activo: contacto.bot_activo ?? true,
+    motivo: contacto.bot_motivo,
+    cambiadoAt: contacto.bot_cambiado_at,
+    vuelveAt: botVuelveAt ?? null,
+    ahora,
+  });
+  const chipBot = botNoAtiende ? null : estadoBot.chip;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      {/* Botón de retroceso */}
+    <div className="flex w-full flex-col gap-4">
       <div>
-        <Button variant="ghost" size="sm" asChild className="-ml-2 gap-1.5 text-muted-foreground hover:text-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          asChild
+          className="-ml-2 h-8 gap-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+        >
           <Link href="/contactos">
             <ArrowLeft className="size-4" />
-            <span>Volver a Bandeja de entrada</span>
+            <span>Bandeja</span>
           </Link>
         </Button>
       </div>
 
-      {/* Encabezado del Contacto Tipo Cockpit */}
-      <header className="rounded-2xl border bg-card p-5 shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4 min-w-0">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary text-lg font-bold border border-primary/20 shadow-2xs">
-              {iniciales(contacto.nombre)}
-            </div>
-
-            <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-foreground truncate">
-                  {contacto.nombre || 'Sin nombre'}
-                </h1>
-                <Badge variant="outline" className="text-xs capitalize font-medium">
-                  {contacto.tipo}
-                </Badge>
-              </div>
-
-              <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                {telefono ? (
-                  <span className="tabular font-medium text-foreground/80">{telefono}</span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-warning">
-                    <PhoneOff className="size-3.5" />
-                    Sin número registrado
-                  </span>
-                )}
-                <span aria-hidden>·</span>
-                <span>Actividad {tiempoRelativo(contacto.ultima_actividad_at)}</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Acciones principales a la derecha */}
-          <div className="flex flex-wrap items-center gap-2">
-            <UsarPlantilla
-              plantillas={(plantillas ?? []) as PlantillaResumen[]}
-              contactoId={contacto.id}
-              asesor={asesor}
-              ventanaCierraAt={ventanaCierraAt}
-              ahora={ahora}
-            />
-            <TareaNueva contactoId={contacto.id} nombre={contacto.nombre} />
-            {wa && (
-              <Button asChild size="sm" className="gap-1.5 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs">
-                <a href={wa} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="size-4" />
-                  Abrir WhatsApp
-                </a>
-              </Button>
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+            {contacto.nombre?.trim() ? (
+              iniciales(contacto.nombre)
+            ) : (
+              <UserRound className="size-5" aria-hidden />
             )}
           </div>
+
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">
+                {contacto.nombre?.trim() || telefono || 'Sin nombre'}
+              </h1>
+              {chipBot && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning"
+                  title={[estadoBot.porQue, estadoBot.vuelve].filter(Boolean).join(' ')}
+                >
+                  <BotOff className="size-3" aria-hidden />
+                  {chipBot}
+                </span>
+              )}
+            </div>
+
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+              {contacto.telefono_e164 ? (
+                <>
+                  {contacto.nombre?.trim() && (
+                    <span className="tabular font-medium text-foreground/80">{telefono}</span>
+                  )}
+                  <CopiarNumero telefono={contacto.telefono_e164} />
+                </>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-warning">
+                  <PhoneOff className="size-3.5" />
+                  Sin número registrado
+                </span>
+              )}
+              <span aria-hidden>·</span>
+              <span>Última actividad {tiempoRelativo(contacto.ultima_actividad_at)}</span>
+            </p>
+          </div>
         </div>
+
+        <TareaNueva contactoId={contacto.id} nombre={contacto.nombre} />
       </header>
 
-      {/* Distribución en 2 Columnas: Contexto a la izquierda, Conversación y Timeline a la derecha */}
-      <div className="grid gap-6 lg:grid-cols-[21rem_1fr] items-start">
-        {/* Columna Izquierda: Inteligencia & Datos */}
-        <div className="flex flex-col gap-4">
+      {/* Escritorio: datos a la izquierda, conversación a la derecha.
+          Celular: la conversación primero y los datos plegados debajo. */}
+      <div className="grid items-start gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <DatosDelContacto className="order-2 lg:order-1">
           <PanelDatos
             contactoId={contacto.id}
             nombre={contacto.nombre}
@@ -200,8 +237,8 @@ export default async function FichaContacto({
             botActivo={contacto.bot_activo ?? true}
             botMotivo={contacto.bot_motivo}
             botCambiadoAt={contacto.bot_cambiado_at}
-            botVuelveAt={botVuelveAt}
-            ventanaCierraAt={ventanaCierraAt}
+            botVuelveAt={botVuelveAt ?? null}
+            botNoAtiende={botNoAtiende}
             ahora={ahora}
             responsableNombre={responsable?.nombre ?? null}
             responsableEsMio={
@@ -211,55 +248,30 @@ export default async function FichaContacto({
 
           <CasosYEmbudos
             contactoId={contacto.id}
-            oportunidades={(oportunidades ?? []) as OportunidadContacto[]}
+            nombre={contacto.nombre}
+            oportunidades={abiertas}
             etapas={(etapas ?? []) as EtapaConfig[]}
           />
 
-          <Recomendaciones
-            inmuebles={(recomendables ?? []) as Recomendable[]}
-            plantillas={(plantillas ?? []) as PlantillaResumen[]}
-            contactoId={contacto.id}
-            asesor={asesor}
-            ventanaCierraAt={ventanaCierraAt}
-            ahora={ahora}
-          />
-        </div>
+          <Recomendaciones inmuebles={(recomendables ?? []) as Recomendable[]} />
+        </DatosDelContacto>
 
-        {/* Columna Derecha: Hub de Conversación y Actividad */}
-        <div className="flex min-w-0 flex-col gap-4">
-          {resumen?.esperando_segundos !== null && (resumen?.esperando_segundos ?? 0) > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-950 dark:text-amber-200 shadow-2xs">
-              <div className="flex items-center gap-3">
-                <span className="relative flex size-3 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full size-3 bg-amber-500"></span>
-                </span>
-                <div>
-                  <p className="text-sm font-bold text-foreground">
-                    Esta persona está esperando una respuesta tuya
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Último mensaje recibido hace {esperaLegible(resumen!.esperando_segundos!)}. Si ya lo atendiste por llamada, presencial o no requiere mensaje, márcalo como atendido.
-                  </p>
-                </div>
-              </div>
-              <BotonMarcarAtendido contactoId={contacto.id} variante="completo" />
-            </div>
-          )}
+        <div className="order-1 flex min-w-0 flex-col gap-3 lg:order-2">
+          {resumen && <PonerseAlDia resumen={resumen} contactoId={contacto.id} />}
 
-          {resumen && <PonerseAlDia resumen={resumen} />}
-
-          <Historial
-            actividades={actividades}
-            vistoHasta={resumen?.visto_hasta ?? null}
-            contactoId={contacto.id}
-            canalListo={canalConfigurado()}
-            linea={linea}
-            ventanaCierraAt={ventanaCierraAt}
-            ahora={ahora}
-            plantillas={(plantillas ?? []) as PlantillaResumen[]}
-            asesor={asesor}
-          />
+          <ContenedorChat>
+            <Historial
+              actividades={actividades}
+              vistoHasta={resumen?.visto_hasta ?? null}
+              contactoId={contacto.id}
+              canalListo={canalConfigurado()}
+              linea={linea}
+              ventanaCierraAt={ventanaCierraAt}
+              ahora={ahora}
+              plantillas={plantillasFicha}
+              asesor={asesor}
+            />
+          </ContenedorChat>
         </div>
 
         <MarcarLeido contactoId={contacto.id} />
