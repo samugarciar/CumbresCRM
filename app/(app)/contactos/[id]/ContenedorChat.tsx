@@ -55,6 +55,25 @@ export function ContenedorChat({ children }: { children: React.ReactNode }) {
     const tamano = new ResizeObserver(seguirAbajo);
     for (const hijo of Array.from(el.children)) tamano.observe(hijo);
 
+    // Al cambiar de pestaña (Chat, Historial, Visitas, Notas internas): el
+    // chat se lee desde el último mensaje; lo demás, desde arriba, que es
+    // donde están lo más nuevo y el editor de notas. Va DESPUÉS de
+    // `cambios`, para que este ajuste sea el último que se aplica.
+    const pestanas = new MutationObserver((registros) => {
+      const activa = registros
+        .map((r) => r.target as HTMLElement)
+        .find((b) => b.getAttribute('aria-pressed') === 'true');
+      if (!activa) return;
+      if (activa === activa.parentElement?.firstElementChild) {
+        pegadoAbajo.current = true;
+        bajar();
+      } else {
+        pegadoAbajo.current = false;
+        el.scrollTop = 0;
+      }
+    });
+    pestanas.observe(el, { subtree: true, attributes: true, attributeFilter: ['aria-pressed'] });
+
     // Lo de arriba puede crecer o encogerse (el aviso de espera se va al
     // marcar respondido): la altura se recalcula.
     const pagina = new ResizeObserver(ajustarAltura);
@@ -98,6 +117,7 @@ export function ContenedorChat({ children }: { children: React.ReactNode }) {
       clearTimeout(enfoque);
       clearTimeout(reintento);
       cambios.disconnect();
+      pestanas.disconnect();
       tamano.disconnect();
       pagina.disconnect();
       el.removeEventListener('scroll', alDesplazar);
@@ -106,11 +126,15 @@ export function ContenedorChat({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // En escritorio, la barra de pestañas de Historial (su primer hijo) queda
+  // fija arriba del marco: el chat abre en el fondo y, sin esto, «Historial»
+  // y «Notas internas» solo aparecían subiendo por toda la conversación.
+  // En el celular no: ahí el marco es bajo y cada píxel es para mensajes.
   return (
     <div
       ref={ref}
       id="escribir"
-      className="min-h-[360px] scroll-mt-4 overflow-y-auto overscroll-contain rounded-xl border bg-muted/20 p-3 pb-0 lg:h-[calc(100dvh-14rem)]"
+      className="min-h-[360px] scroll-mt-4 overflow-y-auto overscroll-contain rounded-xl border bg-muted/20 p-3 pb-0 lg:h-[calc(100dvh-14rem)] lg:[&>section>div:first-child]:sticky lg:[&>section>div:first-child]:-top-3 lg:[&>section>div:first-child]:z-20 lg:[&>section>div:first-child]:bg-card"
     >
       {children}
     </div>
