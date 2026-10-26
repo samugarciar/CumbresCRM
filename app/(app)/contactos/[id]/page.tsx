@@ -11,6 +11,7 @@ import { Historial, type Actividad } from './Historial';
 import { conMedios } from './medios';
 import { PonerseAlDia, esperaLegible } from './PonerseAlDia';
 import { MarcarLeido } from './MarcarLeido';
+import { ChatEnVivo } from './ChatEnVivo';
 import { Recomendaciones, type Recomendable } from './Recomendaciones';
 import { UsarPlantilla, type PlantillaResumen } from './UsarPlantilla';
 import { TareaNueva } from '@/app/(app)/mi-dia/TareaNueva';
@@ -262,6 +263,7 @@ export default async function FichaContacto({
         </div>
 
         <MarcarLeido contactoId={contacto.id} />
+        <ChatEnVivo contactoId={contacto.id} />
       </div>
     </div>
   );
