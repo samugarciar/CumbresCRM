@@ -245,13 +245,13 @@ export function MiDia({ renglones }: { renglones: Renglon[] }) {
                         >
                           {titulo}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="line-clamp-2 text-xs text-muted-foreground sm:line-clamp-1">
                           {r.detalle}
                           {r.cuando && (
                             <span className="ml-1 text-foreground/70">· {tiempoRelativo(r.cuando)}</span>
                           )}
                         </p>
-                        {ayuda && <p className="truncate text-xs text-muted-foreground">{ayuda}</p>}
+                        {ayuda && <p className="line-clamp-2 text-xs text-muted-foreground sm:line-clamp-1">{ayuda}</p>}
                       </div>
 
                       {r.tarea_id ? (

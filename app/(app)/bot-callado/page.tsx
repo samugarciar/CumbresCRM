@@ -89,15 +89,14 @@ export default async function PaginaBotCallado() {
       ) : (
         <>
           <Seccion
-            titulo="No vuelven solos"
-            explicacion="No vuelven solos: alguien tiene que atenderlos o encender el bot. Los de la línea vieja, que no tienen ficha, se encienden desde aquí."
+            titulo="No vuelven solos: alguien tiene que atenderlos o encender el bot"
+            explicacion="Los de la línea vieja, que no tienen ficha, se encienden desde aquí."
             filas={noVuelven}
             ahora={ahora}
             vacio="Ninguno: todos los silencios de ahora terminan solos."
           />
           <Seccion
-            titulo="Vuelven solos"
-            explicacion="Vuelven solos a la hora indicada."
+            titulo="Vuelven solos a la hora indicada"
             filas={vuelven}
             ahora={ahora}
             vacio="Ninguno."
@@ -116,7 +115,7 @@ function Seccion({
   vacio,
 }: {
   titulo: string;
-  explicacion: string;
+  explicacion?: string;
   filas: Callado[];
   ahora: number;
   vacio: string;
@@ -127,7 +126,7 @@ function Seccion({
         <h2 className="text-sm font-semibold">
           {titulo} <span className="tabular font-normal text-muted-foreground">· {filas.length}</span>
         </h2>
-        <p className="text-xs text-muted-foreground">{explicacion}</p>
+        {explicacion && <p className="text-xs text-muted-foreground">{explicacion}</p>}
       </div>
 
       {filas.length === 0 ? (
@@ -155,7 +154,11 @@ function Fila({ f, ahora }: { f: Callado; ahora: number }) {
     <li className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 px-4 py-3">
       <div className="flex min-w-0 items-start gap-3">
         <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
-          {f.nombre?.trim() ? iniciales(f.nombre) : <UserRound className="size-4" aria-hidden />}
+          {f.nombre?.trim() ? (
+            iniciales(f.nombre.replace(/[()]/g, ''))
+          ) : (
+            <UserRound className="size-4" aria-hidden />
+          )}
         </span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -176,7 +179,10 @@ function Fila({ f, ahora }: { f: Callado; ahora: number }) {
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {f.telefono_e164 && <span className="tabular">{telefonoLegible(f.telefono_e164)} · </span>}
+            {/* Sin nombre, el teléfono ya es el título */}
+            {f.telefono_e164 && f.nombre?.trim() && (
+              <span className="tabular">{telefonoLegible(f.telefono_e164)} · </span>
+            )}
             {porQue(f, ahora)}
           </p>
         </div>

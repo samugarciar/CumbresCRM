@@ -229,7 +229,7 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
                   <td className="px-3 py-2 tabular text-muted-foreground">{f.fila}</td>
                   <td className="px-3 py-2">
                     {f.contacto_id ? (
-                      <Link href={`/contactos/${f.contacto_id}`} className="font-medium hover:text-primary hover:underline">
+                      <Link href={`/contactos/${f.contacto_id}`} className="font-medium text-primary hover:underline">
                         {f.nombre ?? 'Sin nombre'}
                       </Link>
                     ) : (
