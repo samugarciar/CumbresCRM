@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { ArrowLeft, Home, MessageCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, Home, Reply, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { tiempoRelativo, enlaceWhatsApp } from '@/lib/formato';
+import { tiempoRelativo } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FiltrosCoincidencias } from './FiltrosCoincidencias';
@@ -72,7 +72,7 @@ export default async function PaginaCoincidencias({
 
   if (error) {
     return (
-      <p className="text-sm text-destructive">
+      <p className="mx-auto w-full max-w-6xl text-sm text-destructive">
         No se pudieron cargar las coincidencias: {error.message}
       </p>
     );
@@ -91,10 +91,10 @@ export default async function PaginaCoincidencias({
   const grupos = [...porInmueble.values()];
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
       <header className="flex flex-col gap-1">
         {unoSolo && (
-          <Button variant="ghost" size="sm" asChild className="-ml-2 w-fit">
+          <Button variant="ghost" size="sm" asChild className="-ml-2 h-8 w-fit rounded-lg">
             <Link href="/coincidencias">
               <ArrowLeft className="size-4" />
               Todas las coincidencias
@@ -110,12 +110,23 @@ export default async function PaginaCoincidencias({
         </p>
       </header>
 
-      <Suspense fallback={<Skeleton className="h-9 w-full" />}>
-        <FiltrosCoincidencias minimo={minimo} historico={historico} />
-      </Suspense>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Suspense fallback={<Skeleton className="h-8 w-full" />}>
+          <FiltrosCoincidencias minimo={minimo} />
+        </Suspense>
+        {/* El histórico se pide a propósito, y aparte: por defecto solo sale
+            gente que habló en el último mes. */}
+        <Link
+          href={historico ? `/coincidencias?min=${minimo}` : `/coincidencias?min=${minimo}&historico=1`}
+          className="text-xs font-medium text-primary hover:underline"
+          title="Incluir a quien lleva más de un mes sin hablar"
+        >
+          {historico ? 'Volver al último mes' : 'Rebuscar en el histórico'}
+        </Link>
+      </div>
 
       {grupos.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-16 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-16 text-center">
           <Sparkles className="size-8 text-muted-foreground" />
           <p className="font-medium">Ningún inmueble encaja con nadie ahora mismo</p>
           <p className="max-w-md text-sm text-muted-foreground">
@@ -127,7 +138,7 @@ export default async function PaginaCoincidencias({
       ) : (
         <div className="flex flex-col gap-4">
           {grupos.map(({ info, clientes }) => (
-            <section key={info.inmueble_id} className="overflow-hidden rounded-lg border bg-card">
+            <section key={info.inmueble_id} className="overflow-hidden rounded-xl border bg-card">
               <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
                 <div className="min-w-0">
                   <h2 className="truncate font-medium">{info.titulo ?? 'Sin título'}</h2>
@@ -160,7 +171,6 @@ export default async function PaginaCoincidencias({
 
               <ul className="divide-y">
                 {clientes.map((c) => {
-                  const wa = enlaceWhatsApp(c.telefono_e164);
                   return (
                     <li
                       key={c.contacto_id}
@@ -170,10 +180,10 @@ export default async function PaginaCoincidencias({
                           lista, y así el ojo baja por una columna de
                           números en vez de buscarlo en cada fila. */}
                       <span
-                        className="tabular w-9 shrink-0 text-sm font-semibold"
-                        title={`Cumple el ${c.puntaje}% de las ${c.especificidad} cosas que pidió`}
+                        className="tabular w-12 shrink-0 text-sm font-semibold"
+                        title={`Cumple el ${c.puntaje} % de las ${c.especificidad} cosas que pidió`}
                       >
-                        {c.puntaje}
+                        {c.puntaje} %
                       </span>
 
                       <Link
@@ -200,12 +210,13 @@ export default async function PaginaCoincidencias({
                         {c.frescura >= 2 && ' · frío'}
                       </span>
 
-                      {wa ? (
-                        <Button size="xs" variant="outline" asChild>
-                          <a href={wa} target="_blank" rel="noopener noreferrer">
-                            <MessageCircle className="size-3" />
-                            WhatsApp
-                          </a>
+                      {/* Se le escribe desde la ficha, por la línea oficial */}
+                      {c.telefono_e164 ? (
+                        <Button size="sm" variant="outline" asChild className="h-8 gap-1 rounded-lg text-xs">
+                          <Link href={`/contactos/${c.contacto_id}#escribir`}>
+                            <Reply className="size-3.5" />
+                            Responder
+                          </Link>
                         </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground">Sin número</span>
