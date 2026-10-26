@@ -15,7 +15,7 @@ import {
   User,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { fechaLarga, tiempoRelativo } from '@/lib/formato';
+import { etiquetaDia, fechaLarga, horaCorta, llaveDia, tiempoRelativo } from '@/lib/formato';
 import { CajaDeEscribir } from './CajaDeEscribir';
 import { NotaNueva } from './NotaNueva';
 import type { EleccionLinea } from '@/lib/lineas';
@@ -32,6 +32,8 @@ export interface Actividad {
   metadata?: unknown;
   /** La foto, el audio o el documento, con su URL ya firmada (ver medios.ts). */
   medio?: MedioActividad | null;
+  /** Quién del equipo lo escribió, si se sabe. Sin él, la burbuja dice «Equipo». */
+  creado_por_nombre?: string | null;
 }
 
 /** `metadata.medio` de un mensaje de WhatsApp, como lo deja la plataforma. */
@@ -42,6 +44,10 @@ export interface MedioActividad {
   nombre: string | null;
   voz?: boolean;
   url?: string | null;
+  /** Lo que escribió la persona junto al archivo. */
+  caption?: string | null;
+  /** La transcripción de la nota de voz o la descripción automática de la foto. */
+  texto?: string | null;
 }
 
 const ASPECTO: Record<
@@ -75,6 +81,7 @@ export function Historial({
   ahora,
   plantillas = [],
   asesor = null,
+  telefono,
 }: {
   actividades: Actividad[];
   vistoHasta?: string | null;
@@ -85,23 +92,22 @@ export function Historial({
   ahora: string;
   plantillas?: PlantillaResumen[];
   asesor?: string | null;
+  /**
+   * El teléfono de la persona. Con teléfono hay chat aunque todavía no haya
+   * mensajes: a quien solo recibió un envío masivo también se le escribe
+   * (con plantilla). Si la página no lo pasa, el chat queda habilitado y es
+   * enviarMensaje quien dice que no hay número.
+   */
+  telefono?: string | null;
 }) {
   const tieneMensajes = actividades.some((a) => MENSAJES.includes(a.tipo ?? ''));
+  const chatHabilitado = tieneMensajes || telefono !== null;
   // Si la persona tiene chat de WhatsApp, el asesor busca de inmediato ver la conversación
-  const [vista, setVista] = useState<Vista>(tieneMensajes ? 'conversacion' : 'todo');
+  const [vista, setVista] = useState<Vista>(chatHabilitado ? 'conversacion' : 'todo');
 
   const ventanaAbierta =
     ventanaCierraAt !== null &&
     new Date(ventanaCierraAt).getTime() > new Date(ahora).getTime();
-
-  const horasRestantes = ventanaCierraAt
-    ? Math.max(
-        0,
-        Math.round(
-          (new Date(ventanaCierraAt).getTime() - new Date(ahora).getTime()) / 3_600_000
-        )
-      )
-    : 0;
 
   const grupos = useMemo(
     () => ({
@@ -136,7 +142,7 @@ export function Historial({
               key={p.id}
               type="button"
               onClick={() => setVista(p.id)}
-              disabled={n === 0 && p.id !== 'todo' && p.id !== 'notas'}
+              disabled={n === 0 && p.id !== 'todo' && p.id !== 'notas' && !(p.id === 'conversacion' && chatHabilitado)}
               aria-pressed={activa}
               className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 activa
@@ -169,47 +175,23 @@ export function Historial({
       )}
 
       {/* Contenido según pestaña */}
-      {visibles.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-10 text-center bg-card/50">
-          <Clock className="size-6 text-muted-foreground/60" />
-          <p className="text-sm font-medium text-foreground">Sin registros en esta vista</p>
-          <p className="text-xs text-muted-foreground max-w-sm">
-            {vista === 'notas'
-              ? 'No hay notas registradas. Usa el formulario de arriba para dejar un apunte sobre esta persona.'
-              : 'Aún no se registran actividades para esta categoría.'}
-          </p>
-        </div>
-      ) : vista === 'conversacion' ? (
+      {vista === 'conversacion' ? (
+        // La caja se monta aunque no haya mensajes: a quien solo recibió un
+        // envío masivo también hay que poder escribirle (con plantilla). El
+        // estado de la ventana lo dice la caja; aquí no se repite.
         <div className="flex flex-col gap-4">
-          {/* Indicador de estado de la ventana en el chat */}
-          {ventanaAbierta ? (
-            <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300">
-              <div className="flex items-center gap-2">
-                <span className="relative flex size-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
-                </span>
-                <span className="font-semibold">Ventana de WhatsApp abierta</span>
-              </div>
-              <span className="tabular font-medium text-emerald-700 dark:text-emerald-400">
-                {horasRestantes >= 1 ? `Quedan ~${horasRestantes} h de texto libre` : 'Menos de 1 h de ventana'}
-              </span>
+          {visibles.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-8 text-center bg-card/50">
+              <MessageCircle className="size-6 text-muted-foreground/60" />
+              <p className="text-sm font-medium text-foreground">Todavía no hay mensajes con esta persona</p>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                Para escribirle primero hay que usar una plantilla aprobada por WhatsApp.
+              </p>
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-300">
-              <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-amber-500"></span>
-                <span className="font-semibold">Ventana de 24 horas cerrada</span>
-              </div>
-              <span className="text-[11px] text-amber-800/90 dark:text-amber-300/90">
-                Solo admite plantillas oficiales de WhatsApp (Meta HSM)
-              </span>
-            </div>
+            <Conversacion mensajes={visibles} ahora={ahora} />
           )}
 
-          <Conversacion mensajes={visibles} />
-
-          {/* Caja de escribir WhatsApp debajo del chat */}
           <CajaDeEscribir
             contactoId={contactoId}
             canalListo={canalListo}
@@ -222,6 +204,16 @@ export function Historial({
             asesor={asesor}
           />
         </div>
+      ) : visibles.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-10 text-center bg-card/50">
+          <Clock className="size-6 text-muted-foreground/60" />
+          <p className="text-sm font-medium text-foreground">Sin registros en esta vista</p>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            {vista === 'notas'
+              ? 'No hay notas registradas. Usa el formulario de arriba para dejar un apunte sobre esta persona.'
+              : 'Aún no se registran actividades para esta categoría.'}
+          </p>
+        </div>
       ) : (
         <div className="rounded-xl border bg-card p-4 shadow-2xs">
           <Linea actividades={visibles} vistoHasta={vistoHasta} />
@@ -231,70 +223,91 @@ export function Historial({
   );
 }
 
+/** Quién habla en una burbuja que no es del cliente. */
+function autor(m: Actividad): { texto: string; esBot: boolean } {
+  if (m.origen === 'agente_ia') return { texto: 'Bot', esBot: true };
+  if (m.origen === 'sistema') return { texto: 'Automático', esBot: false };
+  // origen 'humano': alguien del equipo, desde el CRM o desde el celular.
+  return { texto: m.creado_por_nombre?.trim() || 'Equipo', esBot: false };
+}
+
 /**
- * Chat WhatsApp con burbujas modernas y claras.
+ * Lo que el chat enseña como texto de una burbuja con archivo. La
+ * plataforma guarda «[foto] lo que escribió\n(La foto muestra: …)» para
+ * que el bot lo entienda; aquí se enseña lo que escribió la persona y la
+ * descripción va aparte, en pequeño.
  */
-function Conversacion({ mensajes }: { mensajes: Actividad[] }) {
+function textoDeBurbuja(m: Actividad): string {
+  const cuerpo = m.cuerpo ?? '';
+  if (!m.medio) return cuerpo;
+  if (m.medio.caption != null) return m.medio.caption.trim();
+  const limpio = cuerpo
+    .replace(/^\[(foto|video|sticker|audio|nota de voz|documento)[^\]]*\]\s*/i, '')
+    .replace(/\n?\(La foto muestra: [\s\S]*\)\s*$/, '')
+    .trim();
+  // La nota de voz guarda la transcripción como texto: va aparte, no dos veces.
+  return limpio === (m.medio.texto ?? '').trim() ? '' : limpio;
+}
+
+/** Chat de WhatsApp: el cliente a la izquierda; el equipo y el bot a la derecha. */
+function Conversacion({ mensajes, ahora }: { mensajes: Actividad[]; ahora: string }) {
   const enOrden = [...mensajes].reverse();
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-2xs">
       {enOrden.map((m, i) => {
         const delCliente = m.tipo === 'mensaje_entrante';
+        const quien = delCliente ? null : autor(m);
         const anterior = enOrden[i - 1];
-        const dia = m.ocurrido_at ? new Date(m.ocurrido_at).toDateString() : '';
-        const diaAnterior = anterior?.ocurrido_at
-          ? new Date(anterior.ocurrido_at).toDateString()
-          : null;
+        // El día de Colombia, no el del servidor ni el del navegador.
+        const dia = llaveDia(m.ocurrido_at);
+        const diaAnterior = anterior ? llaveDia(anterior.ocurrido_at) : null;
+        const texto = textoDeBurbuja(m);
+        const automatico = m.medio?.texto?.trim();
+
+        const burbuja = delCliente
+          ? 'rounded-bl-xs bg-muted/80 text-foreground border border-border/50'
+          : quien?.esBot
+            ? 'rounded-br-xs bg-primary/10 text-foreground border border-primary/20'
+            : 'rounded-br-xs bg-primary text-primary-foreground';
+        const tenue = delCliente || quien?.esBot ? 'text-muted-foreground' : 'text-primary-foreground/75';
 
         return (
           <div key={m.id ?? i} className="flex flex-col gap-3">
             {dia !== diaAnterior && (
               <div className="flex items-center gap-3 py-1.5">
                 <span className="h-px flex-1 bg-border/60" />
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider bg-muted/60 px-2 py-0.5 rounded-full border">
-                  {fechaLarga(m.ocurrido_at).split(',')[0]}
+                <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full border">
+                  {etiquetaDia(m.ocurrido_at, ahora)}
                 </span>
                 <span className="h-px flex-1 bg-border/60" />
               </div>
             )}
 
             <div className={`flex ${delCliente ? 'justify-start' : 'justify-end'}`}>
-              <div
-                className={`flex max-w-[80%] flex-col gap-1 rounded-2xl px-4 py-2.5 shadow-2xs ${
-                  delCliente
-                    ? 'rounded-bl-xs bg-muted/80 text-foreground border border-border/50'
-                    : 'rounded-br-xs bg-primary text-primary-foreground'
-                }`}
-              >
-                {m.medio && <Medio medio={m.medio} delCliente={delCliente} />}
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{m.cuerpo}</p>
+              <div className={`flex max-w-[80%] flex-col gap-1 rounded-2xl px-4 py-2.5 shadow-2xs ${burbuja}`}>
+                {m.medio && <Medio medio={m.medio} delCliente={delCliente || Boolean(quien?.esBot)} />}
+                {texto && (
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{texto}</p>
+                )}
+                {automatico && (
+                  <p className={`text-xs italic leading-snug ${tenue}`}>
+                    {m.medio?.tipo === 'audio' ? 'Transcripción: ' : 'Descripción automática: '}
+                    {automatico}
+                  </p>
+                )}
                 <div
-                  className={`flex items-center justify-end gap-1 text-[10px] ${
-                    delCliente ? 'text-muted-foreground' : 'text-primary-foreground/75'
-                  }`}
+                  className={`flex items-center justify-end gap-1 text-[10px] ${tenue}`}
                   title={fechaLarga(m.ocurrido_at)}
                 >
-                  {m.origen === 'agente_ia' && (
+                  {quien && (
                     <span className="inline-flex items-center gap-0.5 font-medium">
-                      <Bot className="size-2.5" />
-                      Bot
+                      {quien.esBot ? <Bot className="size-2.5" /> : <User className="size-2.5" />}
+                      {quien.texto}
                       <span>·</span>
                     </span>
                   )}
-                  {m.origen === 'asesor' && (
-                    <span className="inline-flex items-center gap-0.5 font-medium">
-                      <User className="size-2.5" />
-                      Asesor
-                      <span>·</span>
-                    </span>
-                  )}
-                  <span>
-                    {new Date(m.ocurrido_at ?? '').toLocaleTimeString('es-CO', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
+                  <span>{horaCorta(m.ocurrido_at)}</span>
                 </div>
               </div>
             </div>
@@ -317,21 +330,23 @@ function Medio({ medio, delCliente }: { medio: MedioActividad; delCliente: boole
   switch (medio.tipo) {
     case 'image':
     case 'sticker':
+      // Al tocarla se abre en grande, en otra pestaña.
       return (
-        <a href={medio.url} target="_blank" rel="noreferrer" className="block">
+        <a href={medio.url} target="_blank" rel="noreferrer" className="block" title="Abrir la foto">
           {/* eslint-disable-next-line @next/next/no-img-element -- URL firmada de Supabase, sin optimizar */}
           <img
             src={medio.url}
             alt={medio.tipo === 'sticker' ? 'Sticker' : 'Foto que mandó el cliente'}
-            className={`rounded-lg object-cover ${medio.tipo === 'sticker' ? 'max-h-28' : 'max-h-72 w-full'}`}
+            className={`rounded-lg object-cover ${medio.tipo === 'sticker' ? 'max-h-28' : 'max-h-64 w-full max-w-xs'}`}
             loading="lazy"
           />
         </a>
       );
     case 'audio':
-      return <audio controls preload="none" src={medio.url} className="w-64 max-w-full" />;
+      // metadata: el navegador trae la duración sin bajar todo el audio.
+      return <audio controls preload="metadata" src={medio.url} className="w-64 max-w-full" />;
     case 'video':
-      return <video controls preload="none" src={medio.url} className="max-h-72 w-full rounded-lg" />;
+      return <video controls preload="metadata" src={medio.url} className="max-h-72 w-full max-w-xs rounded-lg" />;
     default:
       return (
         <a
@@ -340,7 +355,7 @@ function Medio({ medio, delCliente }: { medio: MedioActividad; delCliente: boole
           rel="noreferrer"
           className={`text-sm font-medium underline underline-offset-2 ${delCliente ? '' : 'text-primary-foreground'}`}
         >
-          Abrir {medio.nombre ?? 'documento'}
+          Descargar {medio.nombre ?? 'documento'}
         </a>
       );
   }
