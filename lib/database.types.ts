@@ -575,6 +575,9 @@ export type Database = {
           envio_masivo_id: string
           estado: string
           fila: number
+          gestion_nota: string | null
+          gestionado_at: string | null
+          gestionado_por: string | null
           id: string
           inmobiliaria_id: string
           motivo: string | null
@@ -593,6 +596,9 @@ export type Database = {
           envio_masivo_id: string
           estado?: string
           fila: number
+          gestion_nota?: string | null
+          gestionado_at?: string | null
+          gestionado_por?: string | null
           id?: string
           inmobiliaria_id: string
           motivo?: string | null
@@ -611,6 +617,9 @@ export type Database = {
           envio_masivo_id?: string
           estado?: string
           fila?: number
+          gestion_nota?: string | null
+          gestionado_at?: string | null
+          gestionado_por?: string | null
           id?: string
           inmobiliaria_id?: string
           motivo?: string | null
@@ -639,6 +648,13 @@ export type Database = {
             columns: ["envio_masivo_id"]
             isOneToOne: false
             referencedRelation: "envios_masivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_masivos_destinatarios_gestionado_por_fkey"
+            columns: ["gestionado_por"]
+            isOneToOne: false
+            referencedRelation: "v_asesores"
             referencedColumns: ["id"]
           },
         ]
@@ -1885,6 +1901,10 @@ export type Database = {
           waba_id: string
         }[]
       }
+      desmarcar_gestion_manual: {
+        Args: { p_destinatario_id: string }
+        Returns: undefined
+      }
       despachar_envios_masivos: { Args: { p_ahora?: string }; Returns: number }
       duracion_legible: { Args: { p_duracion: string }; Returns: string }
       en_horario_envio: {
@@ -1961,6 +1981,10 @@ export type Database = {
         Returns: undefined
       }
       marcar_envio_visto: { Args: { p_envio_id: string }; Returns: undefined }
+      marcar_gestion_manual: {
+        Args: { p_destinatario_id: string; p_nota?: string }
+        Returns: string
+      }
       marcar_leido: { Args: { p_contacto_id: string }; Returns: undefined }
       marcar_opt_out: {
         Args: { p_contacto_id: string; p_motivo?: string }
@@ -2003,6 +2027,27 @@ export type Database = {
       pedir_envio_a_plataforma: {
         Args: { p_cuerpo: Json; p_token: string; p_url: string }
         Returns: number
+      }
+      pendientes_gestion_envio: {
+        Args: { p_envio_masivo_id: string }
+        Returns: {
+          contacto_id: string
+          datos: Json
+          destinatario_id: string
+          detalle: string
+          fila: number
+          gestion_nota: string
+          gestionado: boolean
+          gestionado_at: string
+          gestionado_por: string
+          gestionado_por_nombre: string
+          motivo: string
+          motivo_legible: string
+          nombre: string
+          resultado: string
+          telefono_crudo: string
+          telefono_e164: string
+        }[]
       }
       publico_marketing: {
         Args: { p_dias_silencio?: number; p_limite?: number }

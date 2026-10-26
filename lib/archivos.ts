@@ -160,6 +160,9 @@ export interface FilaResultado {
   error: string | null;
   respondio_at: string | null;
   baja: boolean;
+  /** «Pendiente», «Gestionada el … por …» o vacío si no fue a gestión manual. */
+  gestion: string;
+  gestion_nota: string | null;
 }
 
 /**
@@ -189,6 +192,8 @@ export async function descargarResultados(opciones: {
     titulo('Error'),
     titulo('Respondió'),
     titulo('Pidió no recibir más'),
+    titulo('Gestión manual'),
+    titulo('Nota de gestión'),
   ];
 
   const conFecha = (iso: string | null) =>
@@ -205,6 +210,8 @@ export async function descargarResultados(opciones: {
     f.error ?? '',
     f.respondio_at ? 'Sí' : 'No',
     f.baja ? 'Sí' : 'No',
+    f.gestion,
+    f.gestion_nota ?? '',
   ]);
 
   const base = opciones.nombreArchivo.replace(/\.(xlsx|csv|txt)$/i, '');

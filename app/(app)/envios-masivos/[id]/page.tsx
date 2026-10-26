@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, ClipboardList, TriangleAlert } from 'lucide-react';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { fechaLarga, telefonoLegible } from '@/lib/formato';
@@ -11,9 +11,12 @@ import {
   costoEstimado,
   describirHorario,
   dolares,
+  leerPorPartes,
   type EstadoEnvioMasivo,
+  type FilaGestion,
   type Horario,
 } from '@/lib/envios-masivos';
+import { GestionManual } from './GestionManual';
 import { PanelEnvio } from './PanelEnvio';
 
 interface Resumen {
@@ -47,6 +50,18 @@ interface Fila {
 /** Cuántas filas se enseñan aquí. Todas, en el archivo de resultados. */
 const FILAS_EN_PANTALLA = 200;
 
+/** Los motivos de exclusión que, al lanzar, pasan a gestión manual (20261026150001). */
+const A_GESTION_MANUAL: [string, string][] = [
+  ['sin_telefono', 'sin número'],
+  ['telefono_invalido', 'número inválido'],
+  ['faltan_datos', 'faltan datos'],
+];
+
+/** «a», «a o b», «a, b o c». */
+function unaO(partes: string[]): string {
+  return partes.length < 2 ? (partes[0] ?? '') : `${partes.slice(0, -1).join(', ')} o ${partes.at(-1)}`;
+}
+
 export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
@@ -75,7 +90,18 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
         .limit(3),
     ]);
 
+  // Desde que se lanza, quién quedó para gestión manual: todas las filas,
+  // por partes (PostgREST corta en 1.000).
+  const gestion = envio.lanzado_at
+    ? await leerPorPartes((desde, hasta) =>
+        crm.rpc('pendientes_gestion_envio', { p_envio_masivo_id: id }).order('fila').range(desde, hasta)
+      )
+    : null;
+
   const resumen = resumenCrudo as Resumen | null;
+  // En el borrador, cuántos irán a gestión manual y por qué.
+  const aGestion = A_GESTION_MANUAL.filter(([m]) => (resumen?.por_motivo[m] ?? 0) > 0);
+  const nAGestion = aGestion.reduce((n, [m]) => n + (resumen?.por_motivo[m] ?? 0), 0);
   const filas = (filasCrudas ?? []) as unknown as Fila[];
   const plantilla = envio.plantillas as {
     nombre: string;
@@ -168,6 +194,16 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
         </section>
       )}
 
+      {estado === 'borrador' && nAGestion > 0 && (
+        <p className="-mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <ClipboardList className="size-3.5 shrink-0" />
+          <span>
+            <b className="tabular text-foreground">{nAGestion}</b>
+            {` ${nAGestion === 1 ? 'irá' : 'irán'} a gestión manual (${unaO(aGestion.map(([, texto]) => texto))}).`}
+          </span>
+        </p>
+      )}
+
       {/* Cómo le llega, en el borrador */}
       {estado === 'borrador' && (previas ?? []).length > 0 && (
         <section className="grid gap-3 md:grid-cols-3">
@@ -209,6 +245,15 @@ export default async function PaginaEnvioMasivo({ params }: { params: Promise<{ 
         {lanzado && <p>{lanzado}</p>}
         {envio.abrir_caso && <p>A cada persona se le abre (o se le mueve a «En mora») su caso administrativo.</p>}
       </section>
+
+      {gestion && (
+        <GestionManual
+          envioId={envio.id}
+          filas={gestion.data as unknown as FilaGestion[]}
+          columnas={envio.columnas as string[]}
+          error={gestion.error ? 'No se pudo leer la gestión manual.' : null}
+        />
+      )}
 
       {/* Las filas */}
       {filas.length > 0 && (

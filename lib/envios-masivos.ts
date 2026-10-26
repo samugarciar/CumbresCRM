@@ -126,3 +126,71 @@ export function dolares(valor: number): string {
   if (valor > 0 && valor < 0.01) return 'menos de US$0,01';
   return `US$${valor.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
+
+// ---------------------------------------------------------------------
+// La gestión manual (migración 20261026150001)
+// ---------------------------------------------------------------------
+
+/** Una persona que hay que gestionar a mano (crm.pendientes_gestion_envio). */
+export interface FilaGestion {
+  destinatario_id: string;
+  fila: number;
+  nombre: string | null;
+  telefono_crudo: string | null;
+  telefono_e164: string | null;
+  contacto_id: string | null;
+  datos: Record<string, string> | null;
+  resultado: string;
+  motivo: string;
+  motivo_legible: string;
+  detalle: string | null;
+  gestionado: boolean;
+  gestionado_at: string | null;
+  gestionado_por: string | null;
+  gestionado_por_nombre: string | null;
+  gestion_nota: string | null;
+}
+
+/** Lo que cabe en la nota de una gestión: lo mismo que exige la base. */
+export const MAX_NOTA_GESTION = 500;
+
+/** «Total_En_Mora», «total en mora», «TOTAL EN MORA ($)» → «totalenmora». */
+function normalizarColumna(nombre: string): string {
+  return nombre
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Las columnas de cartera que sirven para llamar a alguien con la deuda a
+ * la mano, si el archivo las trae. Se buscan por nombre, sin importar
+ * mayúsculas, tildes, espacios ni guiones bajos.
+ */
+export function columnasDeCartera(columnas: string[]): { mora: string | null; facturas: string | null } {
+  const buscar = (patron: RegExp) => columnas.find((c) => patron.test(normalizarColumna(c))) ?? null;
+  return {
+    mora: buscar(/total.*mora|mora.*total|saldo.*mora/),
+    facturas: buscar(/factura.*vencid|vencid.*factura/),
+  };
+}
+
+/**
+ * PostgREST corta en 1.000 filas (max_rows). Un envío puede tener hasta
+ * 5.000: se piden por partes, en orden, hasta que una parte llegue corta.
+ */
+export async function leerPorPartes<T>(
+  pedir: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  tamano = 1000
+): Promise<{ data: T[]; error: { message: string } | null }> {
+  const todas: T[] = [];
+  // El tope de 20.000 es solo un seguro: un envío no pasa de MAX_FILAS.
+  for (let desde = 0; desde < 20_000; desde += tamano) {
+    const { data, error } = await pedir(desde, desde + tamano - 1);
+    if (error) return { data: todas, error };
+    todas.push(...(data ?? []));
+    if ((data ?? []).length < tamano) break;
+  }
+  return { data: todas, error: null };
+}
