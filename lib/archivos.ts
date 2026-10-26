@@ -11,9 +11,24 @@ import { MAX_FILAS } from '@/lib/envios-masivos';
 
 export interface ArchivoLeido {
   nombre: string;
+  /** La hoja de donde salen columnas y filas; null en un CSV. */
+  hoja: string | null;
   columnas: string[];
   filas: Record<string, string>[];
 }
+
+/**
+ * Un archivo abierto: todas sus hojas, con las celdas ya como texto. Un
+ * .xlsx de cartera trae varias (la de los envíos es la quinta); un CSV es
+ * una sola hoja sin nombre.
+ */
+export interface LibroLeido {
+  nombre: string;
+  hojas: { nombre: string | null; tabla: string[][] }[];
+}
+
+/** Cómo se llama la hoja de cartera con los números de WhatsApp («Envios WhatsApp»). */
+const HOJA_DE_ENVIOS = /env[ií]os?\s*whats/i;
 
 /**
  * Una celda de Excel, como texto. Un teléfono guardado como número llega
@@ -56,27 +71,54 @@ function encabezados(fila: string[]): string[] {
   });
 }
 
-export async function leerArchivo(archivo: File): Promise<ArchivoLeido> {
+/**
+ * Abre el archivo y lee todas sus hojas de una vez: el export por defecto
+ * de read-excel-file 9 devuelve `[{ sheet, data }]` con todas (ya no hay
+ * una función solo para los nombres). Así, cambiar de hoja después no
+ * vuelve a descomprimir el archivo.
+ */
+export async function abrirArchivo(archivo: File): Promise<LibroLeido> {
   const extension = archivo.name.toLowerCase().split('.').pop();
-  let tabla: string[][];
 
   if (extension === 'xlsx') {
-    const { readSheet } = await import('read-excel-file/browser');
-    const hoja = await readSheet(archivo);
-    tabla = hoja.map((fila) => fila.map(celdaATexto));
-  } else if (extension === 'csv' || extension === 'txt') {
+    const readXlsxFile = (await import('read-excel-file/browser')).default;
+    const hojas = await readXlsxFile(archivo);
+    return {
+      nombre: archivo.name,
+      hojas: hojas.map((h) => ({ nombre: h.sheet, tabla: h.data.map((fila) => fila.map(celdaATexto)) })),
+    };
+  }
+  if (extension === 'csv' || extension === 'txt') {
     const Papa = (await import('papaparse')).default;
     // Excel en español separa con «;». Papa lo detecta solo.
     const resultado = Papa.parse<string[]>(await decodificar(archivo), { skipEmptyLines: 'greedy' });
-    tabla = resultado.data.map((fila) => fila.map((c) => celdaATexto(c)));
-  } else if (extension === 'xls') {
-    throw new Error('Los .xls antiguos no se pueden leer. Ábrelo en Excel y guárdalo como .xlsx o .csv.');
-  } else {
-    throw new Error('Sube un archivo .xlsx o .csv.');
+    return {
+      nombre: archivo.name,
+      hojas: [{ nombre: null, tabla: resultado.data.map((fila) => fila.map((c) => celdaATexto(c))) }],
+    };
   }
+  if (extension === 'xls') {
+    throw new Error('Los .xls antiguos no se pueden leer. Ábrelo en Excel y guárdalo como .xlsx o .csv.');
+  }
+  throw new Error('Sube un archivo .xlsx o .csv.');
+}
+
+/** La hoja que se propone al abrir: la de «Envios WhatsApp» si la hay; si no, la primera. */
+export function hojaPropuesta(libro: LibroLeido): string | null {
+  const nombres = libro.hojas.map((h) => h.nombre);
+  return nombres.find((n) => n !== null && HOJA_DE_ENVIOS.test(n)) ?? nombres[0] ?? null;
+}
+
+/** Las columnas y las filas de una hoja. Falla si está vacía o se pasa del máximo. */
+export function leerHoja(libro: LibroLeido, hoja: string | null): ArchivoLeido {
+  const elegida = libro.hojas.find((h) => h.nombre === hoja) ?? libro.hojas[0];
+  const tabla = elegida?.tabla ?? [];
+  // Con varias hojas, el error dice cuál: la siguiente puede servir.
+  const deVarias = Boolean(elegida?.nombre) && libro.hojas.length > 1;
+  const cual = deVarias ? `La hoja «${elegida?.nombre}»` : 'El archivo';
 
   const inicio = tabla.findIndex((fila) => fila.some((c) => c !== ''));
-  if (inicio === -1) throw new Error('El archivo está vacío.');
+  if (inicio === -1) throw new Error(deVarias ? `${cual} está vacía.` : 'El archivo está vacío.');
 
   const columnas = encabezados(tabla[inicio]);
   const filas = tabla
@@ -84,14 +126,14 @@ export async function leerArchivo(archivo: File): Promise<ArchivoLeido> {
     .filter((fila) => fila.some((c) => c !== ''))
     .map((fila) => Object.fromEntries(columnas.map((col, i) => [col, fila[i] ?? ''])));
 
-  if (filas.length === 0) throw new Error('El archivo tiene encabezados, pero ninguna fila.');
+  if (filas.length === 0) throw new Error(`${cual} tiene encabezados, pero ninguna fila.`);
   if (filas.length > MAX_FILAS) {
     throw new Error(
-      `El archivo tiene ${filas.length.toLocaleString('es-CO')} filas; el máximo por envío es ${MAX_FILAS.toLocaleString('es-CO')}. Pártelo en varios.`
+      `${cual} tiene ${filas.length.toLocaleString('es-CO')} filas; el máximo por envío es ${MAX_FILAS.toLocaleString('es-CO')}. Pártelo en varios.`
     );
   }
 
-  return { nombre: archivo.name, columnas, filas };
+  return { nombre: libro.nombre, hoja: elegida?.nombre ?? null, columnas, filas };
 }
 
 /** «1250000» o «1.250.000» → «$1.250.000». Si no es un número, queda como venía. */

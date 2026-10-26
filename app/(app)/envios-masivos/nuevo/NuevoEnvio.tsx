@@ -6,7 +6,14 @@ import { FileSpreadsheet, Info, Loader2, TriangleAlert, Upload } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { comoPesos, leerArchivo, type ArchivoLeido } from '@/lib/archivos';
+import {
+  abrirArchivo,
+  comoPesos,
+  hojaPropuesta,
+  leerHoja,
+  type ArchivoLeido,
+  type LibroLeido,
+} from '@/lib/archivos';
 import { variablesDe } from '@/lib/plantillas';
 import { crearEnvioMasivo } from '../acciones';
 
@@ -44,6 +51,42 @@ function adivinar(columnas: string[], pista: RegExp | undefined): string {
   return (pista && columnas.find((c) => pista.test(c))) ?? '';
 }
 
+/** Diez a trece dígitos: un celular con o sin +57. Una cédula se queda corta. */
+function pareceCelular(valor: string | undefined): boolean {
+  const digitos = (valor ?? '').replace(/\D/g, '');
+  return digitos.length >= 10 && digitos.length <= 13;
+}
+
+/**
+ * La columna del teléfono: de las que se llaman como un teléfono, la que
+ * más valores con forma de celular tiene. Por el nombre solo no basta: en
+ * la hoja de cartera «Nombre (archivo teléfonos)» va antes que
+ * «Numero_WhatsApp».
+ */
+function adivinarTelefono(leido: ArchivoLeido): string {
+  const candidatas = leido.columnas.filter((c) => PISTAS.telefono.test(c));
+  const muestra = leido.filas.slice(0, 200);
+  let mejor = candidatas[0] ?? '';
+  let mejorCuenta = 0;
+  for (const c of candidatas) {
+    const cuenta = muestra.filter((f) => pareceCelular(f[c])).length;
+    if (cuenta > mejorCuenta) {
+      mejor = c;
+      mejorCuenta = cuenta;
+    }
+  }
+  return mejor;
+}
+
+/** Propuesta inicial: el nombre sale de la columna del nombre y lo demás de la que se le parezca. */
+function proponerVariables(cuerpo: string, columnas: string[], columnaNombre: string): Record<string, string> {
+  const propuesta: Record<string, string> = {};
+  for (const v of variablesDe(cuerpo)) {
+    propuesta[v] = v === 'nombre' ? columnaNombre : adivinar(columnas, PISTAS[v]);
+  }
+  return propuesta;
+}
+
 function pareceNumero(valores: string[]): boolean {
   const muestra = valores.filter(Boolean).slice(0, 20);
   return muestra.length > 0 && muestra.every((v) => /^\$?\s*[\d.]+$/.test(v));
@@ -57,6 +100,8 @@ export function NuevoEnvio({
   plantillas: PlantillaEnvio[];
 }) {
   const router = useRouter();
+  const [libro, setLibro] = useState<LibroLeido | null>(null);
+  const [hoja, setHoja] = useState<string | null>(null);
   const [archivo, setArchivo] = useState<ArchivoLeido | null>(null);
   const [leyendo, setLeyendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,13 +124,12 @@ export function NuevoEnvio({
     setError(null);
     setLeyendo(true);
     try {
-      const leido = await leerArchivo(f);
-      setArchivo(leido);
-      setColumnaTelefono(adivinar(leido.columnas, PISTAS.telefono));
-      setColumnaNombre(adivinar(leido.columnas, PISTAS.nombre));
-      setNombre((n) => n || leido.nombre.replace(/\.(xlsx|csv|txt)$/i, ''));
-      setMapeo({});
+      const abierto = await abrirArchivo(f);
+      setLibro(abierto);
+      setNombre((n) => n || abierto.nombre.replace(/\.(xlsx|csv|txt)$/i, ''));
+      usarHoja(abierto, hojaPropuesta(abierto));
     } catch (e) {
+      setLibro(null);
       setArchivo(null);
       setError(e instanceof Error ? e.message : 'No se pudo leer el archivo.');
     } finally {
@@ -93,20 +137,45 @@ export function NuevoEnvio({
     }
   }
 
-  function elegirPlantilla(id: string) {
-    setPlantillaId(id);
-    const p = plantillas.find((x) => x.id === id);
-    if (!p || !archivo) return;
-    // Propuesta inicial: el nombre sale de la columna del nombre y lo demás
-    // de la columna que se le parezca. Se puede cambiar todo.
-    const propuesta: Record<string, string> = {};
-    for (const v of variablesDe(p.cuerpo)) {
-      propuesta[v] = v === 'nombre' ? columnaNombre : adivinar(archivo.columnas, PISTAS[v]);
+  /**
+   * Lee una hoja y vuelve a proponer las columnas (y, si ya hay plantilla,
+   * de qué columna sale cada variable). Si la hoja no sirve, el selector
+   * sigue a la vista para elegir otra.
+   */
+  function usarHoja(abierto: LibroLeido, nombreHoja: string | null) {
+    setHoja(nombreHoja);
+    setError(null);
+    try {
+      const leido = leerHoja(abierto, nombreHoja);
+      const nombreCol = adivinar(leido.columnas, PISTAS.nombre);
+      setArchivo(leido);
+      setColumnaTelefono(adivinarTelefono(leido));
+      setColumnaNombre(nombreCol);
+      proponerMapeo(plantillas.find((x) => x.id === plantillaId) ?? null, leido, nombreCol);
+    } catch (e) {
+      setArchivo(null);
+      setMapeo({});
+      setError(e instanceof Error ? e.message : 'No se pudo leer esa hoja.');
     }
+  }
+
+  function proponerMapeo(p: PlantillaEnvio | null, leido: ArchivoLeido, nombreCol: string) {
+    if (!p) {
+      setMapeo({});
+      return;
+    }
+    // Se puede cambiar todo.
+    const propuesta = proponerVariables(p.cuerpo, leido.columnas, nombreCol);
     setMapeo(propuesta);
     if (propuesta.monto) {
-      setMontoEnPesos(pareceNumero(archivo.filas.map((f) => f[propuesta.monto])));
+      setMontoEnPesos(pareceNumero(leido.filas.map((f) => f[propuesta.monto])));
     }
+  }
+
+  function elegirPlantilla(id: string) {
+    setPlantillaId(id);
+    if (!archivo) return;
+    proponerMapeo(plantillas.find((x) => x.id === id) ?? null, archivo, columnaNombre);
   }
 
   /**
@@ -212,10 +281,12 @@ export function NuevoEnvio({
           ) : (
             <Upload className="size-6" />
           )}
-          {archivo ? (
+          {libro ? (
             <span>
-              <b className="text-foreground">{archivo.nombre}</b> · {archivo.filas.length.toLocaleString('es-CO')}{' '}
-              filas · {archivo.columnas.length} columnas. Pulsa para cambiarlo.
+              <b className="text-foreground">{libro.nombre}</b>
+              {archivo &&
+                ` · ${archivo.filas.length.toLocaleString('es-CO')} filas · ${archivo.columnas.length} columnas`}
+              . Pulsa para cambiarlo.
             </span>
           ) : (
             <span>Sube el archivo de cartera (.xlsx o .csv). Se lee aquí, en tu navegador.</span>
@@ -228,6 +299,31 @@ export function NuevoEnvio({
           className="sr-only"
           onChange={(e) => cargar(e.target.files?.[0])}
         />
+
+        {/* Un Excel de cartera trae varias hojas: los teléfonos están en «Envios WhatsApp». */}
+        {libro && libro.hojas.length > 1 && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="hoja" className="text-xs font-semibold">
+              Hoja
+            </Label>
+            <select
+              id="hoja"
+              value={hoja ?? ''}
+              onChange={(e) => usarHoja(libro, e.target.value)}
+              className="h-9 w-full rounded-xl border border-input bg-background px-3 text-xs sm:max-w-sm"
+            >
+              {libro.hojas.map((h, i) => (
+                <option key={`${i}-${h.nombre}`} value={h.nombre ?? ''}>
+                  {h.nombre}
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] text-muted-foreground">
+              El archivo tiene {libro.hojas.length} hojas: elige la que trae los teléfonos. Al cambiarla se vuelven a
+              proponer las columnas.
+            </span>
+          </div>
+        )}
       </section>
 
       {archivo && (
@@ -244,7 +340,7 @@ export function NuevoEnvio({
                 {sinTelefono > 0 && (
                   <span className="text-[11px] text-warning">
                     {sinTelefono} {sinTelefono === 1 ? 'fila no tiene' : 'filas no tienen'} teléfono: no se les
-                    enviará.
+                    enviará y quedarán para gestión manual.
                   </span>
                 )}
               </div>
