@@ -60,13 +60,29 @@ export function ContenedorChat({ children }: { children: React.ReactNode }) {
     const pagina = new ResizeObserver(ajustarAltura);
     pagina.observe(document.body);
 
+    // La caja de texto; fuera de la ventana de 24 h no hay texto libre y
+    // lo primero es elegir la plantilla. Puede tardar un momento en estar
+    // lista (la plantilla se rellena en el servidor y mientras tanto el
+    // select está deshabilitado): se reintenta unas veces, y se deja de
+    // intentar si quien mira ya puso el foco en otra cosa.
+    let intentos = 0;
+    let reintento: ReturnType<typeof setTimeout> | undefined;
     const enfocarSiToca = () => {
       if (window.location.hash !== '#escribir') return;
-      const caja = el.querySelector<HTMLTextAreaElement>('textarea:not([disabled])');
-      bajar();
-      pegadoAbajo.current = true;
-      el.scrollIntoView({ block: 'nearest' });
-      caja?.focus({ preventScroll: true });
+      if (intentos === 0) {
+        bajar();
+        pegadoAbajo.current = true;
+        el.scrollIntoView({ block: 'nearest' });
+      }
+      const caja =
+        el.querySelector<HTMLElement>('textarea:not([disabled])') ??
+        el.querySelector<HTMLElement>('#select-reactivacion:not([disabled])');
+      if (caja) {
+        caja.focus({ preventScroll: true });
+        return;
+      }
+      const libre = !document.activeElement || document.activeElement === document.body;
+      if (libre && ++intentos < 12) reintento = setTimeout(enfocarSiToca, 250);
     };
 
     ajustarAltura();
@@ -80,6 +96,7 @@ export function ContenedorChat({ children }: { children: React.ReactNode }) {
 
     return () => {
       clearTimeout(enfoque);
+      clearTimeout(reintento);
       cambios.disconnect();
       tamano.disconnect();
       pagina.disconnect();
