@@ -270,6 +270,7 @@ export default async function FichaContacto({
               ahora={ahora}
               plantillas={plantillasFicha}
               asesor={asesor}
+              telefono={contacto.telefono_e164 ?? null}
             />
           </ContenedorChat>
         </div>
