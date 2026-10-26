@@ -24,7 +24,7 @@ export default async function PaginaLineas() {
   const listo = canalConfigurado();
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 [&>*]:max-w-3xl">
       <header>
         <h1 className="text-xl font-semibold tracking-tight">Líneas de WhatsApp</h1>
         <p className="max-w-[64ch] text-sm text-muted-foreground">
@@ -37,7 +37,7 @@ export default async function PaginaLineas() {
       {/* El estado del canal va arriba porque explica por qué, aunque se
           llenen estas fichas, todavía no se puede enviar. */}
       <p
-        className={`rounded-lg px-3.5 py-3 text-sm ${
+        className={`rounded-xl px-3.5 py-3 text-sm ${
           listo ? 'bg-muted text-muted-foreground' : 'bg-warning/10 text-warning'
         }`}
       >

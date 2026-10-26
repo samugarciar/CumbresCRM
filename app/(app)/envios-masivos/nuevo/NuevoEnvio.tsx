@@ -199,7 +199,7 @@ export function NuevoEnvio({
   return (
     <div className="flex flex-col gap-5">
       {/* 1 · El archivo */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4">
+      <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
         <h2 className="text-sm font-semibold">1 · El archivo</h2>
         <label
           htmlFor="archivo"
@@ -233,7 +233,7 @@ export function NuevoEnvio({
       {archivo && (
         <>
           {/* 2 · Las columnas */}
-          <section className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4">
+          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
             <h2 className="text-sm font-semibold">2 · A quién</h2>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
@@ -261,7 +261,7 @@ export function NuevoEnvio({
           </section>
 
           {/* 3 · La plantilla */}
-          <section className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4">
+          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
             <h2 className="text-sm font-semibold">3 · Qué se le dice</h2>
             {plantillas.length === 0 ? (
               <p className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
@@ -340,7 +340,7 @@ export function NuevoEnvio({
 
           {/* 4 · La vista previa y el nombre */}
           {plantilla && (
-            <section className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4">
+            <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
               <h2 className="text-sm font-semibold">4 · Así le llega</h2>
               <div className="grid gap-3 md:grid-cols-3">
                 {vistaPrevia.map((texto, i) => (
@@ -348,7 +348,7 @@ export function NuevoEnvio({
                     key={i}
                     className="rounded-xl bg-[#efeae2] p-3 dark:bg-[#0b141a] border border-border/40"
                   >
-                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1 text-[11px] font-semibold text-muted-foreground">
                       Fila {i + 2}
                     </p>
                     <p className="whitespace-pre-wrap rounded-xl rounded-tl-xs bg-white p-2.5 text-xs shadow-xs dark:bg-[#202c33]">

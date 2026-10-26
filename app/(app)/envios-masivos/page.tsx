@@ -39,7 +39,7 @@ export default async function PaginaEnviosMasivos() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Envíos masivos</h1>
@@ -58,7 +58,7 @@ export default async function PaginaEnviosMasivos() {
       </header>
 
       {(envios ?? []).length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/80 py-16 text-center bg-card/40">
+        <div className="rounded-xl border border-dashed border-border/80 py-16 text-center bg-card/40">
           <Send className="mx-auto size-8 text-muted-foreground/60 mb-2" />
           <p className="font-semibold text-foreground">Todavía no hay envíos masivos</p>
           <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -77,7 +77,7 @@ export default async function PaginaEnviosMasivos() {
               <li key={e.id}>
                 <Link
                   href={`/envios-masivos/${e.id}`}
-                  className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-sm"
+                  className="flex flex-col gap-2 rounded-xl border border-border/70 bg-card p-4 shadow-2xs transition-all hover:border-primary/40 hover:shadow-sm"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">

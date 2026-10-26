@@ -94,7 +94,7 @@ export function PanelEnvio({
   const puedeCancelar = estado === 'borrador' || estado === 'en_curso' || estado === 'pausado';
 
   return (
-    <section className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4">
+    <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
       {estado === 'borrador' && (
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold">Lanzar</h2>
