@@ -186,6 +186,48 @@ export async function plantillasDeLinea(opciones: {
 }
 
 /**
+ * Borra la plantilla de la WABA de la línea (solo ese idioma). Si ya no
+ * estaba en Meta también es ok: `existia` lo dice.
+ */
+export async function borrarPlantillaEnMeta(opciones: {
+  inmobiliariaId: string;
+  waPhoneNumberId: string;
+  nombreMeta: string;
+  idioma: string;
+}): Promise<{ ok: boolean; existia?: boolean; error?: string; sinCanal?: boolean }> {
+  if (!canalConfigurado()) return sinCanal();
+
+  try {
+    const r = await fetch(urlPlataforma('/api/whatsapp/plantillas'), {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-crm-token': process.env.CRM_ENVIO_TOKEN!,
+      },
+      body: JSON.stringify({
+        inmobiliaria_id: opciones.inmobiliariaId,
+        wa_phone_number_id: opciones.waPhoneNumberId,
+        nombre_meta: opciones.nombreMeta,
+        idioma: opciones.idioma,
+      }),
+    });
+    const datos = await r.json().catch(() => ({}));
+    if (!r.ok || !datos?.ok) {
+      return { ok: false, error: datos?.error ?? `La plataforma respondió ${r.status}` };
+    }
+    return { ok: true, existia: Boolean(datos.existia) };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? `No se pudo contactar con la plataforma: ${error.message}`
+          : 'No se pudo contactar con la plataforma',
+    };
+  }
+}
+
+/**
  * Crea la plantilla en la WABA de la línea y la manda a revisión de Meta.
  * Los ejemplos van por nombre de variable: Meta exige uno por cada una.
  */

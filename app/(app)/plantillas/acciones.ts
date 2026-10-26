@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { Resultado } from '@/app/(app)/contactos/[id]/acciones';
-import { crearPlantillaEnMeta, plantillasDeLinea } from '@/lib/canal';
+import { borrarPlantillaEnMeta, crearPlantillaEnMeta, plantillasDeLinea } from '@/lib/canal';
 import { ejemplosPara } from '@/lib/plantillas';
 
 /**
@@ -379,19 +379,86 @@ export async function sincronizarConMeta(): Promise<Resultado & { detalles?: str
   };
 }
 
-/** Se desactiva en vez de borrar: los envíos ya hechos apuntan a ella */
-export async function archivarPlantilla(id: string): Promise<Resultado> {
+/**
+ * Borra una plantilla. Si está en Meta (enviada, aprobada o rechazada),
+ * primero allá: borrarla solo aquí la haría volver con la próxima
+ * sincronización. Si ya se usó en algún envío, aquí se archiva en vez de
+ * borrarse, porque esos envíos apuntan a ella.
+ */
+export async function borrarPlantilla(id: string): Promise<Resultado & { archivada?: boolean }> {
   if (!z.string().uuid().safeParse(id).success) {
     return { ok: false, error: 'Plantilla desconocida.' };
   }
-  const supabase = await createClient();
-  const { error } = await supabase
-    .schema('crm')
-    .from('plantillas')
-    .update({ activa: false })
-    .eq('id', id);
 
-  if (error) return { ok: false, error: 'No se pudo archivar.' };
+  const yo = await quienSoy();
+  if ('error' in yo) return { ok: false, error: yo.error };
+  const { supabase, perfil } = yo;
+  if (perfil.rol !== 'admin') {
+    return { ok: false, error: 'Solo un administrador borra plantillas.' };
+  }
+
+  const crm = supabase.schema('crm');
+  const { data: plantilla } = await crm
+    .from('plantillas')
+    .select('id, tipo, estado_meta, nombre_meta, idioma, wa_phone_number_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (!plantilla) return { ok: false, error: 'No se encontró la plantilla.' };
+
+  // Una de una línea desconectada no vuelve con la sincronización (solo
+  // mira las activas) y la plataforma ya no tiene con qué entrar a su
+  // cuenta: esa se borra solo aquí.
+  const enMeta =
+    plantilla.tipo === 'whatsapp' &&
+    ['enviada', 'aprobada', 'rechazada'].includes(plantilla.estado_meta) &&
+    Boolean(plantilla.nombre_meta) &&
+    Boolean(plantilla.wa_phone_number_id) &&
+    Boolean(await lineaActiva(supabase, plantilla.wa_phone_number_id as string));
+
+  if (enMeta) {
+    const r = await borrarPlantillaEnMeta({
+      inmobiliariaId: perfil.inmobiliaria_id,
+      waPhoneNumberId: plantilla.wa_phone_number_id as string,
+      nombreMeta: plantilla.nombre_meta as string,
+      idioma: plantilla.idioma || 'es',
+    });
+    if (!r.ok) {
+      return { ok: false, error: `No se pudo borrar en Meta: ${r.error ?? 'sin respuesta'}` };
+    }
+  }
+
+  const { data: borradas, error } = await crm
+    .from('plantillas')
+    .delete()
+    .eq('id', plantilla.id)
+    .select('id');
+
+  if (error?.code === '23503') {
+    const { error: errorArchivo } = await crm
+      .from('plantillas')
+      .update({ activa: false, updated_at: new Date().toISOString() })
+      .eq('id', plantilla.id);
+    if (errorArchivo) {
+      return {
+        ok: false,
+        error: enMeta
+          ? 'Se borró en Meta, pero aquí no se pudo quitar. Inténtalo otra vez.'
+          : 'No se pudo borrar.',
+      };
+    }
+    revalidatePath('/plantillas');
+    return { ok: true, archivada: true };
+  }
+
+  if (error || !borradas?.length) {
+    return {
+      ok: false,
+      error: enMeta
+        ? 'Se borró en Meta, pero aquí no se pudo quitar. Inténtalo otra vez.'
+        : `No se pudo borrar${error ? `: ${error.message}` : '.'}`,
+    };
+  }
+
   revalidatePath('/plantillas');
   return { ok: true };
 }

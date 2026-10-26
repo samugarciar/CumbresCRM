@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react';
 import {
-  Archive,
   CheckCircle2,
   Clock,
   AlertTriangle,
@@ -16,6 +15,7 @@ import {
   MessageCircle,
   Sparkles,
   Info,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,7 @@ import {
 import { previsualizar } from '@/lib/plantillas';
 import {
   guardarPlantilla,
-  archivarPlantilla,
+  borrarPlantilla,
   enviarAMeta,
   sincronizarConMeta,
 } from './acciones';
@@ -118,6 +118,9 @@ export function GestorPlantillas({
   const [idioma, setIdioma] = useState('es');
   const [linea, setLinea] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // Lo que se le explica a quien abre el editor desde «Mandar a Meta».
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [porBorrar, setPorBorrar] = useState<Plantilla | null>(null);
   const [mensajeSync, setMensajeSync] = useState<string | null>(null);
   const [pendiente, startTransition] = useTransition();
 
@@ -129,28 +132,36 @@ export function GestorPlantillas({
   // Lo que Meta ya revisó no se edita: solo el título.
   const bloqueada = typeof editando === 'object' && estaEnMeta(editando);
 
-  function abrir(p: Plantilla | 'nueva-whatsapp' | 'nueva-chat') {
+  // Al borrarla se borra también en Meta si allá existe y su línea sigue
+  // conectada (acciones.ts › borrarPlantilla hace la misma cuenta).
+  const lineaEnMetaPorBorrar =
+    porBorrar &&
+    porBorrar.tipo !== 'chat' &&
+    ['enviada', 'aprobada', 'rechazada'].includes(porBorrar.estado_meta) &&
+    porBorrar.nombre_meta
+      ? nombreDeLinea(porBorrar.wa_phone_number_id)
+      : null;
+
+  function abrir(p: Plantilla | 'nueva-whatsapp' | 'nueva-chat', avisoAlAbrir: string | null = null) {
     setEditando(p);
     setError(null);
+    setAviso(avisoAlAbrir);
     if (typeof p === 'string') {
       setNombre('');
       setNombreMeta('');
       setCuerpo('');
       setCategoria(p === 'nueva-whatsapp' ? 'utilidad' : 'general');
       setIdioma('es');
-      setLinea(lineas[0]?.wa_phone_number_id ?? '');
+      // Sin línea hasta que alguien la elija: un borrador puede ser para
+      // una línea que todavía no está conectada.
+      setLinea('');
     } else {
       setNombre(p.nombre);
       setNombreMeta(p.nombre_meta ?? '');
       setCuerpo(p.cuerpo);
       setCategoria(p.categoria);
       setIdioma(p.idioma ?? 'es');
-      // Un borrador sin línea propone la primera; una que ya está en Meta
-      // se queda como está, aunque no tenga línea.
-      setLinea(
-        p.wa_phone_number_id ??
-          (p.tipo !== 'chat' && !estaEnMeta(p) ? lineas[0]?.wa_phone_number_id ?? '' : '')
-      );
+      setLinea(p.wa_phone_number_id ?? '');
     }
   }
 
@@ -164,6 +175,7 @@ export function GestorPlantillas({
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9_]/g, '_')
         .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '')
         .slice(0, 50);
       setNombreMeta(tecnico);
     }
@@ -207,24 +219,15 @@ export function GestorPlantillas({
     });
   }
 
+  // Se manda desde el editor, viendo la línea y el texto: una plantilla
+  // queda para siempre en la cuenta de esa línea y solo sale por ella.
   function handleEnviarAMeta(p: Plantilla) {
-    setError(null);
-    // Sin línea y con varias conectadas, hay que elegir antes de mandarla.
-    if (!p.wa_phone_number_id && lineas.length !== 1) {
-      abrir(p);
-      setError(
-        lineas.length === 0
-          ? 'Para mandarla a Meta hace falta una línea conectada.'
-          : 'Elige por qué línea va a salir y pulsa «Mandar a Meta».'
-      );
-      return;
-    }
-    startTransition(async () => {
-      const r = await enviarAMeta(p.id, p.wa_phone_number_id ?? lineas[0]?.wa_phone_number_id ?? null);
-      if (!r.ok) {
-        setError(r.error ?? 'No se pudo enviar a revisión.');
-      }
-    });
+    abrir(
+      p,
+      lineas.length === 0
+        ? 'Para mandarla a Meta hace falta una línea conectada. Mientras tanto queda como borrador.'
+        : 'Revisa por qué línea va a salir y pulsa «Mandar a Meta».'
+    );
   }
 
   function sincronizar() {
@@ -241,9 +244,23 @@ export function GestorPlantillas({
     });
   }
 
-  function archivar(id: string) {
+  function borrar() {
+    if (!porBorrar) return;
+    const p = porBorrar;
+    setError(null);
     startTransition(async () => {
-      await archivarPlantilla(id);
+      const r = await borrarPlantilla(p.id);
+      if (!r.ok) {
+        setError(r.error ?? 'No se pudo borrar la plantilla.');
+        return;
+      }
+      setPorBorrar(null);
+      setMensajeSync(
+        r.archivada
+          ? `«${p.nombre}» ya se había usado en envíos: se quitó de la lista y esos envíos siguen guardados.`
+          : `Se borró «${p.nombre}».`
+      );
+      setTimeout(() => setMensajeSync(null), 5000);
     });
   }
 
@@ -424,11 +441,14 @@ export function GestorPlantillas({
                               size="icon-xs"
                               variant="ghost"
                               className="rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => archivar(p.id)}
+                              onClick={() => {
+                                setError(null);
+                                setPorBorrar(p);
+                              }}
                               disabled={pendiente}
-                              title="Archivar plantilla"
+                              title="Borrar plantilla"
                             >
-                              <Archive className="size-3.5" />
+                              <Trash2 className="size-3.5" />
                             </Button>
                           </div>
                         )}
@@ -542,11 +562,14 @@ export function GestorPlantillas({
                             size="icon-xs"
                             variant="ghost"
                             className="rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => archivar(p.id)}
+                            onClick={() => {
+                              setError(null);
+                              setPorBorrar(p);
+                            }}
                             disabled={pendiente}
-                            title="Archivar"
+                            title="Borrar respuesta"
                           >
-                            <Archive className="size-3.5" />
+                            <Trash2 className="size-3.5" />
                           </Button>
                         </div>
                       )}
@@ -587,6 +610,13 @@ export function GestorPlantillas({
           </DialogHeader>
 
           <div className="flex flex-col gap-4 py-2">
+            {aviso && !bloqueada && (
+              <div className="flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/5 p-2.5 text-xs text-foreground">
+                <Info className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                <span>{aviso}</span>
+              </div>
+            )}
+
             {bloqueada && (
               <div className="flex items-start gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5 text-xs text-blue-900 dark:text-blue-300">
                 <Info className="mt-0.5 size-3.5 shrink-0" />
@@ -657,7 +687,9 @@ export function GestorPlantillas({
                     disabled={pendiente || bloqueada}
                     className="h-8 rounded-lg border border-input bg-background px-3 text-xs"
                   >
-                    {linea === '' && <option value="">Sin línea</option>}
+                    {(linea === '' || !bloqueada) && (
+                      <option value="">Sin línea: la eliges al mandarla a Meta</option>
+                    )}
                     {lineas.map((l) => (
                       <option key={l.wa_phone_number_id} value={l.wa_phone_number_id}>
                         {l.nombre}
@@ -666,7 +698,9 @@ export function GestorPlantillas({
                   </select>
                 )}
                 <span className="text-[11px] text-muted-foreground">
-                  Meta la guarda en la cuenta de WhatsApp de esa línea: por otra no sale.
+                  {linea
+                    ? 'Meta la guarda en la cuenta de WhatsApp de esa línea: por otra no sale.'
+                    : 'Queda como borrador. Elige la línea cuando la vayas a mandar a Meta, por ejemplo cuando se conecte la administrativa.'}
                 </span>
               </div>
             )}
@@ -777,6 +811,13 @@ export function GestorPlantillas({
             )}
           </div>
 
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" className="rounded-xl" onClick={() => setEditando(null)}>
               Cancelar
@@ -807,7 +848,13 @@ export function GestorPlantillas({
                   className="rounded-lg gap-1.5"
                   onClick={() => guardar(true)}
                   disabled={pendiente || !nombre.trim() || !cuerpo.trim() || !linea}
-                  title={linea ? undefined : 'Hace falta una línea conectada para mandarla a Meta'}
+                  title={
+                    linea
+                      ? undefined
+                      : lineas.length
+                        ? 'Elige primero por qué línea va a salir'
+                        : 'Hace falta una línea conectada para mandarla a Meta'
+                  }
                 >
                   {pendiente ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
                   Mandar a Meta
@@ -823,6 +870,54 @@ export function GestorPlantillas({
                 Guardar respuesta
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ============================================================== */}
+      {/* CONFIRMAR ANTES DE BORRAR                                      */}
+      {/* ============================================================== */}
+      <Dialog open={porBorrar !== null} onOpenChange={(o) => !o && !pendiente && setPorBorrar(null)}>
+        <DialogContent className="sm:max-w-md rounded-xl">
+          <DialogHeader>
+            <DialogTitle>¿Borrar «{porBorrar?.nombre}»?</DialogTitle>
+            <DialogDescription className="text-xs leading-relaxed">
+              {porBorrar?.tipo === 'chat'
+                ? 'Deja de aparecer en el chat de los asesores. No se puede deshacer.'
+                : lineaEnMetaPorBorrar
+                  ? `Se borra aquí y en Meta, de la cuenta de WhatsApp de la línea ${lineaEnMetaPorBorrar}. No se puede deshacer.`
+                  : porBorrar?.estado_meta === 'borrador'
+                    ? 'Es un borrador: todavía no está en Meta. Se borra del CRM y no se puede deshacer.'
+                    : 'Su línea ya no está conectada: se borra solo del CRM. No se puede deshacer.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {lineaEnMetaPorBorrar && porBorrar?.nombre_meta && (
+            <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+              <li>
+                Meta no deja crear otra plantilla con el nombre{' '}
+                <code className="rounded bg-muted px-1 font-mono text-[11px]">{porBorrar.nombre_meta}</code> durante 30
+                días.
+              </li>
+              <li>Los mensajes que ya salieron con ella no cambian.</li>
+            </ul>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="rounded-xl" onClick={() => setPorBorrar(null)} disabled={pendiente}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" className="rounded-xl gap-1.5" onClick={borrar} disabled={pendiente}>
+              {pendiente ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+              Borrar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
