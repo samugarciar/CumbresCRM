@@ -158,6 +158,15 @@ VALUES ('bb000002-0000-0000-0000-000000000002',
        ('bb000004-0000-0000-0000-000000000004',
         'bb000003-0000-0000-0000-000000000003', 'usuario', 'Hola, pregunté hace meses');
 
+-- Los dos existían en el CRM desde antes: desde el 26 oct
+-- (20261026100004) un escalamiento anterior al contacto no cuenta, y en
+-- esta transacción todo nació en el mismo now().
+UPDATE crm.contactos SET created_at = now() - interval '30 days'
+ WHERE telefono_e164 IN ('+573001113331', '+573001114441');
+UPDATE crm.oportunidades o SET created_at = now() - interval '30 days'
+  FROM crm.contactos c
+ WHERE c.id = o.contacto_id AND c.telefono_e164 IN ('+573001113331', '+573001114441');
+
 -- Uno escala AHORA. El otro escaló hace una semana: es el caso que
 -- representa a los 264 contactos con escalamientos viejos.
 INSERT INTO public.agente_comercial_uso

@@ -408,6 +408,15 @@ SELECT is(
   'El trigger NO calcula el escalamiento: sería medio segundo por mensaje'
 );
 
+-- El contacto y su oportunidad existían antes del pedido: desde el 26 oct
+-- (20261026100004) un escalamiento anterior al contacto no cuenta, y en
+-- esta transacción todo nació en el mismo now().
+UPDATE crm.contactos SET created_at = now() - interval '1 hour'
+ WHERE telefono_e164 = '+573001110009';
+UPDATE crm.oportunidades o SET created_at = now() - interval '1 hour'
+  FROM crm.contactos c
+ WHERE c.id = o.contacto_id AND c.telefono_e164 = '+573001110009';
+
 INSERT INTO public.agente_comercial_uso
   (inmobiliaria_id, conversacion_id, modelo, etapa, escalado, created_at)
 VALUES ('11111111-1111-1111-1111-111111111111',

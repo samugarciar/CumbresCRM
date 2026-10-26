@@ -161,6 +161,14 @@ INSERT INTO public.agente_comercial_mensajes
 VALUES ('f4500006-0000-0000-0000-000000000006', 'usuario', 'Hola, vi el anuncio',
         now() - interval '70 minutes', '324000000000045', 'wamid.45.3');
 
+-- Nació con ese mensaje, hace 70 minutos (en la transacción todo es now()):
+-- desde el 26 oct un escalamiento anterior al contacto no cuenta.
+UPDATE crm.contactos SET created_at = now() - interval '70 minutes'
+ WHERE telefono_e164 = '+573004500006';
+UPDATE crm.oportunidades o SET created_at = now() - interval '70 minutes'
+  FROM crm.contactos c
+ WHERE c.id = o.contacto_id AND c.telefono_e164 = '+573004500006';
+
 INSERT INTO public.agente_comercial_uso
   (inmobiliaria_id, conversacion_id, modelo, etapa, escalado, created_at)
 VALUES
@@ -282,6 +290,12 @@ SELECT results_eq(
   'El freno queda encendido y con quién lo encendió');
 SELECT is(crm.sincronizar_escalamientos(), 0,
   'El mismo escalamiento no lo vuelve a callar');
+
+-- Lo encendieron hace diez minutos (en la transacción todo es now()), y
+-- la persona vuelve a pedir ayuda hace uno: desde el 26 oct solo calla un
+-- pedido POSTERIOR al último cambio del freno.
+UPDATE crm.frenos_bot SET bot_cambiado_at = now() - interval '10 minutes'
+ WHERE telefono_e164 = '+573004500002';
 
 INSERT INTO public.agente_comercial_uso
   (inmobiliaria_id, conversacion_id, modelo, etapa, escalado, created_at)
