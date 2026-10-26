@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   AlarmClock,
@@ -11,6 +11,8 @@ import {
   X,
   Phone,
   ArrowRight,
+  ChevronRight,
+  UserRound,
 } from 'lucide-react';
 import { tiempoRelativo, telefonoLegible, iniciales } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
@@ -78,8 +80,30 @@ export function Tablero({
   const [encima, setEncima] = useState<string | null>(null);
 
   // En móvil no hay siete columnas en paralelo: hay una a la vez y pastillas
-  // cómodas para alternar rápidamente.
-  const [visible, setVisible] = useState(columnas[0]?.codigo ?? '');
+  // cómodas para alternar rápidamente. Abre en la primera que tiene
+  // tarjetas: abrir en «Nuevo» vacío hacía creer que no había nada.
+  const [visible, setVisible] = useState(
+    columnas.find((c) => c.total > 0)?.codigo ?? columnas[0]?.codigo ?? ''
+  );
+
+  // En el escritorio no caben todas: si quedan columnas a la derecha, se
+  // dice con un degradado y una flecha, no solo con la barra de scroll.
+  const carril = useRef<HTMLDivElement>(null);
+  const [quedanALaDerecha, setQuedanALaDerecha] = useState(false);
+  useEffect(() => {
+    const el = carril.current;
+    if (!el) return;
+    const medir = () =>
+      setQuedanALaDerecha(el.scrollLeft + el.clientWidth < el.scrollWidth - 8);
+    medir();
+    el.addEventListener('scroll', medir, { passive: true });
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', medir);
+      ro.disconnect();
+    };
+  }, []);
 
   function mover(t: Tarjeta, destino: string, etiquetaDestino: string) {
     setMoviendo(t.id);
@@ -168,7 +192,7 @@ export function Tablero({
             }`}
           >
             <span>{c.etiqueta}</span>
-            <span className={`tabular rounded-full px-1.5 py-0.2 text-[10px] font-semibold ${
+            <span className={`tabular rounded-full px-1.5 py-0.2 text-[11px] font-semibold ${
               visible === c.codigo ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
             }`}>
               {c.total}
@@ -178,9 +202,13 @@ export function Tablero({
       </div>
 
       {/* Contenedor de columnas */}
-      <div className="flex min-h-0 flex-1 gap-3.5 md:overflow-x-auto md:pb-2">
+      <div className="relative flex min-h-0 flex-1">
+      <div ref={carril} className="flex min-h-0 flex-1 gap-3 md:overflow-x-auto md:pb-2">
         {columnas.map((c) => {
           const esDropTarget = encima === c.codigo && arrastrando && arrastrando.etapa !== c.codigo;
+          // Vacía: en el escritorio se pliega en una franja con su contador,
+          // y sigue aceptando tarjetas arrastradas.
+          const vacia = c.total === 0;
           return (
             <section
               key={c.codigo}
@@ -199,7 +227,9 @@ export function Tablero({
                 e.preventDefault();
                 soltar(c);
               }}
-              className={`min-h-0 w-full shrink-0 flex-col rounded-2xl border transition-all md:flex md:w-80 ${
+              className={`min-h-0 w-full shrink-0 flex-col rounded-xl border transition-all md:flex ${
+                vacia ? 'md:w-12 md:px-1' : 'md:w-64'
+              } ${
                 visible === c.codigo ? 'flex' : 'hidden'
               } ${
                 esDropTarget
@@ -208,17 +238,33 @@ export function Tablero({
               } p-2.5`}
               aria-label={c.etiqueta}
             >
+              {/* Franja de la columna vacía (solo escritorio) */}
+              {vacia && (
+                <div
+                  className="hidden flex-col items-center gap-2 py-1 md:flex"
+                  title={`${c.etiqueta}: sin oportunidades`}
+                >
+                  <span className="tabular rounded-full border bg-background px-1.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                    0
+                  </span>
+                  <span className="rotate-180 text-xs font-medium text-muted-foreground [writing-mode:vertical-rl]">
+                    {c.etiqueta}
+                  </span>
+                </div>
+              )}
+
+              <div className={`min-h-0 flex-1 flex-col ${vacia ? 'flex md:hidden' : 'flex'}`}>
               {/* Cabecera de Columna */}
-              <header className="flex items-center justify-between gap-2 pb-2.5 px-1 border-b border-border/40">
+              <header className="flex flex-col gap-0.5 border-b border-border/40 px-1 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold tracking-tight text-foreground">{c.etiqueta}</h2>
-                  <span className="rounded-full bg-background/80 border border-border/40 px-2 py-0.5 text-xs font-semibold tabular text-muted-foreground shadow-2xs">
+                  <h2 className="truncate text-sm font-semibold tracking-tight text-foreground">{c.etiqueta}</h2>
+                  <span className="tabular rounded-full border bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                     {c.total}
                   </span>
                 </div>
                 {c.diasPudricion && (
-                  <span className="text-[11px] text-muted-foreground/70" title={`Se considera estancada a los ${c.diasPudricion} días`}>
-                    {c.diasPudricion}d
+                  <span className="text-[11px] text-muted-foreground">
+                    Se estanca a los {c.diasPudricion} días
                   </span>
                 )}
               </header>
@@ -254,9 +300,25 @@ export function Tablero({
                   </div>
                 )}
               </div>
+              </div>
             </section>
           );
         })}
+      </div>
+
+      {quedanALaDerecha && (
+        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-16 items-center justify-end bg-gradient-to-l from-background to-transparent md:flex">
+          <button
+            type="button"
+            onClick={() => carril.current?.scrollBy({ left: 300, behavior: 'smooth' })}
+            className="pointer-events-auto mr-1 grid size-8 place-items-center rounded-full border bg-card text-muted-foreground shadow-sm hover:text-foreground"
+            aria-label="Ver más columnas"
+            title="Hay más etapas a la derecha"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+      )}
       </div>
     </div>
   );
@@ -297,7 +359,7 @@ function TarjetaOportunidad({
       <div className="flex items-start gap-2.5 p-3">
         {/* Avatar chip con iniciales */}
         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-[11px] font-semibold">
-          {iniciales(t.nombre)}
+          {t.nombre?.trim() ? iniciales(t.nombre) : <UserRound className="size-3.5" aria-hidden />}
         </span>
 
         <Link
@@ -305,15 +367,20 @@ function TarjetaOportunidad({
           draggable={false}
           className="min-w-0 flex-1 outline-none group-hover:text-primary transition-colors"
         >
+          {/* Sin nombre, el título es el teléfono y no se repite debajo */}
           <p className="truncate text-sm font-semibold tracking-tight text-foreground">
-            {t.nombre || <span className="text-muted-foreground font-normal">Sin nombre</span>}
+            {t.nombre?.trim() || telefonoLegible(t.telefono_e164) || (
+              <span className="font-normal text-muted-foreground">Sin nombre</span>
+            )}
           </p>
-          <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-            <Phone className="size-3 opacity-60 shrink-0" />
-            <span className="tabular truncate">
-              {telefonoLegible(t.telefono_e164) ?? 'Sin número'}
-            </span>
-          </div>
+          {t.nombre?.trim() && (
+            <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+              <Phone className="size-3 opacity-60 shrink-0" />
+              <span className="tabular truncate">
+                {telefonoLegible(t.telefono_e164) ?? 'Sin número'}
+              </span>
+            </div>
+          )}
         </Link>
 
         {/* Menú de acciones / teclado */}
@@ -373,7 +440,7 @@ function TarjetaOportunidad({
           <span className="text-[11px]">{tiempoRelativo(t.ultima_actividad_at)}</span>
         )}
         {t.visita_realizada_origen === 'retroactiva' && (
-          <span className="rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground" title="Se cerró en bloque el 14 sep 2026: nadie vio ocurrir la visita">
+          <span className="rounded-md bg-muted/50 px-1.5 py-0.5 text-[11px] text-muted-foreground" title="Se cerró en bloque el 14 sep 2026: nadie vio ocurrir la visita">
             visita sin confirmar
           </span>
         )}
