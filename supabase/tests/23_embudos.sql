@@ -121,6 +121,10 @@ SELECT is(
      FROM (SELECT p.proname
              FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
             WHERE n.nspname = 'crm'
+              -- La única sobrecarga decidida: bot_puede_responder con y sin
+              -- línea (20261026100005). La de dos argumentos es el contrato
+              -- de n8n y la 324, y delega en la de tres con NULL.
+              AND p.proname <> 'bot_puede_responder'
             GROUP BY p.proname HAVING count(*) > 1) x),
   'ninguna',
   'Ninguna función de crm quedó sobrecargada: dos firmas del mismo nombre siempre son un descuido aquí'
