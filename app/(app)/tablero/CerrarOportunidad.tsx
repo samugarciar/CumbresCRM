@@ -34,10 +34,19 @@ export function CerrarOportunidad({
   oportunidadId,
   nombre,
   contactoId,
+  alCerrar,
+  alSalirDelDialogo,
+  desdeFicha = false,
 }: {
   oportunidadId: string;
   nombre: string;
   contactoId: string;
+  /** Lo que hace quien lo usa cuando cerró bien (la ficha se refresca). */
+  alCerrar?: () => void;
+  /** Al cerrarse el diálogo (guardado o cancelado): quien lo usa cierra su menú. */
+  alSalirDelDialogo?: () => void;
+  /** En la ficha sobra el enlace «desde la ficha». */
+  desdeFicha?: boolean;
 }) {
   const [abierto, setAbierto] = useState<'ganada' | 'perdida' | null>(null);
   const [motivo, setMotivo] = useState<string | null>(null);
@@ -67,6 +76,8 @@ export function CerrarOportunidad({
       setAbierto(null);
       setMotivo(null);
       setNota('');
+      alCerrar?.();
+      alSalirDelDialogo?.();
     });
   }
 
@@ -79,7 +90,7 @@ export function CerrarOportunidad({
         }}
       >
         <Trophy />
-        Marcar como ganada
+        Cerrar como ganada
       </DropdownMenuItem>
       <DropdownMenuItem
         variant="destructive"
@@ -89,14 +100,21 @@ export function CerrarOportunidad({
         }}
       >
         <XCircle />
-        Dar por perdida
+        Cerrar como perdida
       </DropdownMenuItem>
 
-      <Dialog open={abierto !== null} onOpenChange={(o) => !o && setAbierto(null)}>
+      <Dialog
+        open={abierto !== null}
+        onOpenChange={(o) => {
+          if (o) return;
+          setAbierto(null);
+          alSalirDelDialogo?.();
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {abierto === 'ganada' ? 'Cerrar como ganada' : 'Dar por perdida'}
+              {abierto === 'ganada' ? 'Cerrar como ganada' : 'Cerrar como perdida'}
             </DialogTitle>
             <DialogDescription>
               {abierto === 'ganada'
@@ -145,7 +163,7 @@ export function CerrarOportunidad({
             />
           </div>
 
-          {abierto === 'ganada' && (
+          {abierto === 'ganada' && !desdeFicha && (
             <p className="text-xs text-muted-foreground">
               El inmueble se vincula todavía a mano desde{' '}
               <a href={`/contactos/${contactoId}`} className="underline">
@@ -162,11 +180,21 @@ export function CerrarOportunidad({
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAbierto(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAbierto(null);
+                alSalirDelDialogo?.();
+              }}
+            >
               Cancelar
             </Button>
             <Button onClick={cerrar} disabled={pendiente}>
-              {pendiente ? 'Guardando…' : 'Cerrar oportunidad'}
+              {pendiente
+                ? 'Guardando…'
+                : abierto === 'perdida'
+                  ? 'Cerrar como perdida'
+                  : 'Cerrar como ganada'}
             </Button>
           </DialogFooter>
         </DialogContent>
