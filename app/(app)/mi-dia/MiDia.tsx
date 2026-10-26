@@ -10,16 +10,14 @@ import {
   CalendarClock,
   Check,
   ClipboardList,
-  MessageCircle,
   UserRoundCheck,
   CheckCircle2,
   Sparkles,
-  ArrowRight,
-  Filter,
+  Reply,
 } from 'lucide-react';
-import { tiempoRelativo, enlaceWhatsApp } from '@/lib/formato';
+import { tiempoRelativo } from '@/lib/formato';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { BandejaEnVivo } from '@/app/(app)/contactos/BandejaEnVivo';
 import { completarTarea } from './acciones';
 
 export interface Renglon {
@@ -47,37 +45,68 @@ const ICONO: Record<string, typeof Check> = {
   estancada: AlarmClock,
 };
 
+/**
+ * Los tres bloques. TODA prioridad que trae crm.mi_dia cae en uno: antes
+ * la 8 (estancadas) no caía en ninguno, y el encabezado contaba asuntos
+ * que la pantalla no enseñaba.
+ *
+ * 1 escalado y envío fallido, 7 bot callado sin atender → esperando
+ * 2 a 6 visitas y tareas de hoy → para hoy
+ * 8 estancadas → se está enfriando
+ */
 const BLOQUES = [
   {
     clave: 'ahora',
     titulo: 'Alguien está esperando',
-    ayuda: 'Pidieron una persona o un mensaje no llegó',
-    de: (p: number) => p === 1,
-    color: 'text-destructive',
-    badgeVariant: 'destructive' as const,
+    ayuda: 'Pidieron una persona, un mensaje no llegó o el bot está callado',
+    de: (p: number) => p === 1 || p === 7,
   },
   {
     clave: 'hoy',
     titulo: 'Para hoy',
-    ayuda: 'Tiene hora programada o se prometió para hoy',
+    ayuda: 'Visitas y tareas con fecha de hoy',
     de: (p: number) => p >= 2 && p <= 6,
-    color: 'text-primary',
-    badgeVariant: 'default' as const,
   },
   {
     clave: 'frio',
     titulo: 'Se está enfriando',
-    ayuda: 'Requiere seguimiento antes de que pierda interés',
-    de: (p: number) => p === 7,
-    color: 'text-muted-foreground',
-    badgeVariant: 'secondary' as const,
+    ayuda: 'Oportunidades quietas: un mensaje a tiempo las revive',
+    de: (p: number) => p >= 8,
   },
-];
+] as const;
+
+type Clave = (typeof BLOQUES)[number]['clave'];
+
+/** Lo que hay que hacer con cada renglón, dicho en el botón. */
+function accion(r: Renglon): { texto: string; href: string } | null {
+  if (!r.contacto_id) return null;
+  const ficha = `/contactos/${r.contacto_id}`;
+  switch (r.tipo) {
+    case 'escalado':
+    case 'bot_callado':
+    case 'envio_fallido':
+    case 'estancada':
+      return { texto: 'Responder', href: `${ficha}#escribir` };
+    case 'visita_hoy':
+      return { texto: 'Confirmar visita', href: `${ficha}#escribir` };
+    case 'visita_sin_cerrar':
+      return { texto: 'Ver ficha', href: ficha };
+    default:
+      return null;
+  }
+}
+
+/** Una pista corta debajo del detalle cuando la acción no se hace aquí. */
+function pista(r: Renglon): string | null {
+  if (r.tipo === 'visita_sin_cerrar') return 'Márcala como realizada o cancelada en Citas de la plataforma.';
+  if (r.tipo === 'tarea_plataforma') return 'Se resuelve en la plataforma de inventario.';
+  return null;
+}
 
 export function MiDia({ renglones }: { renglones: Renglon[] }) {
   const [hechas, setHechas] = useState<Set<string>>(new Set());
   const [pendiente, startTransition] = useTransition();
-  const [filtroActivo, setFiltroActivo] = useState<string>('todos');
+  const [filtro, setFiltro] = useState<Clave | null>(null);
 
   function completar(id: string) {
     startTransition(async () => {
@@ -86,273 +115,168 @@ export function MiDia({ renglones }: { renglones: Renglon[] }) {
     });
   }
 
-  const visibles = renglones.filter(
-    (r) => !(r.tarea_id && hechas.has(r.tarea_id))
-  );
-
-  const conteoAhora = visibles.filter((r) => r.prioridad === 1).length;
-  const conteoHoy = visibles.filter((r) => r.prioridad >= 2 && r.prioridad <= 6).length;
-  const conteoFrio = visibles.filter((r) => r.prioridad === 7).length;
+  const visibles = renglones.filter((r) => !(r.tarea_id && hechas.has(r.tarea_id)));
+  const conteo = (clave: Clave) =>
+    visibles.filter((r) => BLOQUES.find((b) => b.clave === clave)!.de(r.prioridad)).length;
 
   if (visibles.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-card/60 p-12 text-center shadow-xs">
-        <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <CheckCircle2 className="size-7" />
+      <>
+        <BandejaEnVivo />
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-card/60 p-12 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <CheckCircle2 className="size-6" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground">Todo al día</h2>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Nadie está esperando y no hay visitas ni tareas pendientes. Buen momento para revisar
+            las coincidencias del catálogo.
+          </p>
+          <Button variant="outline" size="sm" asChild className="mt-1 h-8 gap-1.5 rounded-lg">
+            <Link href="/coincidencias">
+              <Sparkles className="size-4 text-primary" />
+              Ver coincidencias
+            </Link>
+          </Button>
         </div>
-        <h2 className="text-lg font-bold text-foreground">¡Todo al día!</h2>
-        <p className="max-w-md text-sm text-muted-foreground">
-          No tienes clientes esperando, visitas pendientes ni tareas enfriándose por ahora.
-          Es un excelente momento para revisar coincidencias de catálogo.
-        </p>
-        <Button variant="outline" size="sm" asChild className="mt-2 gap-1.5">
-          <Link href="/coincidencias">
-            <Sparkles className="size-4 text-primary" />
-            Explorar coincidencias
-          </Link>
-        </Button>
-      </div>
+      </>
     );
   }
 
-  // Filtrado según pastilla activa
-  const renglonesFiltrados = visibles.filter((r) => {
-    if (filtroActivo === 'todos') return true;
-    if (filtroActivo === 'ahora') return r.prioridad === 1;
-    if (filtroActivo === 'hoy') return r.prioridad >= 2 && r.prioridad <= 6;
-    if (filtroActivo === 'frio') return r.prioridad === 7;
-    return true;
-  });
+  const tarjetas: { clave: Clave; etiqueta: string; icono: typeof Check; alerta: string }[] = [
+    { clave: 'ahora', etiqueta: 'Esperando', icono: UserRoundCheck, alerta: 'bg-destructive/10 text-destructive' },
+    { clave: 'hoy', etiqueta: 'Para hoy', icono: CalendarClock, alerta: 'bg-primary/10 text-primary' },
+    { clave: 'frio', etiqueta: 'Enfriándose', icono: AlarmClock, alerta: 'bg-muted text-muted-foreground' },
+  ];
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* ==============================================================
-          KPIs Y FILTROS RÁPIDOS DE ENFOQUE
-          ============================================================== */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <button
-          type="button"
-          onClick={() => setFiltroActivo(filtroActivo === 'ahora' ? 'todos' : 'ahora')}
-          className={`flex items-center justify-between rounded-xl border p-4 text-left transition-all cursor-pointer ${
-            filtroActivo === 'ahora'
-              ? 'border-destructive/50 bg-destructive/5 ring-2 ring-destructive/20 shadow-xs'
-              : 'bg-card hover:bg-muted/50'
-          }`}
-        >
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Esperando
-            </p>
-            <p className="text-2xl font-bold text-foreground mt-0.5 tabular">
-              {conteoAhora}
-            </p>
-          </div>
-          <div
-            className={`flex size-10 items-center justify-center rounded-lg ${
-              conteoAhora > 0
-                ? 'bg-destructive/10 text-destructive'
-                : 'bg-muted text-muted-foreground'
-            }`}
-          >
-            <UserRoundCheck className="size-5" />
-          </div>
-        </button>
+    <div className="flex flex-col gap-5">
+      <BandejaEnVivo />
 
-        <button
-          type="button"
-          onClick={() => setFiltroActivo(filtroActivo === 'hoy' ? 'todos' : 'hoy')}
-          className={`flex items-center justify-between rounded-xl border p-4 text-left transition-all cursor-pointer ${
-            filtroActivo === 'hoy'
-              ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/20 shadow-xs'
-              : 'bg-card hover:bg-muted/50'
-          }`}
-        >
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Para hoy
-            </p>
-            <p className="text-2xl font-bold text-foreground mt-0.5 tabular">
-              {conteoHoy}
-            </p>
-          </div>
-          <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <CalendarClock className="size-5" />
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setFiltroActivo(filtroActivo === 'frio' ? 'todos' : 'frio')}
-          className={`flex items-center justify-between rounded-xl border p-4 text-left transition-all cursor-pointer ${
-            filtroActivo === 'frio'
-              ? 'border-muted-foreground/50 bg-muted/60 ring-2 ring-muted shadow-xs'
-              : 'bg-card hover:bg-muted/50'
-          }`}
-        >
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Enfriándose
-            </p>
-            <p className="text-2xl font-bold text-foreground mt-0.5 tabular">
-              {conteoFrio}
-            </p>
-          </div>
-          <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-            <AlarmClock className="size-5" />
-          </div>
-        </button>
+      {/* Resumen que también filtra: un toque enseña solo ese bloque */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {tarjetas.map((t) => {
+          const n = conteo(t.clave);
+          const activa = filtro === t.clave;
+          const Icono = t.icono;
+          return (
+            <button
+              key={t.clave}
+              type="button"
+              onClick={() => setFiltro(activa ? null : t.clave)}
+              aria-pressed={activa}
+              className={`flex items-center justify-between gap-2 rounded-xl border p-3 text-left transition-colors sm:p-4 ${
+                activa ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/20' : 'bg-card hover:bg-muted/50'
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium text-muted-foreground">{t.etiqueta}</p>
+                <p className="tabular text-xl font-semibold text-foreground sm:text-2xl">{n}</p>
+              </div>
+              <span
+                className={`hidden size-9 shrink-0 items-center justify-center rounded-lg sm:flex ${
+                  n > 0 ? t.alerta : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                <Icono className="size-4" />
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Selector de pestañas secundario */}
-      <div className="flex items-center gap-1.5 border-b pb-2 text-xs font-medium text-muted-foreground">
-        <span className="flex items-center gap-1 mr-1">
-          <Filter className="size-3.5" />
-          Filtrar:
-        </span>
-        {[
-          { clave: 'todos', etiqueta: `Todos (${visibles.length})` },
-          { clave: 'ahora', etiqueta: `Esperando (${conteoAhora})` },
-          { clave: 'hoy', etiqueta: `Hoy (${conteoHoy})` },
-          { clave: 'frio', etiqueta: `Enfriándose (${conteoFrio})` },
-        ].map((f) => (
-          <button
-            key={f.clave}
-            onClick={() => setFiltroActivo(f.clave)}
-            className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
-              filtroActivo === f.clave
-                ? 'bg-foreground text-background font-semibold shadow-2xs'
-                : 'hover:bg-muted hover:text-foreground'
-            }`}
-          >
-            {f.etiqueta}
+      {filtro && (
+        <p className="-mt-2 text-xs text-muted-foreground">
+          Viendo solo «{tarjetas.find((t) => t.clave === filtro)?.etiqueta}».{' '}
+          <button type="button" onClick={() => setFiltro(null)} className="font-medium text-primary hover:underline">
+            Ver todo
           </button>
-        ))}
-      </div>
+        </p>
+      )}
 
-      {/* ==============================================================
-          LISTA DE TAREAS AGRUPADAS
-          ============================================================== */}
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-5">
         {BLOQUES.map((b) => {
-          const suyos = renglonesFiltrados.filter((r) => b.de(r.prioridad));
+          if (filtro && filtro !== b.clave) return null;
+          const suyos = visibles.filter((r) => b.de(r.prioridad));
           if (suyos.length === 0) return null;
+          const urgente = b.clave === 'ahora';
 
           return (
-            <section key={b.clave} className="flex flex-col gap-2.5">
-              <header className="flex items-center justify-between">
-                <div className="flex items-baseline gap-2">
-                  <h2 className="text-sm font-bold tracking-tight text-foreground">
-                    {b.titulo}
-                  </h2>
-                  <Badge variant={b.badgeVariant} className="text-[11px] h-4.5 px-2">
-                    {suyos.length}
-                  </Badge>
-                  <span className="hidden text-xs text-muted-foreground md:inline">
-                    · {b.ayuda}
-                  </span>
-                </div>
+            <section key={b.clave} className="flex flex-col gap-2">
+              <header className="flex flex-wrap items-baseline gap-x-2">
+                <h2 className="text-sm font-semibold text-foreground">{b.titulo}</h2>
+                <span className="tabular text-sm text-muted-foreground">{suyos.length}</span>
+                <span className="hidden text-xs text-muted-foreground md:inline">· {b.ayuda}</span>
               </header>
 
-              <div className="overflow-hidden rounded-xl border bg-card shadow-2xs divide-y">
+              <ul className="divide-y overflow-hidden rounded-xl border bg-card">
                 {suyos.map((r, i) => {
                   const Icono = ICONO[r.tipo] ?? ClipboardList;
-                  const wa = enlaceWhatsApp(r.telefono_e164);
-                  const urge = r.prioridad === 1;
+                  const a = accion(r);
+                  const ayuda = pista(r);
+                  const titulo = r.contacto_id ? (
+                    <Link href={`/contactos/${r.contacto_id}`} className="hover:underline">
+                      {r.titulo}
+                    </Link>
+                  ) : (
+                    r.titulo
+                  );
 
                   return (
-                    <div
+                    <li
                       key={`${r.tipo}-${r.tarea_id ?? r.cita_id ?? r.contacto_id ?? i}`}
-                      className={`flex flex-wrap items-center justify-between gap-3 p-3.5 transition-colors hover:bg-muted/40 sm:flex-nowrap ${
+                      className={`flex items-center gap-3 p-3 transition-colors hover:bg-muted/40 ${
                         pendiente ? 'opacity-60' : ''
                       }`}
                     >
-                      {/* Lado izquierdo: Ícono + Título + Detalle */}
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <div
-                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg mt-0.5 ${
-                            urge
-                              ? 'bg-destructive/10 text-destructive'
-                              : 'bg-primary/10 text-primary'
+                      <span
+                        className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
+                          urgente ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
+                        }`}
+                      >
+                        <Icono className="size-4" />
+                      </span>
+
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`truncate text-sm font-semibold ${
+                            urgente ? 'text-destructive' : 'text-foreground'
                           }`}
                         >
-                          <Icono className="size-4" />
-                        </div>
-
-                        <div className="min-w-0 flex-1 space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <p
-                              className={`truncate text-sm ${
-                                urge ? 'font-semibold text-destructive' : 'font-semibold text-foreground'
-                              }`}
-                            >
-                              {r.titulo}
-                            </p>
-                            {r.nombre && (
-                              <span className="hidden sm:inline text-xs text-muted-foreground font-medium">
-                                · {r.nombre}
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="truncate text-xs text-muted-foreground">
-                            {r.detalle}
-                            {r.cuando && (
-                              <span className="ml-1 text-foreground/70 font-medium">
-                                ({tiempoRelativo(r.cuando)})
-                              </span>
-                            )}
-                          </p>
-                        </div>
+                          {titulo}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {r.detalle}
+                          {r.cuando && (
+                            <span className="ml-1 text-foreground/70">· {tiempoRelativo(r.cuando)}</span>
+                          )}
+                        </p>
+                        {ayuda && <p className="truncate text-xs text-muted-foreground">{ayuda}</p>}
                       </div>
 
-                      {/* Lado derecho: Acciones Rápidas Ergonómicas */}
-                      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0">
-                        {wa && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            asChild
-                            className="h-8 gap-1.5 text-xs font-semibold text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:border-emerald-900/60 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-                          >
-                            <a href={wa} target="_blank" rel="noopener noreferrer">
-                              <MessageCircle className="size-3.5 fill-emerald-600/20" />
-                              WhatsApp
-                            </a>
-                          </Button>
-                        )}
-
-                        {r.contacto_id && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            asChild
-                            className="h-8 gap-1 text-xs font-medium"
-                          >
-                            <Link href={`/contactos/${r.contacto_id}`}>
-                              Ficha
-                              <ArrowRight className="size-3" />
-                            </Link>
-                          </Button>
-                        )}
-
-                        {r.tarea_id && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => completar(r.tarea_id!)}
-                            disabled={pendiente}
-                            className="h-8 gap-1 text-xs hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                            title="Marcar como hecha"
-                          >
-                            <Check className="size-3.5" />
-                            <span className="hidden md:inline">Hecha</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+                      {r.tarea_id ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => completar(r.tarea_id!)}
+                          disabled={pendiente}
+                          className="h-8 shrink-0 gap-1 rounded-lg text-xs"
+                        >
+                          <Check className="size-3.5" />
+                          Hecha
+                        </Button>
+                      ) : a ? (
+                        <Button size="sm" variant="outline" asChild className="h-8 shrink-0 gap-1 rounded-lg text-xs">
+                          <Link href={a.href}>
+                            {a.href.endsWith('#escribir') && <Reply className="size-3.5" />}
+                            {a.texto}
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             </section>
           );
         })}
