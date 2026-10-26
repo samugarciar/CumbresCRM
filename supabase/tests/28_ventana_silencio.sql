@@ -29,13 +29,13 @@ DELETE FROM crm.contactos;
 SELECT is(
   crm.ventana_silencio_escalamiento(),
   interval '6 hours',
-  'El silencio por escalamiento dura 6 h, lo mismo que el relevo'
+  'El silencio por escalamiento dura 6 h'
 );
 
 SELECT is(
-  crm.ventana_silencio_escalamiento(),
   crm.ventana_relevo(),
-  'Las dos reglas del bot se miden con el mismo plazo: una sola idea que recordar'
+  interval '1 hour',
+  'Y el relevo, 1 h desde el 26 oct: son dos perillas, y bajar una no movió la otra'
 );
 
 -- =====================================================================

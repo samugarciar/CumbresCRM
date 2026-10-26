@@ -6,15 +6,16 @@
 -- separarlas: si la ventana bajara a 2 h, un eco demorado 3 h dejaría de
 -- contar como relevo sin que nadie lo hubiera decidido.
 --
--- Comparar los valores de las dos funciones no prueba nada: los dos son
--- 6 h y lo seguirían siendo aunque una llamara a la otra. Esta prueba
+-- Comparar los valores de las dos funciones no prueba nada: los dos eran
+-- 6 h (hasta el 26 oct, cuando la ventana bajó a 1 h) y lo habrían
+-- seguido siendo aunque una llamara a la otra. Esta prueba
 -- MUEVE cada perilla dentro de la transacción y mira qué cambia en el
 -- comportamiento, que es lo único que importa.
 -- =====================================================================
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(14);
+SELECT plan(15);
 
 DELETE FROM crm.contactos;
 DELETE FROM crm.lineas;
@@ -33,8 +34,8 @@ VALUES
 SELECT is(crm.frescura_relevo(), interval '6 hours',
   'La frescura del relevo arranca en 6 h');
 
-SELECT is(crm.ventana_relevo(), interval '6 hours',
-  'Y la ventana también: valen lo mismo HOY, que es justo por lo que había que separarlas');
+SELECT is(crm.ventana_relevo(), interval '1 hour',
+  'Y la ventana en 1 h desde el 26 oct: bajarla no movió la frescura');
 
 SET LOCAL "request.jwt.claims" = '{"sub":"cccccccc-cccc-cccc-cccc-cccccccccccc","role":"authenticated"}';
 SET LOCAL ROLE authenticated;
@@ -68,9 +69,16 @@ SELECT is(crm.frescura_relevo(), interval '6 hours',
 
 SET LOCAL ROLE service_role;
 
+-- Desde el 26 oct un relevo no nace vencido: un eco más viejo que la
+-- ventana no calla al bot para devolverle la voz en la siguiente pasada.
 SELECT ok(
-  crm.registrar_relevo('290000000000001', '573005551001', now() - interval '4 hours'),
-  'Un eco de hace 4 h SÍ cuenta como relevo: lo filtra la frescura (6 h), no la ventana (2 h)'
+  NOT crm.registrar_relevo('290000000000001', '573005551001', now() - interval '4 hours'),
+  'Un eco de hace 4 h no abre relevo con la ventana en 2 h: nacería vencido'
+);
+
+SELECT ok(
+  crm.registrar_relevo('290000000000001', '573005551001', now() - interval '90 minutes'),
+  'Uno de hace hora y media sí: está dentro de la ventana y de la frescura'
 );
 
 RESET ROLE;
@@ -91,9 +99,12 @@ SELECT is(
   'La hora de vuelta que enseña la ficha sí usa la ventana nueva'
 );
 
+UPDATE crm.contactos SET bot_cambiado_at = now() - interval '3 hours'
+ WHERE id = 'c0290001-0000-0000-0000-000000000001';
+
 SELECT ok(
   crm.reactivar_relevos() >= 1,
-  'Y el cron le devuelve la voz al bot: 4 h sin mensajes del equipo supera una ventana de 2 h'
+  'Y el cron le devuelve la voz al bot: 3 h sin mensajes del equipo supera una ventana de 2 h'
 );
 
 SELECT ok(

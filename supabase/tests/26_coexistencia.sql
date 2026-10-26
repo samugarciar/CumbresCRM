@@ -318,7 +318,7 @@ VALUES
   ('c0260004-0000-0000-0000-000000000004', '11111111-1111-1111-1111-111111111111',
    'Hace siete horas', '+573005550004', false, 'relevo', now() - interval '7 hours'),
   ('c0260005-0000-0000-0000-000000000005', '11111111-1111-1111-1111-111111111111',
-   'Hace una hora', '+573005550005', false, 'relevo', now() - interval '1 hour');
+   'Hace media hora', '+573005550005', false, 'relevo', now() - interval '30 minutes');
 
 -- --- Solo en la línea donde el bot habla ------------------------------
 SELECT ok(
@@ -346,7 +346,7 @@ SELECT ok(
 -- Meta manda el teléfono sin el +: la función normaliza igual que el
 -- resto del CRM.
 SELECT ok(
-  crm.registrar_relevo('100000000000001', '573005550001', now() - interval '2 hours'),
+  crm.registrar_relevo('100000000000001', '573005550001', now() - interval '30 minutes'),
   'Alguien del equipo le escribe a Sara desde el celular'
 );
 
@@ -370,14 +370,14 @@ SELECT is(
 
 -- --- La ventana corre con el último mensaje ---------------------------
 SELECT ok(
-  crm.registrar_relevo('100000000000001', '573005550001', now() - interval '1 hour'),
-  'Otro mensaje del equipo, una hora después'
+  crm.registrar_relevo('100000000000001', '573005550001', now() - interval '10 minutes'),
+  'Otro mensaje del equipo, veinte minutos después'
 );
 
 SELECT is(
   (SELECT bot_cambiado_at FROM crm.contactos WHERE id = 'c0260001-0000-0000-0000-000000000001'),
-  now() - interval '1 hour',
-  'La ventana corre: las 6 horas se cuentan desde el ÚLTIMO mensaje humano'
+  now() - interval '10 minutes',
+  'La ventana corre: la hora del relevo se cuenta desde el ÚLTIMO mensaje humano'
 );
 
 SELECT is(
@@ -389,23 +389,23 @@ SELECT is(
 
 SELECT is(
   crm.bot_vuelve_at('c0260001-0000-0000-0000-000000000001'),
-  now() - interval '1 hour' + interval '6 hours',
-  'La ficha sabe cuándo vuelve el bot si nadie más escribe'
+  now() - interval '10 minutes' + interval '1 hour',
+  'La ficha sabe cuándo vuelve el bot si nadie más escribe: 1 hora después del último mensaje del equipo'
 );
 
 -- --- Los otros silencios mandan --------------------------------------
 SELECT ok(
   NOT crm.registrar_relevo('100000000000001', '573005550002')
-  AND NOT crm.registrar_relevo('100000000000001', '573005550003'),
-  'Sobre un silencio manual o de escalamiento, el relevo no hace nada'
+  AND crm.registrar_relevo('100000000000001', '573005550003'),
+  'Sobre un silencio manual el relevo no hace nada; sobre un escalamiento, sí: una persona atendió a quien la pidió'
 );
 
 SELECT is(
   (SELECT string_agg(bot_motivo, ',' ORDER BY telefono_e164) FROM crm.contactos
     WHERE id IN ('c0260002-0000-0000-0000-000000000002',
                  'c0260003-0000-0000-0000-000000000003')),
-  'manual,escalamiento',
-  'Cada uno conserva su regla: si el manual pasara a relevo, el bot volvería a las 6 horas a espaldas de quien dijo "yo me encargo"'
+  'manual,relevo',
+  'El manual conserva su regla (si pasara a relevo, el bot volvería a espaldas de quien dijo "yo me encargo"); el escalado atendido pasa a relevo'
 );
 
 SELECT is(
@@ -423,20 +423,20 @@ SELECT ok(
 SELECT is(
   crm.reactivar_relevos(),
   1,
-  'Vuelve exactamente uno: el que lleva siete horas sin mensajes del equipo'
+  'Vuelve exactamente uno: el que lleva siete horas sin mensajes del equipo (el escalado recién atendido acaba de empezar su hora)'
 );
 
 SELECT ok(
   crm.bot_puede_responder('11111111-1111-1111-1111-111111111111', '+573005550004')
   AND NOT crm.bot_puede_responder('11111111-1111-1111-1111-111111111111', '+573005550005')
   AND NOT crm.bot_puede_responder('11111111-1111-1111-1111-111111111111', '+573005550002'),
-  'El de hace siete horas ya tiene bot; el de hace una hora sigue en manos del equipo; el manual, callado'
+  'El de hace siete horas ya tiene bot; el de hace media hora sigue en manos del equipo; el manual, callado'
 );
 
 SELECT is(
   (SELECT cuerpo FROM crm.actividades
     WHERE contacto_id = 'c0260004-0000-0000-0000-000000000004' AND tipo = 'sistema'),
-  'El bot vuelve a responderle: pasaron 6 horas sin que nadie del equipo le escribiera.',
+  'El bot vuelve a responderle: pasó 1 hora sin que nadie del equipo le escribiera.',
   'Que vuelva queda escrito, con la cifra sacada de la perilla y no escrita a mano'
 );
 
@@ -445,7 +445,7 @@ SET LOCAL ROLE authenticated;
 
 SELECT ok(
   crm.cambiar_bot('c0260005-0000-0000-0000-000000000005', true),
-  'El otro camino de vuelta: un asesor lo enciende a mano, sin esperar las 6 horas'
+  'El otro camino de vuelta: un asesor lo enciende a mano, sin esperar la hora'
 );
 
 RESET ROLE;
@@ -457,8 +457,8 @@ SELECT ok(
 
 SELECT is(
   (SELECT schedule FROM cron.job WHERE jobname = 'crm_reactivar_relevos'),
-  '*/5 * * * *',
-  'La vuelta corre cada 5 minutos (y la prueba 19 ejecuta el comando agendado de verdad)'
+  '* * * * *',
+  'La vuelta corre cada minuto: con una ventana de 1 hora, 5 minutos ya se notan (y la prueba 19 ejecuta el comando agendado de verdad)'
 );
 
 -- =====================================================================
