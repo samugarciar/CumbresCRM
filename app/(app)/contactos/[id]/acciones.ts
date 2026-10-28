@@ -280,7 +280,24 @@ export async function enviarMensaje(
     .eq('id', validado.data.contactoId)
     .single();
 
-  if (!contacto?.telefono_e164) {
+  // Quien tiene «@» en WhatsApp y no nos ha dado el número se escribe por
+  // su BSUID (migración 20261028100001): la plataforma lo manda a Meta como
+  // `recipient` en vez de `to`.
+  let destino = contacto?.telefono_e164 ?? null;
+  if (contacto && !destino) {
+    const { data: bsuid } = await supabase
+      .schema('crm')
+      .from('identidades')
+      .select('valor')
+      .eq('contacto_id', validado.data.contactoId)
+      .eq('tipo', 'whatsapp_bsuid')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    destino = bsuid?.valor ?? null;
+  }
+
+  if (!contacto || !destino) {
     return { ok: false, error: 'Esta persona no tiene un número al que escribirle.' };
   }
 
@@ -404,7 +421,7 @@ export async function enviarMensaje(
   // 2 y 3 · Mandar, y que la plataforma anote el resultado.
   const r = await enviarPorCanal({
     inmobiliariaId: contacto.inmobiliaria_id,
-    telefono: contacto.telefono_e164,
+    telefono: destino,
     texto: textoFinal,
     envioId: envioId as string,
     // Sin línea conectada no se manda el campo: la plataforma usa su número.

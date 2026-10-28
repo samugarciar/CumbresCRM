@@ -31,6 +31,7 @@ interface Props {
 const ETIQUETA_IDENTIDAD: Record<string, string> = {
   telefono_e164: 'Teléfono',
   whatsapp_username: 'Usuario de WhatsApp',
+  whatsapp_bsuid: 'WhatsApp sin número (identificador de Meta)',
   // Kommo ya no se usa: son números de la era anterior, solo de consulta.
   kommo_lead: 'Histórico Kommo · lead',
   kommo_contact: 'Histórico Kommo · contacto',

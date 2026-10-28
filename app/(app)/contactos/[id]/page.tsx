@@ -210,7 +210,9 @@ export default async function FichaContacto({
               ) : (
                 <span className="inline-flex items-center gap-1 text-warning">
                   <PhoneOff className="size-3.5" />
-                  Sin número registrado
+                  {(identidades ?? []).some((i) => i.tipo === 'whatsapp_bsuid')
+                    ? 'Escribe con usuario de WhatsApp, sin número'
+                    : 'Sin número registrado'}
                 </span>
               )}
               <span aria-hidden>·</span>
