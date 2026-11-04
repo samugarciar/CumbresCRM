@@ -23,6 +23,8 @@ interface Props {
   botVuelveAt: string | null;
   /** Todas sus oportunidades abiertas son de embudos que el bot no atiende. */
   botNoAtiende: boolean;
+  /** El nombre de quien del equipo es este número; el bot no le responde. */
+  delEquipo: string | null;
   ahora: string;
   responsableNombre: string | null;
   responsableEsMio: boolean;
@@ -100,6 +102,7 @@ export function PanelDatos(props: Props) {
         vuelveAt={props.botVuelveAt}
         ahora={props.ahora}
         noAtiende={props.botNoAtiende}
+        delEquipo={props.delEquipo}
       />
 
       <section className="flex flex-col gap-3 rounded-xl border bg-card p-4">

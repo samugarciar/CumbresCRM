@@ -25,7 +25,8 @@ import { describirBot } from './estadoBot';
  *
  * En los embudos que el bot no atiende (administrativa y captación) no
  * hay interruptor: encenderlo ahí no haría nada y el botón diría lo
- * contrario.
+ * contrario. Tampoco con la gente del equipo: a un número que está en
+ * /asesores el bot no le responde nunca (crm.telefono_del_equipo).
  */
 export function ControlBot({
   contactoId,
@@ -35,6 +36,7 @@ export function ControlBot({
   vuelveAt,
   ahora,
   noAtiende = false,
+  delEquipo = null,
 }: {
   contactoId: string;
   activo: boolean;
@@ -46,9 +48,23 @@ export function ControlBot({
   ahora: string;
   /** Todas sus oportunidades abiertas son de embudos que el bot no atiende. */
   noAtiende?: boolean;
+  /** De quién del equipo es este número, si es de alguien. */
+  delEquipo?: string | null;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pendiente, iniciar] = useTransition();
+
+  if (delEquipo) {
+    return (
+      <section className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+        <h2 className="text-sm font-semibold">El bot</h2>
+        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <UsersRound className="mt-0.5 size-3.5 shrink-0" />
+          Es el número de {delEquipo}, del equipo: el bot no le responde.
+        </p>
+      </section>
+    );
+  }
 
   if (noAtiende) {
     return (

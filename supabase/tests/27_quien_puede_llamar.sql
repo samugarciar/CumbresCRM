@@ -46,6 +46,7 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.convertir_a_administrativo(uuid, boolean)'),
   ('crm.convertir_a_captacion(uuid)'),
   ('crm.crear_envio_masivo(text, text, text[], jsonb, text, text, uuid, jsonb, boolean)'),
+  ('crm.del_equipo(uuid)'),                    -- la ficha: el bot no le responde al equipo
   ('crm.desmarcar_gestion_manual(uuid)'),
   ('crm.en_horario_envio(jsonb, timestamptz)'),
   ('crm.encender_bot_freno(text)'),             -- «Bots callados», el freno de quien no está en el CRM

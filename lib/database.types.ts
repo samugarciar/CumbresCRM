@@ -1901,6 +1901,7 @@ export type Database = {
           waba_id: string
         }[]
       }
+      del_equipo: { Args: { p_contacto_id: string }; Returns: string }
       desmarcar_gestion_manual: {
         Args: { p_destinatario_id: string }
         Returns: undefined

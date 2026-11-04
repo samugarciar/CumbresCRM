@@ -61,6 +61,7 @@ export default async function FichaContacto({
     { data: ventanaCierraAt },
     { data: responsableFilas },
     { data: botVuelveAt },
+    { data: delEquipo },
     linea,
     { data: oportunidades },
     { data: etapas },
@@ -96,6 +97,9 @@ export default async function FichaContacto({
     // Cuándo vuelve el bot. La perilla vive en la base: si la ficha sumara
     // las horas por su cuenta, mentiría el día que cambie.
     crm.rpc('bot_vuelve_at', { p_contacto_id: id }),
+    // Si el número es de alguien del equipo (su teléfono en /asesores), el
+    // bot no le responde nunca: la ficha dice de quién es.
+    crm.rpc('del_equipo', { p_contacto_id: id }),
     // Por qué línea se le escribe: la decide el embudo de sus oportunidades.
     lineaDeEnvio(id),
     crm
@@ -155,7 +159,7 @@ export default async function FichaContacto({
     vuelveAt: botVuelveAt ?? null,
     ahora,
   });
-  const chipBot = botNoAtiende ? null : estadoBot.chip;
+  const chipBot = botNoAtiende || delEquipo ? null : estadoBot.chip;
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -241,6 +245,7 @@ export default async function FichaContacto({
             botCambiadoAt={contacto.bot_cambiado_at}
             botVuelveAt={botVuelveAt ?? null}
             botNoAtiende={botNoAtiende}
+            delEquipo={delEquipo ?? null}
             ahora={ahora}
             responsableNombre={responsable?.nombre ?? null}
             responsableEsMio={
