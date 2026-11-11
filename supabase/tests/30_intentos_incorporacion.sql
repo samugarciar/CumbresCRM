@@ -107,7 +107,7 @@ SELECT throws_ok(
   $$SELECT crm.registrar_intento_incorporacion(
       '11111111-1111-1111-1111-111111111111', 'comercial', 'a_medias')$$,
   '23514', NULL,
-  'Un resultado que no es exito, error ni cancelado se rechaza'
+  'Un resultado que no es exito, error, cancelado ni terminado_en_meta se rechaza'
 );
 
 SELECT throws_ok(
