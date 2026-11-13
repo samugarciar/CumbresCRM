@@ -60,6 +60,13 @@ SELECT o.inmobiliaria_id, o.id, 'nuevo', 'calificado', 'humano',
   FROM crm.oportunidades o
  WHERE o.contacto_id = 'a6100001-0000-0000-0000-000000000001' AND o.embudo = 'comercial';
 
+-- La 2 pasa sola a Contactado cuando le contestan: eso no es avanzar.
+INSERT INTO crm.transiciones
+  (inmobiliaria_id, oportunidad_id, etapa_desde, etapa_hasta, origen, ocurrido_at)
+SELECT o.inmobiliaria_id, o.id, 'nuevo', 'contactado', 'sistema', now() - interval '1 hour'
+  FROM crm.oportunidades o
+ WHERE o.contacto_id = 'a6100002-0000-0000-0000-000000000002' AND o.embudo = 'comercial';
+
 -- La 3 se muere por no responder; la 2 se reclasifica (no es una muerte).
 UPDATE crm.oportunidades
    SET estado = 'perdida', motivo_perdida = 'no_responde', cerrada_at = now() - interval '10 minutes'
@@ -102,8 +109,8 @@ SELECT is((SELECT (j->'kpis'->'actual'->>'mediana_respuesta_humana_min')::numeri
   'La de una persona, 30 min');
 SELECT is((SELECT (j->'kpis'->'actual'->>'leads_nuevos')::int FROM r), 3,
   'Tres leads nuevos en el embudo comercial de Alfa');
-SELECT ok((SELECT (j->'kpis'->'actual'->>'avanzaron')::int FROM r) >= 1,
-  'La que pasó de Nuevo a Calificado cuenta como avance');
+SELECT is((SELECT (j->'kpis'->'actual'->>'avanzaron')::int FROM r), 1,
+  'Solo cuenta la que pasó de Nuevo a Calificado: el paso automático a Contactado no es un avance');
 SELECT is((SELECT (j->'kpis'->'actual'->>'perdidas')::int FROM r), 1,
   'Una muerte: la reclasificación no cuenta como perdida');
 SELECT is((SELECT j->'perdidas_por_motivo'->0->>'motivo' FROM r), 'no_responde',

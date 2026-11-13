@@ -25,7 +25,10 @@
 --    embudo comercial). origen 'n8n' = la agendó el bot; 'app' = el
 --    equipo.
 --  · Avanzó: la oportunidad tuvo en el periodo al menos una transición a
---    una etapa de orden MAYOR del mismo embudo.
+--    una etapa de orden MAYOR del mismo embudo. No cuenta el primer
+--    paso automático (Nuevo → Contactado cuando el bot contesta): lo da
+--    todo lead, y con él «avanzaron» era igual a «leads nuevos» (medido
+--    en producción el 13 nov: 2.438 y 2.438).
 --  · Embudo del periodo: de los leads creados en el periodo, cuántos
 --    llegaron a cada etapa. «Llegar» = la etapa más alta que tocaron
 --    (actual o en el historial), porque las automáticas se pueden saltar.
@@ -176,8 +179,10 @@ BEGIN
   ),
   k_avances AS (
     SELECT v.k,
-           count(DISTINCT t.oportunidad_id) FILTER (WHERE eh.orden > ed.orden) AS avanzaron,
-           count(t.id) FILTER (WHERE eh.orden > ed.orden) AS avances
+           count(DISTINCT t.oportunidad_id) FILTER (WHERE eh.orden > ed.orden
+             AND NOT (ed.orden = 1 AND t.origen = 'sistema')) AS avanzaron,
+           count(t.id) FILTER (WHERE eh.orden > ed.orden
+             AND NOT (ed.orden = 1 AND t.origen = 'sistema')) AS avances
       FROM ventanas v
       LEFT JOIN crm.transiciones t
         ON t.ocurrido_at >= v.desde AND t.ocurrido_at < v.hasta
