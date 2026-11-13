@@ -1697,6 +1697,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      analitica: {
+        Args: { p_embudo?: string; p_periodo?: string }
+        Returns: Json
+      }
       anotar_respuestas_plataforma: { Args: never; Returns: number }
       archivar_era_kommo: { Args: { p_inmobiliaria_id: string }; Returns: Json }
       asignar_lead: {

@@ -33,6 +33,7 @@ CREATE TEMP TABLE lista_blanca (firma text PRIMARY KEY) ON COMMIT DROP;
 INSERT INTO lista_blanca (firma) VALUES
   -- Las pantallas: lo que la app llama con .rpc() y la sesión del usuario
   ('crm.abrir_caso_administrativo(uuid)'),
+  ('crm.analitica(text, text)'),               -- la pantalla de Analítica (13 nov)
   ('crm.ajustar_envio_masivo(uuid, int, int, int, int, jsonb)'),
   ('crm.asignar_lead(uuid, uuid)'),
   ('crm.bandeja_contactos(text, text, boolean, timestamptz, uuid, int, boolean, text)'),
