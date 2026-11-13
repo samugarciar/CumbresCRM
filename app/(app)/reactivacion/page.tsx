@@ -59,7 +59,12 @@ export default async function PaginaReactivacion({
       {/* Primero los que llevan más tiempo callados: es al revés de lo que
           hace uno solo, y al que lleva cuatro meses no le escribe nadie. */}
       <header>
-        <h1 className="text-xl font-semibold tracking-tight">Reactivación</h1>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="text-xl font-semibold tracking-tight">Reactivación</h1>
+          <Link href="/reactivacion/automatico" className="text-sm text-primary hover:underline">
+            Reciclador automático →
+          </Link>
+        </div>
         <p className="max-w-[64ch] text-sm text-muted-foreground">
           Personas que escribieron y dejaron de responder, primero las que llevan más tiempo
           calladas.

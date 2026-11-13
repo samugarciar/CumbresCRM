@@ -1213,6 +1213,136 @@ export type Database = {
         }
         Relationships: []
       }
+      reciclador_config: {
+        Row: {
+          activo: boolean
+          actualizado_por: string | null
+          created_at: string
+          dias_atras: number
+          horario: Json
+          horas_silencio: number
+          inmobiliaria_id: string
+          linea_id: string
+          max_intentos: number
+          plantilla_id: string | null
+          simulacion: boolean
+          tope_diario: number
+          ultima_pasada_at: string | null
+          ultimo_aviso: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          actualizado_por?: string | null
+          created_at?: string
+          dias_atras?: number
+          horario?: Json
+          horas_silencio?: number
+          inmobiliaria_id: string
+          linea_id: string
+          max_intentos?: number
+          plantilla_id?: string | null
+          simulacion?: boolean
+          tope_diario?: number
+          ultima_pasada_at?: string | null
+          ultimo_aviso?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          actualizado_por?: string | null
+          created_at?: string
+          dias_atras?: number
+          horario?: Json
+          horas_silencio?: number
+          inmobiliaria_id?: string
+          linea_id?: string
+          max_intentos?: number
+          plantilla_id?: string | null
+          simulacion?: boolean
+          tope_diario?: number
+          ultima_pasada_at?: string | null
+          ultimo_aviso?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reciclador_config_linea_id_fkey"
+            columns: ["linea_id"]
+            isOneToOne: true
+            referencedRelation: "lineas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reciclador_config_plantilla_id_fkey"
+            columns: ["plantilla_id"]
+            isOneToOne: false
+            referencedRelation: "plantillas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reciclador_intentos: {
+        Row: {
+          contacto_id: string
+          created_at: string
+          cuerpo: string
+          envio_id: string | null
+          id: string
+          inmobiliaria_id: string
+          linea_id: string
+          numero: number
+          silencio_desde: string
+          simulado: boolean
+        }
+        Insert: {
+          contacto_id: string
+          created_at?: string
+          cuerpo: string
+          envio_id?: string | null
+          id?: string
+          inmobiliaria_id: string
+          linea_id: string
+          numero: number
+          silencio_desde: string
+          simulado: boolean
+        }
+        Update: {
+          contacto_id?: string
+          created_at?: string
+          cuerpo?: string
+          envio_id?: string | null
+          id?: string
+          inmobiliaria_id?: string
+          linea_id?: string
+          numero?: number
+          silencio_desde?: string
+          simulado?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reciclador_intentos_contacto_id_fkey"
+            columns: ["contacto_id"]
+            isOneToOne: false
+            referencedRelation: "contactos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reciclador_intentos_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "envios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reciclador_intentos_linea_id_fkey"
+            columns: ["linea_id"]
+            isOneToOne: false
+            referencedRelation: "lineas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requerimientos: {
         Row: {
           activo: boolean
@@ -1784,6 +1914,17 @@ export type Database = {
         Args: { p_accion: string; p_id: string }
         Returns: string
       }
+      candidatos_reciclaje: {
+        Args: { p_ahora?: string; p_limite?: number; p_linea_id: string }
+        Returns: {
+          contacto_id: string
+          intento: number
+          nombre: string
+          telefono_e164: string
+          ultimo_nuestro_at: string
+          ultimo_suyo_at: string
+        }[]
+      }
       cerrar_fantasmas: { Args: { p_dias?: number }; Returns: number }
       cerrar_oportunidad: {
         Args: {
@@ -1857,6 +1998,20 @@ export type Database = {
         }
         Returns: string
       }
+      configurar_reciclador: {
+        Args: {
+          p_activo: boolean
+          p_dias_atras: number
+          p_horario?: Json
+          p_horas_silencio: number
+          p_linea_id: string
+          p_max_intentos: number
+          p_plantilla_id: string
+          p_simulacion: boolean
+          p_tope_diario: number
+        }
+        Returns: undefined
+      }
       conteo_bandeja: {
         Args: never
         Returns: {
@@ -1911,6 +2066,7 @@ export type Database = {
         Returns: undefined
       }
       despachar_envios_masivos: { Args: { p_ahora?: string }; Returns: number }
+      despachar_reciclaje: { Args: { p_ahora?: string }; Returns: number }
       duracion_legible: { Args: { p_duracion: string }; Returns: string }
       en_horario_envio: {
         Args: { p_horario: Json; p_momento?: string }
@@ -1935,6 +2091,21 @@ export type Database = {
       }
       frescura: { Args: { p_ultima: string }; Returns: number }
       frescura_relevo: { Args: never; Returns: string }
+      historial_reciclaje: {
+        Args: { p_limite?: number; p_linea_id: string }
+        Returns: {
+          contacto_id: string
+          creado_at: string
+          error: string
+          estado: string
+          intento_id: string
+          nombre: string
+          numero: number
+          respondio_at: string
+          simulado: boolean
+          telefono_e164: string
+        }[]
+      }
       horario_valido: { Args: { p_horario: Json }; Returns: boolean }
       hoy: { Args: never; Returns: string }
       hueco_variable: { Args: { p_variable: string }; Returns: string }
@@ -1981,6 +2152,7 @@ export type Database = {
           nombre: string
         }[]
       }
+      lote_reciclador: { Args: never; Returns: number }
       marcar_atendido: {
         Args: { p_contacto_id: string; p_nota?: string }
         Returns: undefined
@@ -2257,6 +2429,16 @@ export type Database = {
         }[]
       }
       resumen_envio_masivo: { Args: { p_id: string }; Returns: Json }
+      resumen_reciclaje: {
+        Args: { p_dias?: number; p_linea_id: string }
+        Returns: {
+          en_espera: number
+          enviados: number
+          fallidos: number
+          respondieron: number
+          simulados: number
+        }[]
+      }
       retirar_token: { Args: { p_texto: string }; Returns: string }
       sembrar_plantillas: { Args: never; Returns: number }
       sincronizar_escalamientos: { Args: never; Returns: number }

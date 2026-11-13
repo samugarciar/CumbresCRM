@@ -69,6 +69,10 @@ INSERT INTO lista_blanca (firma) VALUES
   ('crm.resultados_envio_masivo(uuid)'),
   ('crm.resumen_contacto(uuid)'),
   ('crm.resumen_envio_masivo(uuid)'),
+  ('crm.configurar_reciclador(uuid, boolean, boolean, int, int, int, int, uuid, jsonb)'),  -- /reactivacion, solo admin por RLS
+  ('crm.candidatos_reciclaje(uuid, timestamptz, int)'),
+  ('crm.resumen_reciclaje(uuid, int)'),
+  ('crm.historial_reciclaje(uuid, int)'),
   ('crm.sincronizar_plantillas(text, jsonb, boolean)'),
   ('crm.tablero(int, text, uuid, boolean, text, text)'),
   ('crm.valores_plantilla(uuid, uuid, uuid, text)'),
