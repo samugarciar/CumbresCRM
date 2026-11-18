@@ -16,6 +16,7 @@ export interface ConfigReciclador {
   dias_atras: number;
   tope_diario: number;
   plantilla_id: string | null;
+  incluir_esperando: boolean;
   ultimo_aviso: string | null;
   ultima_pasada_at: string | null;
 }
@@ -40,7 +41,8 @@ export interface Candidato {
   contacto_id: string;
   nombre: string | null;
   telefono_e164: string | null;
-  ultimo_nuestro_at: string;
+  ultimo_mensaje_at: string;
+  nos_esperaba: boolean;
   intento: number;
 }
 
@@ -67,6 +69,8 @@ const POR_DEFECTO: Omit<ConfigReciclador, 'ultimo_aviso' | 'ultima_pasada_at'> =
   dias_atras: 7,
   tope_diario: 50,
   plantilla_id: null,
+  // Samuel, 17 nov: también a quien nos dejó esperando.
+  incluir_esperando: true,
 };
 
 const HORAS_SUGERIDAS = [9, 12, 24, 48];
@@ -117,6 +121,7 @@ export function PanelReciclador({
   const [dias, setDias] = useState(inicial.dias_atras);
   const [tope, setTope] = useState(inicial.tope_diario);
   const [plantillaId, setPlantillaId] = useState<string | null>(inicial.plantilla_id);
+  const [incluirEsperando, setIncluirEsperando] = useState(inicial.incluir_esperando);
 
   const plantilla = plantillas.find((p) => p.id === plantillaId) ?? null;
   const vistaPrevia = useMemo(
@@ -132,7 +137,8 @@ export function PanelReciclador({
     intentos !== config.max_intentos ||
     dias !== config.dias_atras ||
     tope !== config.tope_diario ||
-    plantillaId !== config.plantilla_id;
+    plantillaId !== config.plantilla_id ||
+    incluirEsperando !== config.incluir_esperando;
 
   const guardar = () => {
     setError(null);
@@ -147,6 +153,7 @@ export function PanelReciclador({
         diasAtras: dias,
         topeDiario: tope,
         plantillaId,
+        incluirEsperando,
       });
       if (!r.ok) {
         setError(r.error ?? 'No se pudo guardar.');
@@ -246,9 +253,24 @@ export function PanelReciclador({
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Cuenta desde nuestro último mensaje sin respuesta. Es también lo que espera entre un
+            Cuenta desde el último mensaje de la conversación. Es también lo que espera entre un
             intento y el siguiente.
           </p>
+        </Campo>
+
+        <Campo etiqueta="A quién">
+          <p className="text-sm">Conversaciones en las que hablamos de último y no contestaron.</p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm">
+              También las que <b>nos dejaron esperando</b>: escribieron de último y nadie les respondió.
+            </p>
+            <Interruptor
+              encendido={incluirEsperando}
+              onCambio={setIncluirEsperando}
+              deshabilitado={!puedeEditar || pendiente}
+              etiquetas={['Sí', 'No']}
+            />
+          </div>
         </Campo>
 
         <div className="grid grid-cols-3 gap-3">
@@ -381,7 +403,12 @@ export function PanelReciclador({
                     </span>
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    sin respuesta {tiempoRelativo(c.ultimo_nuestro_at)} · intento {c.intento}
+                    {c.nos_esperaba ? (
+                      <span className="font-medium text-warning">nos dejó esperando</span>
+                    ) : (
+                      'no contestó'
+                    )}{' '}
+                    · último mensaje {tiempoRelativo(c.ultimo_mensaje_at)} · intento {c.intento}
                   </span>
                 </li>
               ))}
@@ -429,10 +456,12 @@ function Interruptor({
   encendido,
   onCambio,
   deshabilitado,
+  etiquetas = ['Encendido', 'Apagado'],
 }: {
   encendido: boolean;
   onCambio: (v: boolean) => void;
   deshabilitado: boolean;
+  etiquetas?: [string, string];
 }) {
   return (
     <button
@@ -444,7 +473,7 @@ function Interruptor({
       className="flex items-center gap-2 text-sm font-medium disabled:opacity-60"
     >
       <span className={encendido ? 'text-foreground' : 'text-muted-foreground'}>
-        {encendido ? 'Encendido' : 'Apagado'}
+        {encendido ? etiquetas[0] : etiquetas[1]}
       </span>
       <span
         aria-hidden

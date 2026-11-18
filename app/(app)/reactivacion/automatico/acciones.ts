@@ -22,6 +22,7 @@ const esquema = z.object({
   diasAtras: z.number().int().min(1).max(30),
   topeDiario: z.number().int().min(1, 'El tope es de al menos 1').max(1000, 'El tope máximo es 1.000'),
   plantillaId: uuid.nullable(),
+  incluirEsperando: z.boolean(),
 });
 
 export type Configuracion = z.infer<typeof esquema>;
@@ -50,6 +51,7 @@ export async function guardarReciclador(c: Configuracion): Promise<Resultado> {
     // La firma de la base acepta NULL («sin plantilla todavía»); el tipo
     // generado no lo dice.
     p_plantilla_id: v.data.plantillaId as string,
+    p_incluir_esperando: v.data.incluirEsperando,
   });
 
   if (error) {

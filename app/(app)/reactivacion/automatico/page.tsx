@@ -49,9 +49,9 @@ export default async function PaginaReciclador() {
       </Link>
       <h1 className="text-xl font-semibold tracking-tight">Reciclador automático</h1>
       <p className="max-w-[64ch] text-sm text-muted-foreground">
-        Le escribe solo, con una plantilla aprobada por Meta, a quien dejó de contestarnos:
-        conversaciones en las que hablamos de último y la persona no respondió. Nunca a quien nos
-        dejó esperando a nosotros.
+        Le escribe solo, con una plantilla aprobada por Meta, a las conversaciones que se quedaron
+        calladas: las que hablamos de último y la persona no respondió y, si lo dejas encendido,
+        también las que nos dejaron esperando a nosotros.
       </p>
     </header>
   );
@@ -73,7 +73,7 @@ export default async function PaginaReciclador() {
       crm
         .from('reciclador_config')
         .select(
-          'activo, simulacion, horas_silencio, max_intentos, dias_atras, tope_diario, plantilla_id, horario, ultimo_aviso, ultima_pasada_at'
+          'activo, simulacion, horas_silencio, max_intentos, dias_atras, tope_diario, plantilla_id, incluir_esperando, horario, ultimo_aviso, ultima_pasada_at'
         )
         .eq('linea_id', linea.id)
         .maybeSingle(),

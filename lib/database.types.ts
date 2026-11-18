@@ -1221,6 +1221,7 @@ export type Database = {
           dias_atras: number
           horario: Json
           horas_silencio: number
+          incluir_esperando: boolean
           inmobiliaria_id: string
           linea_id: string
           max_intentos: number
@@ -1238,6 +1239,7 @@ export type Database = {
           dias_atras?: number
           horario?: Json
           horas_silencio?: number
+          incluir_esperando?: boolean
           inmobiliaria_id: string
           linea_id: string
           max_intentos?: number
@@ -1255,6 +1257,7 @@ export type Database = {
           dias_atras?: number
           horario?: Json
           horas_silencio?: number
+          incluir_esperando?: boolean
           inmobiliaria_id?: string
           linea_id?: string
           max_intentos?: number
@@ -1921,7 +1924,8 @@ export type Database = {
           intento: number
           nombre: string
           telefono_e164: string
-          ultimo_nuestro_at: string
+          nos_esperaba: boolean
+          ultimo_mensaje_at: string
           ultimo_suyo_at: string
         }[]
       }
@@ -2004,6 +2008,7 @@ export type Database = {
           p_dias_atras: number
           p_horario?: Json
           p_horas_silencio: number
+          p_incluir_esperando?: boolean
           p_linea_id: string
           p_max_intentos: number
           p_plantilla_id: string

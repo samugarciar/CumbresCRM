@@ -17,7 +17,7 @@
 -- 10:00 de Bogotá (15:00 UTC) es T.
 -- =====================================================================
 BEGIN;
-SELECT plan(31);
+SELECT plan(33);
 
 -- ---------------------------------------------------------------------
 -- Fixtures (como postgres)
@@ -58,7 +58,7 @@ INSERT INTO crm.contactos (id, inmobiliaria_id, nombre, telefono_e164, opt_out, 
 
 -- Las conversaciones por la 312. (horas antes de T: entrante, saliente)
 --   Ana 30/29 → muerta · Beto 5/4 → muy reciente · Carla 20/19 al revés →
---   nos dejó esperando · Darío 10 días → fuera de la ventana · Elena,
+--   nos dejó esperando (entra desde el 17 nov, perilla incluir_esperando) · Darío 10 días → fuera de la ventana · Elena,
 --   Fabio, Gina e Iván como Ana pero excluidos · Hugo nunca escribió.
 INSERT INTO crm.actividades (inmobiliaria_id, tipo, origen, contacto_id, ocurrido_at, wa_phone_number_id)
 SELECT '11111111-1111-1111-1111-111111111111', x.tipo, x.origen, x.contacto::uuid,
@@ -169,18 +169,34 @@ SELECT throws_ok(
 SELECT results_eq(
   $$SELECT nombre FROM crm.candidatos_reciclaje('11610000-0000-0000-0000-000000000001',
       '2026-11-17 15:00:00+00')$$,
+  ARRAY['Ana María', 'Carla'],
+  'Ana (hablamos de último, 29 h) y Carla (nos dejó esperando, 19 h); los demás quedan fuera');
+
+SELECT is(
+  (SELECT nos_esperaba FROM crm.candidatos_reciclaje('11610000-0000-0000-0000-000000000001',
+      '2026-11-17 15:00:00+00') WHERE nombre = 'Carla'),
+  true, 'Carla viene marcada como «nos esperaba»');
+
+-- Con la perilla apagada vuelve la regla del 13 nov: solo a quien le hablamos de último.
+SELECT crm.configurar_reciclador('11610000-0000-0000-0000-000000000001', true, true,
+  12, 2, 7, 50, 'fa610001-0000-0000-0000-000000000001', p_incluir_esperando => false);
+SELECT results_eq(
+  $$SELECT nombre FROM crm.candidatos_reciclaje('11610000-0000-0000-0000-000000000001',
+      '2026-11-17 15:00:00+00')$$,
   ARRAY['Ana María'],
-  'Solo Ana: nosotros hablamos de último, lleva 29 h y no tiene nada que la excluya');
+  'Con incluir_esperando apagado, Carla no entra');
+SELECT crm.configurar_reciclador('11610000-0000-0000-0000-000000000001', true, true,
+  12, 2, 7, 50, 'fa610001-0000-0000-0000-000000000001');
 
 SELECT is(
   (SELECT intento FROM crm.candidatos_reciclaje('11610000-0000-0000-0000-000000000001',
-      '2026-11-17 15:00:00+00')),
+      '2026-11-17 15:00:00+00') WHERE nombre = 'Ana María'),
   1, 'Es su primer intento');
 
 SELECT results_eq(
   $$SELECT nombre FROM crm.candidatos_reciclaje('11610000-0000-0000-0000-000000000001',
       '2026-11-17 23:00:00+00') ORDER BY nombre$$,
-  ARRAY['Ana María', 'Beto'],
+  ARRAY['Ana María', 'Beto', 'Carla'],
   'Ocho horas después Beto también cumple las 12 horas de silencio');
 
 RESET ROLE;
@@ -203,8 +219,8 @@ RESET ROLE;
 -- ---------------------------------------------------------------------
 SELECT is(crm.despachar_reciclaje('2026-11-22 15:00:00+00'), 0, 'Un domingo no sale nada');
 
-SELECT is(crm.despachar_reciclaje('2026-11-17 15:00:00+00'), 1,
-  'En simulación cuenta a Ana');
+SELECT is(crm.despachar_reciclaje('2026-11-17 15:00:00+00'), 2,
+  'En simulación cuenta a Ana y a Carla');
 SELECT is(
   (SELECT count(*)::int FROM crm.reciclador_intentos
     WHERE contacto_id = 'c0610000-0000-0000-0000-000000000001' AND simulado AND envio_id IS NULL
@@ -221,8 +237,8 @@ SELECT is(crm.despachar_reciclaje('2026-11-17 16:00:00+00'), 0,
   'Una hora después no se le repite: entre intentos va el mismo silencio');
 
 -- Al día siguiente, el segundo intento (Beto, ya con 28 h, entra con su primero).
-SELECT is(crm.despachar_reciclaje('2026-11-18 15:00:00+00'), 2,
-  'Al día siguiente: segundo intento de Ana y primero de Beto');
+SELECT is(crm.despachar_reciclaje('2026-11-18 15:00:00+00'), 3,
+  'Al día siguiente: segundos intentos de Ana y Carla y primero de Beto');
 SELECT is(
   (SELECT max(numero)::int FROM crm.reciclador_intentos
     WHERE contacto_id = 'c0610000-0000-0000-0000-000000000001'),
