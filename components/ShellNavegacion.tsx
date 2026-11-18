@@ -8,6 +8,7 @@ import {
   Kanban,
   Sparkles,
   Flame,
+  Recycle,
   BotOff,
   ChartColumn,
   FileText,
@@ -100,6 +101,12 @@ const GRUPOS_NAV: GrupoNav[] = [
         descripcion: 'Leads fríos para reenganche',
       },
       {
+        href: '/reactivacion/automatico',
+        etiqueta: 'Reciclador',
+        icono: Recycle,
+        descripcion: 'Escribirle solo a las conversaciones calladas',
+      },
+      {
         href: '/bot-callado',
         etiqueta: 'Bot callado',
         icono: BotOff,
@@ -167,10 +174,19 @@ export function ShellNavegacion({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  function esActivo(href: string) {
+  function coincide(href: string) {
     if (pathname === href) return true;
     if (href !== '/mi-dia' && pathname.startsWith(href + '/')) return true;
     return false;
+  }
+
+  // Gana la entrada más específica: en /reactivacion/automatico se marca
+  // «Reciclador», no también «Reactivación».
+  function esActivo(href: string) {
+    if (!coincide(href)) return false;
+    return !GRUPOS_NAV.some((g) =>
+      g.elementos.some((e) => e.href.length > href.length && coincide(e.href))
+    );
   }
 
   // Obtiene el título legible de la sección actual para el breadcrumb contextual
