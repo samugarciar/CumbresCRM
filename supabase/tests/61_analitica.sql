@@ -11,7 +11,7 @@
 BEGIN;
 SET search_path TO extensions, public;
 
-SELECT plan(22);
+SELECT plan(25);
 
 SET LOCAL TimeZone = 'UTC';
 
@@ -67,6 +67,13 @@ SELECT o.inmobiliaria_id, o.id, 'nuevo', 'contactado', 'sistema', now() - interv
   FROM crm.oportunidades o
  WHERE o.contacto_id = 'a6100002-0000-0000-0000-000000000002' AND o.embudo = 'comercial';
 
+-- Escalamientos: la 2 pide una persona 20 min antes de que le escriban;
+-- la 3 la pide y nadie le escribe.
+UPDATE crm.oportunidades SET escalado_at = now() - interval '1 hour 50 minutes'
+ WHERE contacto_id = 'a6100002-0000-0000-0000-000000000002' AND embudo = 'comercial';
+UPDATE crm.oportunidades SET escalado_at = now() - interval '50 minutes'
+ WHERE contacto_id = 'a6100003-0000-0000-0000-000000000003' AND embudo = 'comercial';
+
 -- La 3 se muere por no responder; la 2 se reclasifica (no es una muerte).
 UPDATE crm.oportunidades
    SET estado = 'perdida', motivo_perdida = 'no_responde', cerrada_at = now() - interval '10 minutes'
@@ -105,8 +112,14 @@ SELECT is((SELECT (j->'kpis'->'actual'->>'atendidas_humano')::int FROM r), 1,
   'Por una persona: solo una');
 SELECT is((SELECT (j->'kpis'->'actual'->>'mediana_respuesta_min')::numeric FROM r), 20.0,
   'La mediana de primera respuesta es 20 min (10 y 30)');
-SELECT is((SELECT (j->'kpis'->'actual'->>'mediana_respuesta_humana_min')::numeric FROM r), 30.0,
-  'La de una persona, 30 min');
+SELECT is((SELECT (j->'kpis'->'actual'->>'escaladas')::int FROM r), 2,
+  'Dos pidieron una persona en la semana');
+SELECT is((SELECT (j->'kpis'->'actual'->>'escaladas_sin_atender')::int FROM r), 1,
+  'A una nadie le escribió después de escalar');
+SELECT is((SELECT (j->'kpis'->'actual'->>'mediana_atencion_escalado_min')::numeric FROM r), 20.0,
+  'La demora se mide desde el escalamiento (20 min), no desde el primer mensaje (30)');
+SELECT ok((SELECT NOT (j->'kpis'->'actual' ? 'mediana_respuesta_humana_min') FROM r),
+  'La métrica engañosa ya no sale');
 SELECT is((SELECT (j->'kpis'->'actual'->>'leads_nuevos')::int FROM r), 3,
   'Tres leads nuevos en el embudo comercial de Alfa');
 SELECT is((SELECT (j->'kpis'->'actual'->>'avanzaron')::int FROM r), 1,
