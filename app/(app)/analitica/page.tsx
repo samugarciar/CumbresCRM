@@ -117,35 +117,32 @@ export default async function PaginaAnalitica({
           valor={numero(k.atendidas)}
           detalle={
             k.conversaciones
-              ? `de ${numero(k.conversaciones)} (${porcentaje(k.atendidas, k.conversaciones)} %)`
+              ? `de ${numero(k.conversaciones)} (${porcentaje(k.atendidas, k.conversaciones)} %) · en ${numero(k.atendidas_humano)} también escribió una persona`
               : 'nadie escribió'
           }
           actual={k.atendidas}
           anterior={ant.atendidas}
         />
         <Indicador
-          icono={Users}
-          titulo="Atendidas por el equipo"
-          valor={numero(k.atendidas_humano)}
-          detalle={
-            k.conversaciones
-              ? `${porcentaje(k.atendidas_humano, k.conversaciones)} % de las conversaciones`
-              : undefined
-          }
-          actual={k.atendidas_humano}
-          anterior={ant.atendidas_humano}
-        />
-        <Indicador
           icono={Clock}
           titulo="Primera respuesta"
           valor={duracion(k.mediana_respuesta_min)}
-          detalle={
-            k.mediana_respuesta_humana_min !== null
-              ? `${duracion(k.mediana_respuesta_humana_min)} si contesta una persona`
-              : 'mediana'
-          }
+          detalle="mediana desde que el cliente escribe; casi siempre la da el bot"
           actual={k.mediana_respuesta_min}
           anterior={ant.mediana_respuesta_min}
+          menosEsMejor
+        />
+        <Indicador
+          icono={Users}
+          titulo="El equipo tras escalar"
+          valor={k.escaladas ? duracion(k.mediana_atencion_escalado_min) : '—'}
+          detalle={
+            k.escaladas
+              ? `mediana desde que el bot pide una persona · ${numero(k.escaladas)} escalados, ${numero(k.escaladas_sin_atender)} sin respuesta`
+              : 'nadie pidió una persona'
+          }
+          actual={k.mediana_atencion_escalado_min}
+          anterior={ant.mediana_atencion_escalado_min}
           menosEsMejor
         />
         {esComercial ? (
@@ -302,6 +299,18 @@ function hallazgos(a: Analitica): string[] {
     );
   }
 
+  // Lo que espera a una persona va primero: es lo que se puede arreglar hoy.
+  if (k.escaladas_sin_atender > 0) {
+    out.push(
+      `${numero(k.escaladas_sin_atender)} de ${numero(k.escaladas)} leads que pidieron una persona no han recibido ningún mensaje del equipo.`
+    );
+  }
+  if (k.mediana_atencion_escalado_min !== null && k.mediana_atencion_escalado_min > 60) {
+    out.push(
+      `Desde que el bot pide una persona, el equipo tarda en mediana ${duracion(k.mediana_atencion_escalado_min)} en escribir.`
+    );
+  }
+
   // La caída más grande entre dos etapas seguidas del embudo.
   let peor: { de: string; a: string; caida: number; perdidos: number } | null = null;
   for (let i = 1; i < a.embudo.length; i++) {
@@ -337,13 +346,7 @@ function hallazgos(a: Analitica): string[] {
     );
   }
 
-  if (k.mediana_respuesta_humana_min !== null && k.mediana_respuesta_humana_min > 60) {
-    out.push(
-      `Cuando contesta una persona, tarda en mediana ${duracion(k.mediana_respuesta_humana_min)} desde el primer mensaje.`
-    );
-  }
-
-  return out.slice(0, 4);
+  return out.slice(0, 5);
 }
 
 // =====================================================================

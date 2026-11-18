@@ -20,9 +20,15 @@ export interface Kpis {
   leads_nuevos: number;
   conversaciones: number;
   atendidas: number;
+  /** Conversaciones con al menos un mensaje de una persona, haya contestado o no también el bot. */
   atendidas_humano: number;
   mediana_respuesta_min: number | null;
-  mediana_respuesta_humana_min: number | null;
+  /** Oportunidades cuyo escalamiento (el bot pide una persona) cae en el periodo. */
+  escaladas: number;
+  escaladas_atendidas: number;
+  escaladas_sin_atender: number;
+  /** Mediana entre el escalamiento y el primer mensaje de una persona. */
+  mediana_atencion_escalado_min: number | null;
   citas_agendadas: number;
   citas_por_bot: number;
   avanzaron: number;
